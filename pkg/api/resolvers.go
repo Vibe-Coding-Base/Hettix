@@ -705,7 +705,7 @@ func (r *mutationResolver) RunAgent(ctx context.Context, input RunAgentInput) (*
 
 	ag := agent.New(agent.Config{
 		Provider:     r.LLMProvider,
-		Registry:     aitools.NewRegistry(r.RequestLogService),
+		Registry:     aitools.NewRegistry(r.RequestLogService, r.SenderService, r.ProjectService),
 		Mode:         mode,
 		SystemPrompt: aitools.SystemPrompt,
 		OnEvent: func(e agent.Event) {

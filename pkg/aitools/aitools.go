@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/oklog/ulid"
@@ -14,6 +15,8 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/agent"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
 )
 
 const maxBodyChars = 2000
@@ -32,6 +35,12 @@ Fields: req.{method,host,path,url,body,header["Name"],tls,...} and
 resp.{code,reason,body,header["Name"],roundtrip}. Operators: eq ne cont regex
 gt gte lt lte, combined with and/or/not.
 
+You can also act: replay_request resends a captured request and returns the new
+response, and set_scope replaces the project scope with URL patterns. These
+change state or send traffic, so they are only available in assist or auto mode
+and are refused for out-of-scope targets. Investigate first, then act
+deliberately.
+
 Be concise. When you reference a request, include its id so the operator can
 open it.`
 
@@ -41,8 +50,21 @@ type RequestLogService interface {
 	FindRequestLogByID(ctx context.Context, id ulid.ULID) (reqlog.RequestLog, error)
 }
 
-// NewRegistry builds the agent tool registry backed by the given services.
-func NewRegistry(reqLog RequestLogService) *agent.Registry {
+// SenderService is the subset of the sender service the tools use.
+type SenderService interface {
+	CloneFromRequestLog(ctx context.Context, reqLogID ulid.ULID) (sender.Request, error)
+	SendRequest(ctx context.Context, id ulid.ULID) (sender.Request, error)
+}
+
+// ProjectService is the subset of the project service the tools use.
+type ProjectService interface {
+	SetScopeRules(ctx context.Context, rules []scope.Rule) error
+	Scope() *scope.Scope
+}
+
+// NewRegistry builds the agent tool registry backed by the given services. The
+// sender and project services power the mutating tools; pass nil to omit them.
+func NewRegistry(reqLog RequestLogService, senderSvc SenderService, projSvc ProjectService) *agent.Registry {
 	reg := agent.NewRegistry()
 
 	reg.Register(agent.Tool{
@@ -69,6 +91,38 @@ func NewRegistry(reqLog RequestLogService) *agent.Registry {
 		}`),
 		Handler: getRequest(reqLog),
 	})
+
+	if senderSvc != nil && projSvc != nil {
+		reg.Register(agent.Tool{
+			Name:        "replay_request",
+			Description: "Resend a captured request (optionally already modified in Sender) and return the new response. The target must be in scope.",
+			Mutating:    true,
+			Schema: json.RawMessage(`{
+				"type": "object",
+				"properties": {"id": {"type": "string", "description": "The request log id (ULID) to replay"}},
+				"required": ["id"]
+			}`),
+			Handler: replayRequest(reqLog, senderSvc, projSvc),
+		})
+
+		reg.Register(agent.Tool{
+			Name:        "set_scope",
+			Description: "Replace the project scope with a list of URL regular expressions. In-scope traffic is what the proxy focuses on.",
+			Mutating:    true,
+			Schema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"url_patterns": {
+						"type": "array",
+						"items": {"type": "string"},
+						"description": "Regular expressions matched against request URLs"
+					}
+				},
+				"required": ["url_patterns"]
+			}`),
+			Handler: setScope(projSvc),
+		})
+	}
 
 	return reg
 }
@@ -150,12 +204,95 @@ func getRequest(reqLog RequestLogService) agent.Handler {
 	}
 }
 
+func replayRequest(reqLog RequestLogService, senderSvc SenderService, projSvc ProjectService) agent.Handler {
+	return func(ctx context.Context, args json.RawMessage) (string, error) {
+		var in struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(args, &in); err != nil {
+			return "", fmt.Errorf("invalid arguments: %w", err)
+		}
+
+		id, err := ulid.Parse(in.ID)
+		if err != nil {
+			return "", fmt.Errorf("invalid request id %q", in.ID)
+		}
+
+		rl, err := reqLog.FindRequestLogByID(ctx, id)
+		if err != nil {
+			return "", err
+		}
+
+		// Scope enforcement at the tool layer: refuse to send traffic to a host
+		// the operator has not put in scope. An empty scope means unrestricted.
+		if s := projSvc.Scope(); len(s.Rules()) > 0 && !rl.MatchScope(s) {
+			return "", fmt.Errorf("refusing to replay: %s is out of scope", urlString(rl))
+		}
+
+		cloned, err := senderSvc.CloneFromRequestLog(ctx, id)
+		if err != nil {
+			return "", err
+		}
+
+		sent, err := senderSvc.SendRequest(ctx, cloned.ID)
+		if err != nil {
+			return "", err
+		}
+
+		var b strings.Builder
+		fmt.Fprintf(&b, "Replayed %s %s\n", sent.Method, senderURL(sent))
+		if sent.Response != nil {
+			fmt.Fprintf(&b, "-> %d %s (%dms)\n", sent.Response.StatusCode, sent.Response.Status, sent.Response.RoundTripMillis)
+			writeBody(&b, sent.Response.Body)
+		} else {
+			b.WriteString("(no response)\n")
+		}
+
+		return b.String(), nil
+	}
+}
+
+func setScope(projSvc ProjectService) agent.Handler {
+	return func(ctx context.Context, args json.RawMessage) (string, error) {
+		var in struct {
+			URLPatterns []string `json:"url_patterns"`
+		}
+		if err := json.Unmarshal(args, &in); err != nil {
+			return "", fmt.Errorf("invalid arguments: %w", err)
+		}
+
+		rules := make([]scope.Rule, 0, len(in.URLPatterns))
+		for _, pattern := range in.URLPatterns {
+			re, err := regexp.Compile(pattern)
+			if err != nil {
+				return "", fmt.Errorf("invalid url pattern %q: %w", pattern, err)
+			}
+
+			rules = append(rules, scope.Rule{URL: re})
+		}
+
+		if err := projSvc.SetScopeRules(ctx, rules); err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("Scope set to %d rule(s).", len(rules)), nil
+	}
+}
+
 func urlString(rl reqlog.RequestLog) string {
 	if rl.URL == nil {
 		return ""
 	}
 
 	return rl.URL.String()
+}
+
+func senderURL(req sender.Request) string {
+	if req.URL == nil {
+		return ""
+	}
+
+	return req.URL.String()
 }
 
 func writeHeaders(b *strings.Builder, header map[string][]string) {
