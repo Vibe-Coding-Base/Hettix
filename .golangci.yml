@@ -14,6 +14,8 @@ linters:
         - (*compress/gzip.Reader).Close
         - (io.ReadCloser).Close
         - (*go.etcd.io/bbolt.Tx).Rollback
+        - (*database/sql.Rows).Close
+        - (*database/sql.DB).Close
         - fmt.Fprint
   exclusions:
     rules:
