@@ -3,7 +3,7 @@ package reqlog_test
 import (
 	"testing"
 
-	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 )
 
@@ -176,7 +176,7 @@ func TestRequestLogMatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			searchExpr, err := filter.ParseQuery(tt.query)
+			searchExpr, err := httpql.Parse(tt.query)
 			assertError(t, nil, err)
 
 			got, err := tt.requestLog.Matches(searchExpr)

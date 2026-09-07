@@ -2,226 +2,142 @@ package intercept
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"strconv"
-	"strings"
+	"time"
 
-	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 )
 
-//nolint:unparam
-var reqFilterKeyFns = map[string]func(req *http.Request) (string, error){
-	"proto": func(req *http.Request) (string, error) { return req.Proto, nil },
-	"url": func(req *http.Request) (string, error) {
-		if req.URL == nil {
-			return "", nil
-		}
-		return req.URL.String(), nil
-	},
-	"method": func(req *http.Request) (string, error) { return req.Method, nil },
-	"body": func(req *http.Request) (string, error) {
-		if req.Body == nil {
-			return "", nil
-		}
-
-		body, err := io.ReadAll(req.Body)
-		if err != nil {
-			return "", err
-		}
-
-		req.Body = io.NopCloser(bytes.NewBuffer(body))
-		return string(body), nil
-	},
-}
-
-//nolint:unparam
-var resFilterKeyFns = map[string]func(res *http.Response) (string, error){
-	"proto":      func(res *http.Response) (string, error) { return res.Proto, nil },
-	"statusCode": func(res *http.Response) (string, error) { return strconv.Itoa(res.StatusCode), nil },
-	"statusReason": func(res *http.Response) (string, error) {
-		statusReasonSubs := strings.SplitN(res.Status, " ", 2)
-
-		if len(statusReasonSubs) != 2 {
-			return "", fmt.Errorf("invalid response status %q", res.Status)
-		}
-		return statusReasonSubs[1], nil
-	},
-	"body": func(res *http.Response) (string, error) {
-		if res.Body == nil {
-			return "", nil
-		}
-
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return "", err
-		}
-
-		res.Body = io.NopCloser(bytes.NewBuffer(body))
-
-		return string(body), nil
-	},
-}
-
-// MatchRequestFilter returns true if an HTTP request matches the request filter expression.
-func MatchRequestFilter(req *http.Request, expr filter.Expression) (bool, error) {
-	switch e := expr.(type) {
-	case filter.PrefixExpression:
-		return matchReqPrefixExpr(req, e)
-	case filter.InfixExpression:
-		return matchReqInfixExpr(req, e)
-	case filter.StringLiteral:
-		return matchReqStringLiteral(req, e)
-	default:
-		return false, fmt.Errorf("expression type (%T) not supported", expr)
-	}
-}
-
-func matchReqPrefixExpr(req *http.Request, expr filter.PrefixExpression) (bool, error) {
-	switch expr.Operator {
-	case filter.TokOpNot:
-		match, err := MatchRequestFilter(req, expr.Right)
-		if err != nil {
-			return false, err
-		}
-
-		return !match, nil
-	default:
-		return false, errors.New("operator is not supported")
-	}
-}
-
-func matchReqInfixExpr(req *http.Request, expr filter.InfixExpression) (bool, error) {
-	switch expr.Operator {
-	case filter.TokOpAnd:
-		left, err := MatchRequestFilter(req, expr.Left)
-		if err != nil {
-			return false, err
-		}
-
-		right, err := MatchRequestFilter(req, expr.Right)
-		if err != nil {
-			return false, err
-		}
-
-		return left && right, nil
-	case filter.TokOpOr:
-		left, err := MatchRequestFilter(req, expr.Left)
-		if err != nil {
-			return false, err
-		}
-
-		right, err := MatchRequestFilter(req, expr.Right)
-		if err != nil {
-			return false, err
-		}
-
-		return left || right, nil
-	}
-
-	left, ok := expr.Left.(filter.StringLiteral)
-	if !ok {
-		return false, errors.New("left operand must be a string literal")
-	}
-
-	leftVal, err := getMappedStringLiteralFromReq(req, left.Value)
+// MatchRequestFilter reports whether an in-flight request satisfies the HTTPQL
+// request filter.
+func MatchRequestFilter(req *http.Request, expr httpql.Expression) (bool, error) {
+	rec, err := recordFromRequest(req)
 	if err != nil {
-		return false, fmt.Errorf("failed to get string literal from request for left operand: %w", err)
+		return false, err
 	}
 
-	if leftVal == "headers" {
-		match, err := filter.MatchHTTPHeaders(expr.Operator, expr.Right, req.Header)
-		if err != nil {
-			return false, fmt.Errorf("failed to match request HTTP headers: %w", err)
-		}
-
-		return match, nil
-	}
-
-	if expr.Operator == filter.TokOpRe || expr.Operator == filter.TokOpNotRe {
-		right, ok := expr.Right.(filter.RegexpLiteral)
-		if !ok {
-			return false, errors.New("right operand must be a regular expression")
-		}
-
-		switch expr.Operator {
-		case filter.TokOpRe:
-			return right.MatchString(leftVal), nil
-		case filter.TokOpNotRe:
-			return !right.MatchString(leftVal), nil
-		}
-	}
-
-	right, ok := expr.Right.(filter.StringLiteral)
-	if !ok {
-		return false, errors.New("right operand must be a string literal")
-	}
-
-	rightVal, err := getMappedStringLiteralFromReq(req, right.Value)
-	if err != nil {
-		return false, fmt.Errorf("failed to get string literal from request for right operand: %w", err)
-	}
-
-	switch expr.Operator {
-	case filter.TokOpEq:
-		return leftVal == rightVal, nil
-	case filter.TokOpNotEq:
-		return leftVal != rightVal, nil
-	case filter.TokOpGt:
-		// TODO(?) attempt to parse as int.
-		return leftVal > rightVal, nil
-	case filter.TokOpLt:
-		// TODO(?) attempt to parse as int.
-		return leftVal < rightVal, nil
-	case filter.TokOpGtEq:
-		// TODO(?) attempt to parse as int.
-		return leftVal >= rightVal, nil
-	case filter.TokOpLtEq:
-		// TODO(?) attempt to parse as int.
-		return leftVal <= rightVal, nil
-	default:
-		return false, errors.New("unsupported operator")
-	}
+	return httpql.Eval(expr, rec)
 }
 
-func getMappedStringLiteralFromReq(req *http.Request, s string) (string, error) {
-	fn, ok := reqFilterKeyFns[s]
-	if ok {
-		return fn(req)
-	}
+// MatchResponseFilter reports whether an in-flight response satisfies the HTTPQL
+// response filter. The originating request is included so that req.* clauses
+// remain usable in response filters.
+func MatchResponseFilter(res *http.Response, expr httpql.Expression) (bool, error) {
+	rec := httpql.Record{}
 
-	return s, nil
-}
-
-func matchReqStringLiteral(req *http.Request, strLiteral filter.StringLiteral) (bool, error) {
-	for key, values := range req.Header {
-		for _, value := range values {
-			if strings.Contains(
-				strings.ToLower(fmt.Sprintf("%v: %v", key, value)),
-				strings.ToLower(strLiteral.Value),
-			) {
-				return true, nil
-			}
-		}
-	}
-
-	for _, fn := range reqFilterKeyFns {
-		value, err := fn(req)
+	if res.Request != nil {
+		reqRec, err := recordFromRequest(res.Request)
 		if err != nil {
 			return false, err
 		}
+		rec.Request = reqRec.Request
+	}
 
-		if strings.Contains(strings.ToLower(value), strings.ToLower(strLiteral.Value)) {
-			return true, nil
+	resData, err := responseData(res)
+	if err != nil {
+		return false, err
+	}
+	rec.Response = &resData
+
+	return httpql.Eval(expr, rec)
+}
+
+func recordFromRequest(req *http.Request) (httpql.Record, error) {
+	body, err := drainBody(&req.Body)
+	if err != nil {
+		return httpql.Record{}, err
+	}
+
+	reqData := httpql.RequestData{
+		Method:    req.Method,
+		Proto:     req.Proto,
+		Header:    req.Header,
+		Body:      string(body),
+		Len:       len(body),
+		CreatedAt: time.Now(),
+	}
+
+	if req.URL != nil {
+		reqData.URL = req.URL.String()
+		reqData.Host = req.URL.Hostname()
+		reqData.Path = req.URL.Path
+		reqData.Query = req.URL.RawQuery
+		reqData.Ext = path.Ext(req.URL.Path)
+		reqData.TLS = req.URL.Scheme == "https"
+		reqData.Port = port(req.URL.Port(), reqData.TLS)
+	}
+
+	return httpql.Record{Request: reqData}, nil
+}
+
+func responseData(res *http.Response) (httpql.ResponseData, error) {
+	body, err := drainBody(&res.Body)
+	if err != nil {
+		return httpql.ResponseData{}, err
+	}
+
+	reason := res.Status
+	if _, after, ok := splitStatus(res.Status); ok {
+		reason = after
+	}
+
+	return httpql.ResponseData{
+		Proto:  res.Proto,
+		Reason: reason,
+		Code:   res.StatusCode,
+		Header: res.Header,
+		Body:   string(body),
+		Len:    len(body),
+	}, nil
+}
+
+// drainBody reads a body fully and replaces it with a fresh reader so it can be
+// read again downstream.
+func drainBody(body *io.ReadCloser) ([]byte, error) {
+	if *body == nil {
+		return nil, nil
+	}
+
+	buf, err := io.ReadAll(*body)
+	if err != nil {
+		return nil, fmt.Errorf("intercept: failed to read body: %w", err)
+	}
+
+	*body = io.NopCloser(bytes.NewBuffer(buf))
+
+	return buf, nil
+}
+
+func splitStatus(status string) (code, reason string, ok bool) {
+	for i := 0; i < len(status); i++ {
+		if status[i] == ' ' {
+			return status[:i], status[i+1:], true
 		}
 	}
 
-	return false, nil
+	return status, "", false
 }
 
+func port(p string, tls bool) int {
+	if p != "" {
+		if n, err := strconv.Atoi(p); err == nil {
+			return n
+		}
+	}
+
+	if tls {
+		return 443
+	}
+
+	return 80
+}
+
+// MatchRequestScope reports whether an in-flight request matches any scope rule.
 func MatchRequestScope(req *http.Request, s *scope.Scope) (bool, error) {
 	for _, rule := range s.Rules() {
 		if rule.URL != nil && req.URL != nil {
@@ -248,8 +164,6 @@ func MatchRequestScope(req *http.Request, s *scope.Scope) (bool, error) {
 				}
 			}
 
-			// When only key or value is set, match on whatever is set.
-			// When both are set, both must match.
 			switch {
 			case rule.Header.Key != nil && rule.Header.Value == nil && keyMatches:
 				return true, nil
@@ -261,172 +175,14 @@ func MatchRequestScope(req *http.Request, s *scope.Scope) (bool, error) {
 		}
 
 		if rule.Body != nil {
-			body, err := io.ReadAll(req.Body)
+			body, err := drainBody(&req.Body)
 			if err != nil {
-				return false, fmt.Errorf("failed to read request body: %w", err)
+				return false, err
 			}
-
-			req.Body = io.NopCloser(bytes.NewBuffer(body))
 
 			if matches := rule.Body.Match(body); matches {
 				return true, nil
 			}
-		}
-	}
-
-	return false, nil
-}
-
-// MatchResponseFilter returns true if an HTTP response matches the response filter expression.
-func MatchResponseFilter(res *http.Response, expr filter.Expression) (bool, error) {
-	switch e := expr.(type) {
-	case filter.PrefixExpression:
-		return matchResPrefixExpr(res, e)
-	case filter.InfixExpression:
-		return matchResInfixExpr(res, e)
-	case filter.StringLiteral:
-		return matchResStringLiteral(res, e)
-	default:
-		return false, fmt.Errorf("expression type (%T) not supported", expr)
-	}
-}
-
-func matchResPrefixExpr(res *http.Response, expr filter.PrefixExpression) (bool, error) {
-	switch expr.Operator {
-	case filter.TokOpNot:
-		match, err := MatchResponseFilter(res, expr.Right)
-		if err != nil {
-			return false, err
-		}
-
-		return !match, nil
-	default:
-		return false, errors.New("operator is not supported")
-	}
-}
-
-func matchResInfixExpr(res *http.Response, expr filter.InfixExpression) (bool, error) {
-	switch expr.Operator {
-	case filter.TokOpAnd:
-		left, err := MatchResponseFilter(res, expr.Left)
-		if err != nil {
-			return false, err
-		}
-
-		right, err := MatchResponseFilter(res, expr.Right)
-		if err != nil {
-			return false, err
-		}
-
-		return left && right, nil
-	case filter.TokOpOr:
-		left, err := MatchResponseFilter(res, expr.Left)
-		if err != nil {
-			return false, err
-		}
-
-		right, err := MatchResponseFilter(res, expr.Right)
-		if err != nil {
-			return false, err
-		}
-
-		return left || right, nil
-	}
-
-	left, ok := expr.Left.(filter.StringLiteral)
-	if !ok {
-		return false, errors.New("left operand must be a string literal")
-	}
-
-	leftVal, err := getMappedStringLiteralFromRes(res, left.Value)
-	if err != nil {
-		return false, fmt.Errorf("failed to get string literal from response for left operand: %w", err)
-	}
-
-	if leftVal == "headers" {
-		match, err := filter.MatchHTTPHeaders(expr.Operator, expr.Right, res.Header)
-		if err != nil {
-			return false, fmt.Errorf("failed to match request HTTP headers: %w", err)
-		}
-
-		return match, nil
-	}
-
-	if expr.Operator == filter.TokOpRe || expr.Operator == filter.TokOpNotRe {
-		right, ok := expr.Right.(filter.RegexpLiteral)
-		if !ok {
-			return false, errors.New("right operand must be a regular expression")
-		}
-
-		switch expr.Operator {
-		case filter.TokOpRe:
-			return right.MatchString(leftVal), nil
-		case filter.TokOpNotRe:
-			return !right.MatchString(leftVal), nil
-		}
-	}
-
-	right, ok := expr.Right.(filter.StringLiteral)
-	if !ok {
-		return false, errors.New("right operand must be a string literal")
-	}
-
-	rightVal, err := getMappedStringLiteralFromRes(res, right.Value)
-	if err != nil {
-		return false, fmt.Errorf("failed to get string literal from response for right operand: %w", err)
-	}
-
-	switch expr.Operator {
-	case filter.TokOpEq:
-		return leftVal == rightVal, nil
-	case filter.TokOpNotEq:
-		return leftVal != rightVal, nil
-	case filter.TokOpGt:
-		// TODO(?) attempt to parse as int.
-		return leftVal > rightVal, nil
-	case filter.TokOpLt:
-		// TODO(?) attempt to parse as int.
-		return leftVal < rightVal, nil
-	case filter.TokOpGtEq:
-		// TODO(?) attempt to parse as int.
-		return leftVal >= rightVal, nil
-	case filter.TokOpLtEq:
-		// TODO(?) attempt to parse as int.
-		return leftVal <= rightVal, nil
-	default:
-		return false, errors.New("unsupported operator")
-	}
-}
-
-func getMappedStringLiteralFromRes(res *http.Response, s string) (string, error) {
-	fn, ok := resFilterKeyFns[s]
-	if ok {
-		return fn(res)
-	}
-
-	return s, nil
-}
-
-func matchResStringLiteral(res *http.Response, strLiteral filter.StringLiteral) (bool, error) {
-	for key, values := range res.Header {
-		for _, value := range values {
-			if strings.Contains(
-				strings.ToLower(fmt.Sprintf("%v: %v", key, value)),
-				strings.ToLower(strLiteral.Value),
-			) {
-				return true, nil
-			}
-		}
-	}
-
-	for _, fn := range resFilterKeyFns {
-		value, err := fn(res)
-		if err != nil {
-			return false, err
-		}
-
-		if strings.Contains(strings.ToLower(value), strings.ToLower(strLiteral.Value)) {
-			return true, nil
 		}
 	}
 

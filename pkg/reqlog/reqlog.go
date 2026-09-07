@@ -12,7 +12,7 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/log"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
@@ -64,7 +64,7 @@ type Service struct {
 type FindRequestsFilter struct {
 	ProjectID   ulid.ULID
 	OnlyInScope bool
-	SearchExpr  filter.Expression
+	SearchExpr  httpql.Expression
 }
 
 type Config struct {

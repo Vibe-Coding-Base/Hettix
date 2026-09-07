@@ -17,7 +17,7 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
-	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
@@ -638,7 +638,7 @@ func (r *mutationResolver) UpdateInterceptSettings(
 	}
 
 	if input.RequestFilter != nil && *input.RequestFilter != "" {
-		expr, err := filter.ParseQuery(*input.RequestFilter)
+		expr, err := httpql.Parse(*input.RequestFilter)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request filter: %w", err)
 		}
@@ -647,7 +647,7 @@ func (r *mutationResolver) UpdateInterceptSettings(
 	}
 
 	if input.ResponseFilter != nil && *input.ResponseFilter != "" {
-		expr, err := filter.ParseQuery(*input.ResponseFilter)
+		expr, err := httpql.Parse(*input.ResponseFilter)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse response filter: %w", err)
 		}
@@ -925,7 +925,7 @@ func findRequestsFilterFromInput(input *HTTPRequestLogFilterInput) (findFilter r
 	}
 
 	if input.SearchExpression != nil && *input.SearchExpression != "" {
-		expr, err := filter.ParseQuery(*input.SearchExpression)
+		expr, err := httpql.Parse(*input.SearchExpression)
 		if err != nil {
 			return reqlog.FindRequestsFilter{}, fmt.Errorf("could not parse search query: %w", err)
 		}
@@ -946,7 +946,7 @@ func findSenderRequestsFilterFromInput(input *SenderRequestFilterInput) (findFil
 	}
 
 	if input.SearchExpression != nil && *input.SearchExpression != "" {
-		expr, err := filter.ParseQuery(*input.SearchExpression)
+		expr, err := httpql.Parse(*input.SearchExpression)
 		if err != nil {
 			return sender.FindRequestsFilter{}, fmt.Errorf("could not parse search query: %w", err)
 		}

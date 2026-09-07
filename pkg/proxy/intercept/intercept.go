@@ -10,7 +10,7 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/log"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
 )
@@ -56,16 +56,16 @@ type Service struct {
 
 	requestsEnabled  bool
 	responsesEnabled bool
-	reqFilter        filter.Expression
-	resFilter        filter.Expression
+	reqFilter        httpql.Expression
+	resFilter        httpql.Expression
 }
 
 type Config struct {
 	Logger           log.Logger
 	RequestsEnabled  bool
 	ResponsesEnabled bool
-	RequestFilter    filter.Expression
-	ResponseFilter   filter.Expression
+	RequestFilter    httpql.Expression
+	ResponseFilter   httpql.Expression
 }
 
 // RequestIDs implements sort.Interface.

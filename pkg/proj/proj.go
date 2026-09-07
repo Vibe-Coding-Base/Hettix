@@ -11,7 +11,7 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
@@ -43,17 +43,17 @@ type Settings struct {
 	// Request log settings
 	ReqLogBypassOutOfScope bool
 	ReqLogOnlyFindInScope  bool
-	ReqLogSearchExpr       filter.Expression
+	ReqLogSearchExpr       httpql.Expression
 
 	// Intercept settings
 	InterceptRequests       bool
 	InterceptResponses      bool
-	InterceptRequestFilter  filter.Expression
-	InterceptResponseFilter filter.Expression
+	InterceptRequestFilter  httpql.Expression
+	InterceptResponseFilter httpql.Expression
 
 	// Sender settings
 	SenderOnlyFindInScope bool
-	SenderSearchExpr      filter.Expression
+	SenderSearchExpr      httpql.Expression
 
 	// Scope settings
 	ScopeRules []scope.Rule

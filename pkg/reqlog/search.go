@@ -1,231 +1,73 @@
 package reqlog
 
 import (
-	"errors"
-	"fmt"
+	"path"
 	"strconv"
-	"strings"
 
 	"github.com/oklog/ulid"
 
-	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 )
 
-var reqLogSearchKeyFns = map[string]func(rl RequestLog) string{
-	"req.id":    func(rl RequestLog) string { return rl.ID.String() },
-	"req.proto": func(rl RequestLog) string { return rl.Proto },
-	"req.url": func(rl RequestLog) string {
-		if rl.URL == nil {
-			return ""
-		}
-		return rl.URL.String()
-	},
-	"req.method":    func(rl RequestLog) string { return rl.Method },
-	"req.body":      func(rl RequestLog) string { return string(rl.Body) },
-	"req.timestamp": func(rl RequestLog) string { return ulid.Time(rl.ID.Time()).String() },
+// Matches reports whether the request log satisfies the HTTPQL expression.
+func (reqLog RequestLog) Matches(expr httpql.Expression) (bool, error) {
+	return httpql.Eval(expr, reqLog.toRecord())
 }
 
-var ResLogSearchKeyFns = map[string]func(rl ResponseLog) string{
-	"res.proto":        func(rl ResponseLog) string { return rl.Proto },
-	"res.statusCode":   func(rl ResponseLog) string { return strconv.Itoa(rl.StatusCode) },
-	"res.statusReason": func(rl ResponseLog) string { return rl.Status },
-	"res.body":         func(rl ResponseLog) string { return string(rl.Body) },
-}
-
-// TODO: Request and response headers search key functions.
-
-// Matches returns true if the supplied search expression evaluates to true.
-func (reqLog RequestLog) Matches(expr filter.Expression) (bool, error) {
-	switch e := expr.(type) {
-	case filter.PrefixExpression:
-		return reqLog.matchPrefixExpr(e)
-	case filter.InfixExpression:
-		return reqLog.matchInfixExpr(e)
-	case filter.StringLiteral:
-		return reqLog.matchStringLiteral(e)
-	default:
-		return false, fmt.Errorf("expression type (%T) not supported", expr)
-	}
-}
-
-func (reqLog RequestLog) matchPrefixExpr(expr filter.PrefixExpression) (bool, error) {
-	switch expr.Operator {
-	case filter.TokOpNot:
-		match, err := reqLog.Matches(expr.Right)
-		if err != nil {
-			return false, err
-		}
-
-		return !match, nil
-	default:
-		return false, errors.New("operator is not supported")
-	}
-}
-
-func (reqLog RequestLog) matchInfixExpr(expr filter.InfixExpression) (bool, error) {
-	switch expr.Operator {
-	case filter.TokOpAnd:
-		left, err := reqLog.Matches(expr.Left)
-		if err != nil {
-			return false, err
-		}
-
-		right, err := reqLog.Matches(expr.Right)
-		if err != nil {
-			return false, err
-		}
-
-		return left && right, nil
-	case filter.TokOpOr:
-		left, err := reqLog.Matches(expr.Left)
-		if err != nil {
-			return false, err
-		}
-
-		right, err := reqLog.Matches(expr.Right)
-		if err != nil {
-			return false, err
-		}
-
-		return left || right, nil
+func (reqLog RequestLog) toRecord() httpql.Record {
+	req := httpql.RequestData{
+		ID:        reqLog.ID.String(),
+		Method:    reqLog.Method,
+		Proto:     reqLog.Proto,
+		Len:       len(reqLog.Body),
+		CreatedAt: ulid.Time(reqLog.ID.Time()),
+		Header:    reqLog.Header,
+		Body:      string(reqLog.Body),
 	}
 
-	left, ok := expr.Left.(filter.StringLiteral)
-	if !ok {
-		return false, errors.New("left operand must be a string literal")
+	if reqLog.URL != nil {
+		req.URL = reqLog.URL.String()
+		req.Host = reqLog.URL.Hostname()
+		req.Path = reqLog.URL.Path
+		req.Query = reqLog.URL.RawQuery
+		req.Ext = path.Ext(reqLog.URL.Path)
+		req.TLS = reqLog.URL.Scheme == "https"
+		req.Port = urlPort(reqLog.URL.Port(), req.TLS)
 	}
 
-	leftVal := reqLog.getMappedStringLiteral(left.Value)
-
-	if leftVal == "req.headers" {
-		match, err := filter.MatchHTTPHeaders(expr.Operator, expr.Right, reqLog.Header)
-		if err != nil {
-			return false, fmt.Errorf("failed to match request HTTP headers: %w", err)
-		}
-
-		return match, nil
-	}
-
-	if leftVal == "res.headers" && reqLog.Response != nil {
-		match, err := filter.MatchHTTPHeaders(expr.Operator, expr.Right, reqLog.Response.Header)
-		if err != nil {
-			return false, fmt.Errorf("failed to match response HTTP headers: %w", err)
-		}
-
-		return match, nil
-	}
-
-	if expr.Operator == filter.TokOpRe || expr.Operator == filter.TokOpNotRe {
-		right, ok := expr.Right.(filter.RegexpLiteral)
-		if !ok {
-			return false, errors.New("right operand must be a regular expression")
-		}
-
-		switch expr.Operator {
-		case filter.TokOpRe:
-			return right.MatchString(leftVal), nil
-		case filter.TokOpNotRe:
-			return !right.MatchString(leftVal), nil
-		}
-	}
-
-	right, ok := expr.Right.(filter.StringLiteral)
-	if !ok {
-		return false, errors.New("right operand must be a string literal")
-	}
-
-	rightVal := reqLog.getMappedStringLiteral(right.Value)
-
-	switch expr.Operator {
-	case filter.TokOpEq:
-		return leftVal == rightVal, nil
-	case filter.TokOpNotEq:
-		return leftVal != rightVal, nil
-	case filter.TokOpGt:
-		// TODO(?) attempt to parse as int.
-		return leftVal > rightVal, nil
-	case filter.TokOpLt:
-		// TODO(?) attempt to parse as int.
-		return leftVal < rightVal, nil
-	case filter.TokOpGtEq:
-		// TODO(?) attempt to parse as int.
-		return leftVal >= rightVal, nil
-	case filter.TokOpLtEq:
-		// TODO(?) attempt to parse as int.
-		return leftVal <= rightVal, nil
-	default:
-		return false, errors.New("unsupported operator")
-	}
-}
-
-func (reqLog RequestLog) getMappedStringLiteral(s string) string {
-	switch {
-	case strings.HasPrefix(s, "req."):
-		fn, ok := reqLogSearchKeyFns[s]
-		if ok {
-			return fn(reqLog)
-		}
-	case strings.HasPrefix(s, "res."):
-		if reqLog.Response == nil {
-			return ""
-		}
-
-		fn, ok := ResLogSearchKeyFns[s]
-		if ok {
-			return fn(*reqLog.Response)
-		}
-	}
-
-	return s
-}
-
-func (reqLog RequestLog) matchStringLiteral(strLiteral filter.StringLiteral) (bool, error) {
-	for key, values := range reqLog.Header {
-		for _, value := range values {
-			if strings.Contains(
-				strings.ToLower(fmt.Sprintf("%v: %v", key, value)),
-				strings.ToLower(strLiteral.Value),
-			) {
-				return true, nil
-			}
-		}
-	}
-
-	for _, fn := range reqLogSearchKeyFns {
-		if strings.Contains(
-			strings.ToLower(fn(reqLog)),
-			strings.ToLower(strLiteral.Value),
-		) {
-			return true, nil
-		}
-	}
+	rec := httpql.Record{Request: req}
 
 	if reqLog.Response != nil {
-		for key, values := range reqLog.Response.Header {
-			for _, value := range values {
-				if strings.Contains(
-					strings.ToLower(fmt.Sprintf("%v: %v", key, value)),
-					strings.ToLower(strLiteral.Value),
-				) {
-					return true, nil
-				}
-			}
-		}
-
-		for _, fn := range ResLogSearchKeyFns {
-			if strings.Contains(
-				strings.ToLower(fn(*reqLog.Response)),
-				strings.ToLower(strLiteral.Value),
-			) {
-				return true, nil
-			}
+		rec.Response = &httpql.ResponseData{
+			Proto:     reqLog.Response.Proto,
+			Reason:    reqLog.Response.Status,
+			Code:      reqLog.Response.StatusCode,
+			Len:       len(reqLog.Response.Body),
+			RoundTrip: int(reqLog.Response.RoundTripMillis),
+			Header:    reqLog.Response.Header,
+			Body:      string(reqLog.Response.Body),
 		}
 	}
 
-	return false, nil
+	return rec
 }
 
+func urlPort(port string, tls bool) int {
+	if port != "" {
+		if n, err := strconv.Atoi(port); err == nil {
+			return n
+		}
+	}
+
+	if tls {
+		return 443
+	}
+
+	return 80
+}
+
+// MatchScope reports whether the request log matches any of the scope's rules.
 func (reqLog RequestLog) MatchScope(s *scope.Scope) bool {
 	for _, rule := range s.Rules() {
 		if rule.URL != nil && reqLog.URL != nil {
@@ -251,8 +93,7 @@ func (reqLog RequestLog) MatchScope(s *scope.Scope) bool {
 					}
 				}
 			}
-			// When only key or value is set, match on whatever is set.
-			// When both are set, both must match.
+
 			switch {
 			case rule.Header.Key != nil && rule.Header.Value == nil && keyMatches:
 				return true
