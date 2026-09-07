@@ -372,7 +372,7 @@ func (svc *Service) InterceptResponse(ctx context.Context, res *http.Response) (
 	}
 
 	// If global response intercept is disabled and interception is *not* explicitly enabled for this response: bypass.
-	if !svc.responsesEnabled && !(ok && shouldIntercept) {
+	if !svc.responsesEnabled && (!ok || !shouldIntercept) {
 		svc.logger.Debugw("Bypassed response interception: feature disabled.")
 		return res, nil
 	}

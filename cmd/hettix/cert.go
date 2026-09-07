@@ -5,14 +5,13 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/smallstep/truststore"
 )
 
 var certUsage = `
 Usage:
-    hetty cert <subcommand> [flags]
+    hettix cert <subcommand> [flags]
 
 Certificate management tools.
 
@@ -25,14 +24,14 @@ Subcommands:
     - uninstall  Uninstalls a certificate from the system trust store, and
                  (optionally) from the Firefox and Java trust stores.
 
-Run ` + "`hetty cert <subcommand> --help`" + ` for subcommand specific usage instructions.
+Run ` + "`hettix cert <subcommand> --help`" + ` for subcommand specific usage instructions.
 
 Hettix - an HTTP toolkit for security research.
 `
 
 var certInstallUsage = `
 Usage:
-    hetty cert install [flags]
+    hettix cert install [flags]
 	
 Installs a certificate to the system trust store, and (optionally) to the Firefox
 and Java trust stores.
@@ -49,7 +48,7 @@ Hettix - an HTTP toolkit for security research.
 
 var certUninstallUsage = `
 Usage:
-    hetty cert uninstall [flags]
+    hettix cert uninstall [flags]
 	
 Uninstalls a certificate from the system trust store, and (optionally) from the Firefox
 and Java trust stores.
@@ -100,7 +99,7 @@ func NewCertInstallCommand(rootConfig *Config) *ffcli.Command {
 	cmd := CertInstallCommand{
 		config: rootConfig,
 	}
-	fs := flag.NewFlagSet("hetty cert install", flag.ExitOnError)
+	fs := flag.NewFlagSet("hettix cert install", flag.ExitOnError)
 
 	fs.StringVar(&cmd.cert, "cert", "~/.hettix/hettix_cert.pem", "Path to certificate.")
 	fs.BoolVar(&cmd.firefox, "firefox", false, "Install certificate to Firefox trust store. (Default: false)")
@@ -120,7 +119,7 @@ func NewCertInstallCommand(rootConfig *Config) *ffcli.Command {
 }
 
 func (cmd *CertInstallCommand) Exec(_ context.Context, _ []string) error {
-	caCertFile, err := homedir.Expand(cmd.cert)
+	caCertFile, err := expandHome(cmd.cert)
 	if err != nil {
 		return fmt.Errorf("failed to parse certificate filepath: %w", err)
 	}
@@ -157,7 +156,7 @@ func NewCertUninstallCommand(rootConfig *Config) *ffcli.Command {
 	cmd := CertUninstallCommand{
 		config: rootConfig,
 	}
-	fs := flag.NewFlagSet("hetty cert uninstall", flag.ExitOnError)
+	fs := flag.NewFlagSet("hettix cert uninstall", flag.ExitOnError)
 
 	fs.StringVar(&cmd.cert, "cert", "~/.hettix/hettix_cert.pem", "Path to certificate.")
 	fs.BoolVar(&cmd.firefox, "firefox", false, "Uninstall certificate from Firefox trust store. (Default: false)")
@@ -178,7 +177,7 @@ func NewCertUninstallCommand(rootConfig *Config) *ffcli.Command {
 }
 
 func (cmd *CertUninstallCommand) Exec(_ context.Context, _ []string) error {
-	caCertFile, err := homedir.Expand(cmd.cert)
+	caCertFile, err := expandHome(cmd.cert)
 	if err != nil {
 		return fmt.Errorf("failed to parse certificate filepath: %w", err)
 	}

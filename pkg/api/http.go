@@ -5,17 +5,22 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/gorilla/mux"
 )
 
 func HTTPHandler(resolver *Resolver, gqlEndpoint string) http.Handler {
-	router := mux.NewRouter().SkipClean(true)
-	router.Methods("POST").Handler(
-		handler.NewDefaultServer(NewExecutableSchema(Config{
-			Resolvers: resolver,
-		})),
-	)
-	router.Methods("GET").Handler(playground.Handler("GraphQL Playground", gqlEndpoint))
+	gqlServer := handler.NewDefaultServer(NewExecutableSchema(Config{
+		Resolvers: resolver,
+	}))
+	pgHandler := playground.Handler("GraphQL Playground", gqlEndpoint)
 
-	return router
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			gqlServer.ServeHTTP(w, r)
+		case http.MethodGet:
+			pgHandler.ServeHTTP(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 }

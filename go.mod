@@ -1,15 +1,13 @@
 module github.com/Vibe-Coding-Base/Hettix
 
-go 1.23
+go 1.26
 
-toolchain go1.23.4
+toolchain go1.26.2
 
 require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/chromedp/chromedp v0.7.8
 	github.com/google/go-cmp v0.5.6
-	github.com/gorilla/mux v1.7.4
-	github.com/mitchellh/go-homedir v1.1.0
 	github.com/oklog/ulid v1.3.1
 	github.com/peterbourgon/ff/v3 v3.1.2
 	github.com/smallstep/truststore v0.11.0

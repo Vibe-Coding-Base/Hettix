@@ -16,8 +16,6 @@ import (
 	"strings"
 
 	"github.com/chromedp/chromedp"
-	"github.com/gorilla/mux"
-	"github.com/mitchellh/go-homedir"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
@@ -37,12 +35,13 @@ var version = "0.0.0"
 
 // The `all:` prefix is required: a plain embed skips files and directories
 // whose names start with "_", which is most of the Next.js output (_next/...).
+//
 //go:embed all:admin
 var adminContent embed.FS
 
-var hettyUsage = `
+var hettixUsage = `
 Usage:
-    hetty [flags] [subcommand] [flags]
+    hettix [flags] [subcommand] [flags]
 
 Runs an HTTP server with (MITM) proxy, GraphQL service, and a web based admin interface.
 
@@ -60,7 +59,7 @@ Options:
 Subcommands:
     - cert  Certificate management
 
-Run ` + "`hetty <subcommand> --help`" + ` for subcommand specific usage instructions.
+Run ` + "`hettix <subcommand> --help`" + ` for subcommand specific usage instructions.
 
 Hettix - an HTTP toolkit for security research.
 `
@@ -81,7 +80,7 @@ func NewHettixCommand() (*ffcli.Command, *Config) {
 		config: &Config{},
 	}
 
-	fs := flag.NewFlagSet("hetty", flag.ExitOnError)
+	fs := flag.NewFlagSet("hettix", flag.ExitOnError)
 
 	fs.StringVar(&cmd.cert, "cert", "~/.hettix/hettix_cert.pem",
 		"Path to root CA certificate. Creates a new certificate if file doesn't exist.")
@@ -96,14 +95,14 @@ func NewHettixCommand() (*ffcli.Command, *Config) {
 	cmd.config.RegisterFlags(fs)
 
 	return &ffcli.Command{
-		Name:    "hetty",
+		Name:    "hettix",
 		FlagSet: fs,
 		Subcommands: []*ffcli.Command{
 			NewCertCommand(cmd.config),
 		},
 		Exec: cmd.Exec,
 		UsageFunc: func(*ffcli.Command) string {
-			return hettyUsage
+			return hettixUsage
 		},
 	}, cmd.config
 }
@@ -130,17 +129,17 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 	}
 
 	// Expand `~` in filepaths.
-	caCertFile, err := homedir.Expand(cmd.cert)
+	caCertFile, err := expandHome(cmd.cert)
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to parse CA certificate filepath.", zap.Error(err))
 	}
 
-	caKeyFile, err := homedir.Expand(cmd.key)
+	caKeyFile, err := expandHome(cmd.key)
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to parse CA private key filepath.", zap.Error(err))
 	}
 
-	dbPath, err := homedir.Expand(cmd.db)
+	dbPath, err := expandHome(cmd.db)
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to parse database path.", zap.Error(err))
 	}
@@ -160,7 +159,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to open database.", zap.Error(err))
 	}
-	defer boltDB.Close()
+	defer func() { _ = boltDB.Close() }()
 
 	scope := &scope.Scope{}
 
@@ -210,38 +209,44 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 	}
 
 	adminHandler := http.FileServer(http.FS(fsSub))
-	router := mux.NewRouter().SkipClean(true)
-	adminRouter := router.MatcherFunc(func(req *http.Request, match *mux.RouteMatch) bool {
-		hostname, _ := os.Hostname()
-		host, _, _ := net.SplitHostPort(req.Host)
 
-		// Serve local admin routes when either:
-		// - The `Host` is well-known, e.g. `hettix.proxy`, `localhost:[port]`
-		//   or the listen addr `[host]:[port]`.
-		// - The request is not for TLS proxying (e.g. no `CONNECT`) and not
-		//   for proxying an external URL. E.g. Request-Line (RFC 7230, Section 3.1.1)
-		//   has no scheme.
-		return strings.EqualFold(host, hostname) ||
-			req.Host == "hettix.proxy" ||
-			req.Host == fmt.Sprintf("%v:%v", "localhost", listenPort) ||
-			req.Host == fmt.Sprintf("%v:%v", listenHost, listenPort) ||
-			req.Method != http.MethodConnect && !strings.HasPrefix(req.RequestURI, "http://")
-	}).Subrouter().StrictSlash(true)
-
-	// GraphQL server.
 	gqlEndpoint := "/api/graphql/"
-	adminRouter.Path(gqlEndpoint).Handler(api.HTTPHandler(&api.Resolver{
+	adminMux := http.NewServeMux()
+	adminMux.Handle(gqlEndpoint, api.HTTPHandler(&api.Resolver{
 		ProjectService:    projService,
 		RequestLogService: reqLogService,
 		InterceptService:  interceptService,
 		SenderService:     senderService,
 	}, gqlEndpoint))
+	adminMux.Handle("/", adminHandler)
 
-	// Admin interface.
-	adminRouter.PathPrefix("").Handler(adminHandler)
+	hostname, _ := os.Hostname()
 
-	// Fallback (default) is the Proxy handler.
-	router.PathPrefix("").Handler(proxy)
+	// isAdminRequest reports whether a request targets the local admin interface
+	// rather than the MITM proxy. It is an admin request when the Host is
+	// well-known (the hostname, `hettix.proxy`, `localhost:[port]` or the listen
+	// address), or when it is a plain request that is neither a CONNECT tunnel
+	// nor a proxied absolute URL.
+	isAdminRequest := func(req *http.Request) bool {
+		host, _, _ := net.SplitHostPort(req.Host)
+
+		return strings.EqualFold(host, hostname) ||
+			req.Host == "hettix.proxy" ||
+			req.Host == fmt.Sprintf("%v:%v", "localhost", listenPort) ||
+			req.Host == fmt.Sprintf("%v:%v", listenHost, listenPort) ||
+			req.Method != http.MethodConnect && !strings.HasPrefix(req.RequestURI, "http://")
+	}
+
+	// Proxy requests must reach the proxy handler with their path untouched, so
+	// they bypass the admin ServeMux (which would clean and redirect paths).
+	router := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if isAdminRequest(req) {
+			adminMux.ServeHTTP(w, req)
+			return
+		}
+
+		proxy.ServeHTTP(w, req)
+	})
 
 	httpServer := &http.Server{
 		Addr:         cmd.addr,

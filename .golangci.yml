@@ -1,53 +1,39 @@
-linters:
-  presets:
-    - bugs
-    - comment
-    - error
-    - format
-    - import
-    - metalinter
-    - module
-    - performance
-    - style
-    - test
-    - unused
-  disable:
-    - dupl
-    - exhaustive
-    - exhaustivestruct
-    - gochecknoglobals
-    - gochecknoinits
-    - godox
-    - goerr113
-    - gomnd
-    - interfacer
-    - maligned
-    - nilnil
-    - nlreturn
-    - scopelint 
-    - testpackage
-    - varnamelen
-    - wrapcheck
+version: "2"
 
-linters-settings:
-  gci:
-    local-prefixes: github.com/Vibe-Coding-Base/Hettix
-  godot:
-    capital: true
-  ireturn:
-    allow: "error,empty,anon,stdlib,.*(or|er)$,github.com/99designs/gqlgen/graphql.Marshaler,github.com/Vibe-Coding-Base/Hettix/pkg/api.QueryResolver,github.com/Vibe-Coding-Base/Hettix/pkg/filter.Expression"
-    
-issues:
-  exclude-rules:
-    - linters:
-      - gosec
-      # Ignore SHA1 usage.
-      text: "G(401|505):"
-    - linters:
-      - wsl
-      # Ignore cuddled defer statements.
-      text: "only one cuddle assignment allowed before defer statement"
-    - linters:
-      - nlreturn
-      # Ignore `break` without leading blank line.
-      text: "break with no blank line before"
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  settings:
+    errcheck:
+      exclude-functions:
+        - (*os.File).Close
+        - (net.Conn).Close
+        - (*crypto/tls.Conn).Close
+        - (*compress/gzip.Reader).Close
+        - (io.ReadCloser).Close
+        - (*go.etcd.io/bbolt.Tx).Rollback
+        - fmt.Fprint
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+      # ReverseProxy.Director is deprecated as of Go 1.26 in favor of Rewrite.
+      # Migrating the proxy to the Rewrite API is tracked as separate work.
+      - path: pkg/proxy/proxy\.go
+        text: "Director has been deprecated"
+        linters:
+          - staticcheck
+
+formatters:
+  enable:
+    - gofmt
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule

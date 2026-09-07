@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/oklog/ulid"
 
@@ -44,11 +44,12 @@ type RequestLog struct {
 }
 
 type ResponseLog struct {
-	Proto      string
-	StatusCode int
-	Status     string
-	Header     http.Header
-	Body       []byte
+	Proto           string
+	StatusCode      int
+	Status          string
+	Header          http.Header
+	Body            []byte
+	RoundTripMillis int64
 }
 
 type Service struct {
@@ -100,11 +101,13 @@ func (svc *Service) ClearRequests(ctx context.Context, projectID ulid.ULID) erro
 	return svc.repo.ClearRequestLogs(ctx, projectID)
 }
 
-func (svc *Service) storeResponse(ctx context.Context, reqLogID ulid.ULID, res *http.Response) error {
+func (svc *Service) storeResponse(ctx context.Context, reqLogID ulid.ULID, res *http.Response, roundTrip time.Duration) error {
 	resLog, err := ParseHTTPResponse(res)
 	if err != nil {
 		return err
 	}
+
+	resLog.RoundTripMillis = roundTrip.Milliseconds()
 
 	return svc.repo.StoreResponseLog(ctx, svc.activeProjectID, reqLogID, resLog)
 }
@@ -121,15 +124,15 @@ func (svc *Service) RequestModifier(next proxy.RequestModifyFunc) proxy.RequestM
 			// TODO: Use io.LimitReader.
 			var err error
 
-			body, err = ioutil.ReadAll(req.Body)
+			body, err = io.ReadAll(req.Body)
 			if err != nil {
 				svc.logger.Errorw("Failed to read request body for logging.",
 					"error", err)
 				return
 			}
 
-			req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-			clone.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+			req.Body = io.NopCloser(bytes.NewBuffer(body))
+			clone.Body = io.NopCloser(bytes.NewBuffer(body))
 		}
 
 		// Bypass logging if no project is active.
@@ -202,6 +205,8 @@ func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 			return errors.New("reqlog: request is missing ID")
 		}
 
+		roundTrip := time.Since(ulid.Time(reqLogID.Time()))
+
 		clone := *res
 
 		if res.Body != nil {
@@ -216,7 +221,7 @@ func (svc *Service) ResponseModifier(next proxy.ResponseModifyFunc) proxy.Respon
 		}
 
 		go func() {
-			if err := svc.storeResponse(context.Background(), reqLogID, &clone); err != nil {
+			if err := svc.storeResponse(context.Background(), reqLogID, &clone, roundTrip); err != nil {
 				svc.logger.Errorw("Failed to store response log.",
 					"error", err)
 			} else {
