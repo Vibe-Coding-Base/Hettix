@@ -12,6 +12,18 @@ import (
 	"github.com/oklog/ulid"
 )
 
+type AgentAction struct {
+	Tool   string `json:"tool"`
+	Input  string `json:"input"`
+	Output string `json:"output"`
+	Denied bool   `json:"denied"`
+}
+
+type AgentReply struct {
+	Reply   string        `json:"reply"`
+	Actions []AgentAction `json:"actions"`
+}
+
 type CancelRequestResult struct {
 	Success bool `json:"success"`
 }
@@ -142,6 +154,11 @@ type ProjectSettings struct {
 	Intercept *InterceptSettings `json:"intercept"`
 }
 
+type RunAgentInput struct {
+	Message string     `json:"message"`
+	Mode    *AgentMode `json:"mode"`
+}
+
 type ScopeHeader struct {
 	Key   *string `json:"key"`
 	Value *string `json:"value"`
@@ -200,6 +217,49 @@ type UpdateInterceptSettingsInput struct {
 	ResponsesEnabled bool    `json:"responsesEnabled"`
 	RequestFilter    *string `json:"requestFilter"`
 	ResponseFilter   *string `json:"responseFilter"`
+}
+
+type AgentMode string
+
+const (
+	AgentModeAsk    AgentMode = "ASK"
+	AgentModeAssist AgentMode = "ASSIST"
+	AgentModeAuto   AgentMode = "AUTO"
+)
+
+var AllAgentMode = []AgentMode{
+	AgentModeAsk,
+	AgentModeAssist,
+	AgentModeAuto,
+}
+
+func (e AgentMode) IsValid() bool {
+	switch e {
+	case AgentModeAsk, AgentModeAssist, AgentModeAuto:
+		return true
+	}
+	return false
+}
+
+func (e AgentMode) String() string {
+	return string(e)
+}
+
+func (e *AgentMode) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AgentMode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AgentMode", str)
+	}
+	return nil
+}
+
+func (e AgentMode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 type HTTPMethod string

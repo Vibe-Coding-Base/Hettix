@@ -212,6 +212,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		RequestLogService: reqLogService,
 		InterceptService:  interceptService,
 		SenderService:     senderService,
+		LLMProvider:       llmProviderFromEnv(),
 	}, gqlEndpoint))
 	adminMux.Handle("/", adminHandler)
 

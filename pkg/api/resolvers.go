@@ -17,7 +17,10 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
+	"github.com/Vibe-Coding-Base/Hettix/pkg/agent"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/aitools"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/llm"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
@@ -43,6 +46,7 @@ type Resolver struct {
 	RequestLogService *reqlog.Service
 	InterceptService  *intercept.Service
 	SenderService     *sender.Service
+	LLMProvider       llm.Provider
 }
 
 type (
@@ -678,6 +682,61 @@ func (r *mutationResolver) UpdateInterceptSettings(
 	}
 
 	return updated, nil
+}
+
+func (r *mutationResolver) RunAgent(ctx context.Context, input RunAgentInput) (*AgentReply, error) {
+	if r.LLMProvider == nil {
+		return nil, errors.New("AI assistant is not configured; set the HETTIX_LLM_* environment variables")
+	}
+
+	mode := agent.ModeAsk
+	if input.Mode != nil {
+		switch *input.Mode {
+		case AgentModeAssist:
+			mode = agent.ModeAssist
+		case AgentModeAuto:
+			mode = agent.ModeAuto
+		case AgentModeAsk:
+			mode = agent.ModeAsk
+		}
+	}
+
+	var actions []AgentAction
+
+	ag := agent.New(agent.Config{
+		Provider:     r.LLMProvider,
+		Registry:     aitools.NewRegistry(r.RequestLogService),
+		Mode:         mode,
+		SystemPrompt: aitools.SystemPrompt,
+		OnEvent: func(e agent.Event) {
+			output := e.Result
+			switch {
+			case e.Err != nil:
+				output = e.Err.Error()
+			case e.Denied:
+				output = e.Message
+			}
+
+			actions = append(actions, AgentAction{
+				Tool:   e.Tool,
+				Input:  string(e.Args),
+				Output: output,
+				Denied: e.Denied,
+			})
+		},
+	})
+
+	msgs, err := ag.Run(ctx, []llm.Message{{Role: llm.RoleUser, Content: input.Message}})
+	if err != nil {
+		return nil, fmt.Errorf("agent run failed: %w", err)
+	}
+
+	var reply string
+	if len(msgs) > 0 {
+		reply = msgs[len(msgs)-1].Content
+	}
+
+	return &AgentReply{Reply: reply, Actions: actions}, nil
 }
 
 func parseSenderRequest(req sender.Request) (SenderRequest, error) {

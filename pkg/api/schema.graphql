@@ -227,6 +227,30 @@ type Mutation {
   updateInterceptSettings(
     input: UpdateInterceptSettingsInput!
   ): InterceptSettings!
+  runAgent(input: RunAgentInput!): AgentReply!
+}
+
+enum AgentMode {
+  ASK
+  ASSIST
+  AUTO
+}
+
+input RunAgentInput {
+  message: String!
+  mode: AgentMode
+}
+
+type AgentAction {
+  tool: String!
+  input: String!
+  output: String!
+  denied: Boolean!
+}
+
+type AgentReply {
+  reply: String!
+  actions: [AgentAction!]!
 }
 
 enum HttpMethod {
