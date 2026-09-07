@@ -35,10 +35,9 @@ import (
 
 var version = "0.0.0"
 
-//go:embed admin
-//go:embed admin/_next/static
-//go:embed admin/_next/static/chunks/pages/*.js
-//go:embed admin/_next/static/*/*.js
+// The `all:` prefix is required: a plain embed skips files and directories
+// whose names start with "_", which is most of the Next.js output (_next/...).
+//go:embed all:admin
 var adminContent embed.FS
 
 var hettyUsage = `
