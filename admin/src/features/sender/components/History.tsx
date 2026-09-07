@@ -1,5 +1,5 @@
 import { Box, Paper, Typography } from "@mui/material";
-import { useRouter } from "next/router";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import RequestsTable from "lib/components/RequestsTable";
 import { useGetSenderRequestsQuery } from "lib/graphql/generated";
@@ -9,11 +9,12 @@ function History(): JSX.Element {
     pollInterval: 1000,
   });
 
-  const router = useRouter();
-  const activeId = router.query.id as string | undefined;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const activeId = searchParams.get("id") ?? undefined;
 
   const handleRowClick = (id: string) => {
-    router.push(`/sender?id=${id}`);
+    navigate(`/sender?id=${id}`);
   };
 
   return (

@@ -3,8 +3,8 @@ import DownloadIcon from "@mui/icons-material/Download";
 import SendIcon from "@mui/icons-material/Send";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { Alert, Box, Button, CircularProgress, IconButton, Tooltip, Typography } from "@mui/material";
-import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
 import { KeyValuePair } from "lib/components/KeyValuePair";
@@ -27,20 +27,21 @@ import updateKeyPairItem from "lib/updateKeyPairItem";
 import updateURLQueryParams from "lib/updateURLQueryParams";
 
 function EditRequest(): JSX.Element {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const interceptedRequests = useInterceptedRequests();
 
   useEffect(() => {
     // If there's no request selected and there are pending reqs, navigate to
     // the first one in the list. This helps you quickly review/handle reqs
     // without having to manually select the next one in the requests table.
-    if (router.isReady && !router.query.id && interceptedRequests?.length) {
+    if (!searchParams.get("id") && interceptedRequests?.length) {
       const req = interceptedRequests[0];
-      router.replace(`/proxy/intercept?id=${req.id}`);
+      navigate(`/proxy/intercept?id=${req.id}`, { replace: true });
     }
-  }, [router, interceptedRequests]);
+  }, [searchParams, navigate, interceptedRequests]);
 
-  const reqId = router.query.id as string | undefined;
+  const reqId = searchParams.get("id") ?? undefined;
 
   const [method, setMethod] = useState(HttpMethod.Get);
   const [url, setURL] = useState("");
@@ -136,7 +137,7 @@ function EditRequest(): JSX.Element {
     setReqBody("");
     setQueryParams([]);
     setReqHeaders([]);
-    router.replace(`/proxy/intercept`);
+    navigate(`/proxy/intercept`, { replace: true });
   };
 
   const handleFormSubmit: React.FormEventHandler = (e) => {

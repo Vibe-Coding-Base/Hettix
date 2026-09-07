@@ -1,7 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import { Alert, Box, Button, Fab, Tooltip, Typography, useTheme } from "@mui/material";
-import { useRouter } from "next/router";
 import React, { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { KeyValuePair } from "lib/components/KeyValuePair";
 import RequestTabs from "lib/components/RequestTabs";
@@ -23,8 +23,9 @@ const defaultProto = HttpProto.Http20;
 const emptyKeyPair = [{ key: "", value: "" }];
 
 function EditRequest(): JSX.Element {
-  const router = useRouter();
-  const reqId = router.query.id as string | undefined;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const reqId = searchParams.get("id") ?? undefined;
 
   const theme = useTheme();
 
@@ -125,7 +126,7 @@ function EditRequest(): JSX.Element {
     sendRequest({
       errorPolicy: "all",
       onCompleted: () => {
-        router.push(`/sender?id=${id}`);
+        navigate(`/sender?id=${id}`);
       },
       variables: {
         id,
@@ -146,7 +147,7 @@ function EditRequest(): JSX.Element {
     setHeaders(emptyKeyPair);
     setBody("");
     setResponse(null);
-    router.push(`/sender`);
+    navigate(`/sender`);
   };
 
   return (

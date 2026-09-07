@@ -33,8 +33,8 @@ import (
 
 var version = "0.0.0"
 
-// The `all:` prefix is required: a plain embed skips files and directories
-// whose names start with "_", which is most of the Next.js output (_next/...).
+// The `all:` prefix embeds every file, including any whose name starts with
+// "." or "_" that a plain embed would skip.
 //
 //go:embed all:admin
 var adminContent embed.FS
@@ -208,7 +208,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		cmd.config.logger.Fatal("Failed to construct file system subtree from admin dir.", zap.Error(err))
 	}
 
-	adminHandler := http.FileServer(http.FS(fsSub))
+	adminHandler := spaFileServer(fsSub)
 
 	gqlEndpoint := "/api/graphql/"
 	adminMux := http.NewServeMux()

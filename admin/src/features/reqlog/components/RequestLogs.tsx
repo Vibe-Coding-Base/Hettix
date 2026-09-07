@@ -11,8 +11,8 @@ import {
   TableCellProps,
   Tooltip,
 } from "@mui/material";
-import { useRouter } from "next/router";
 import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import Actions from "./Actions";
 import LogDetail from "./LogDetail";
@@ -29,8 +29,9 @@ const ActionsTableCell = styled(TableCell)<TableCellProps>(() => ({
 }));
 
 export function RequestLogs(): JSX.Element {
-  const router = useRouter();
-  const id = router.query.id as string | undefined;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const id = searchParams.get("id") ?? undefined;
   const { data } = useHttpRequestLogsQuery({
     pollInterval: 1000,
   });
@@ -65,7 +66,7 @@ export function RequestLogs(): JSX.Element {
   };
 
   const handleRowClick = (id: string) => {
-    router.push(`/proxy/logs?id=${id}`);
+    navigate(`/proxy/logs?id=${id}`);
   };
 
   const handleRowContextClick = (e: React.MouseEvent, id: string) => {

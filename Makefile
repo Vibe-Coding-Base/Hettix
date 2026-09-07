@@ -9,7 +9,7 @@ build: build-admin
 build-admin:
 	cd admin && \
 	yarn install --frozen-lockfile && \
-	yarn run export && \
+	yarn run build && \
 	rm -rf ../cmd/hettix/admin && \
 	cp -R dist ../cmd/hettix/admin
 

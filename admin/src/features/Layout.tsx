@@ -26,8 +26,8 @@ import MuiAppBar, { AppBarProps as MuiAppBarProps } from "@mui/material/AppBar";
 import MuiDrawer from "@mui/material/Drawer";
 import MuiListItemButton, { ListItemButtonProps } from "@mui/material/ListItemButton";
 import MuiListItemIcon, { ListItemIconProps } from "@mui/material/ListItemIcon";
-import Link from "next/link";
 import React, { useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 
 import { useActiveProject } from "lib/ActiveProjectContext";
 import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
@@ -111,29 +111,31 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== "open" 
   }),
 }));
 
-const ListItemButton = styled(MuiListItemButton)<ListItemButtonProps>(({ theme }) => ({
-  [theme.breakpoints.up("sm")]: {
-    px: 1,
-  },
-  "&.MuiListItemButton-root": {
-    // The nav items are wrapped in Next.js <Link> anchors; without an explicit
-    // color the text inherits the browser's default link color (purple once
-    // visited), which is illegible on the dark drawer.
-    color: theme.palette.text.primary,
-    "& .MuiListItemText-root": {
+const ListItemButton = styled(MuiListItemButton)<ListItemButtonProps & { component?: React.ElementType; to?: string }>(
+  ({ theme }) => ({
+    [theme.breakpoints.up("sm")]: {
+      px: 1,
+    },
+    "&.MuiListItemButton-root": {
+      // The nav items render as router links (anchors); without an explicit
+      // color the text inherits the browser's default link color (purple once
+      // visited), which is illegible on the dark drawer.
       color: theme.palette.text.primary,
-    },
-    "&.Mui-selected": {
-      backgroundColor: theme.palette.primary.main,
-      "& .MuiListItemIcon-root": {
-        color: theme.palette.secondary.dark,
-      },
       "& .MuiListItemText-root": {
-        color: theme.palette.secondary.dark,
+        color: theme.palette.text.primary,
+      },
+      "&.Mui-selected": {
+        backgroundColor: theme.palette.primary.main,
+        "& .MuiListItemIcon-root": {
+          color: theme.palette.secondary.dark,
+        },
+        "& .MuiListItemText-root": {
+          color: theme.palette.secondary.dark,
+        },
       },
     },
-  },
-}));
+  })
+);
 
 const ListItemIcon = styled(MuiListItemIcon)<ListItemIconProps>(() => ({
   minWidth: 42,
@@ -193,7 +195,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
               <SiteTitle>Hettix://</SiteTitle>
               {title}
             </Typography>
-            <Box sx={{ flexShrink: 0, pt: 0.75 }}>v{process.env.NEXT_PUBLIC_VERSION || "0.0"}</Box>
+            <Box sx={{ flexShrink: 0, pt: 0.75 }}>v{import.meta.env.VITE_VERSION || "0.0"}</Box>
           </Box>
         </Toolbar>
       </AppBar>
@@ -205,68 +207,80 @@ export function Layout({ title, page, children }: Props): JSX.Element {
         </DrawerHeader>
         <Divider />
         <List sx={{ p: 0 }}>
-          <Link href="/" passHref>
-            <ListItemButton key="home" selected={page === Page.Home}>
-              <Tooltip title="Home">
-                <ListItemIcon>
-                  <HomeIcon />
-                </ListItemIcon>
-              </Tooltip>
-              <ListItemText primary="Home" />
-            </ListItemButton>
-          </Link>
-          <Link href="/proxy/logs" passHref>
-            <ListItemButton key="proxyLogs" disabled={!activeProject} selected={page === Page.ProxyLogs}>
-              <Tooltip title="Proxy logs">
-                <ListItemIcon>
-                  <FormatListBulletedIcon />
-                </ListItemIcon>
-              </Tooltip>
-              <ListItemText primary="Logs" />
-            </ListItemButton>
-          </Link>
-          <Link href="/proxy/intercept" passHref>
-            <ListItemButton key="proxyIntercept" disabled={!activeProject} selected={page === Page.Intercept}>
-              <Tooltip title="Proxy intercept">
-                <ListItemIcon>
-                  <Badge color="error" badgeContent={interceptedRequests?.length || 0}>
-                    <AltRouteIcon />
-                  </Badge>
-                </ListItemIcon>
-              </Tooltip>
-              <ListItemText primary="Intercept" />
-            </ListItemButton>
-          </Link>
-          <Link href="/sender" passHref>
-            <ListItemButton key="sender" disabled={!activeProject} selected={page === Page.Sender}>
-              <Tooltip title="Sender">
-                <ListItemIcon>
-                  <SendIcon />
-                </ListItemIcon>
-              </Tooltip>
-              <ListItemText primary="Sender" />
-            </ListItemButton>
-          </Link>
-          <Link href="/scope" passHref>
-            <ListItemButton key="scope" disabled={!activeProject} selected={page === Page.Scope}>
-              <Tooltip title="Scope">
-                <ListItemIcon>
-                  <LocationSearchingIcon />
-                </ListItemIcon>
-              </Tooltip>
-              <ListItemText primary="Scope" />
-            </ListItemButton>
-          </Link>
-          <Link href="/projects" passHref>
-            <ListItemButton key="projects" selected={page === Page.Projects}>
-              <Tooltip title="Projects">
-                <ListItemIcon>
-                  <FolderIcon />
-                </ListItemIcon>
-              </Tooltip>
-              <ListItemText primary="Projects" />
-            </ListItemButton>
-          </Link>
+          <ListItemButton component={RouterLink} to="/" key="home" selected={page === Page.Home}>
+            <Tooltip title="Home">
+              <ListItemIcon>
+                <HomeIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Home" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/proxy/logs"
+            key="proxyLogs"
+            disabled={!activeProject}
+            selected={page === Page.ProxyLogs}
+          >
+            <Tooltip title="Proxy logs">
+              <ListItemIcon>
+                <FormatListBulletedIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Logs" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/proxy/intercept"
+            key="proxyIntercept"
+            disabled={!activeProject}
+            selected={page === Page.Intercept}
+          >
+            <Tooltip title="Proxy intercept">
+              <ListItemIcon>
+                <Badge color="error" badgeContent={interceptedRequests?.length || 0}>
+                  <AltRouteIcon />
+                </Badge>
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Intercept" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/sender"
+            key="sender"
+            disabled={!activeProject}
+            selected={page === Page.Sender}
+          >
+            <Tooltip title="Sender">
+              <ListItemIcon>
+                <SendIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Sender" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/scope"
+            key="scope"
+            disabled={!activeProject}
+            selected={page === Page.Scope}
+          >
+            <Tooltip title="Scope">
+              <ListItemIcon>
+                <LocationSearchingIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Scope" />
+          </ListItemButton>
+          <ListItemButton component={RouterLink} to="/projects" key="projects" selected={page === Page.Projects}>
+            <Tooltip title="Projects">
+              <ListItemIcon>
+                <FolderIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Projects" />
+          </ListItemButton>
         </List>
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, mx: 3, mt: 11 }}>

@@ -1,5 +1,5 @@
 import { Box, Paper, Typography } from "@mui/material";
-import { useRouter } from "next/router";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
 import RequestsTable from "lib/components/RequestsTable";
@@ -7,11 +7,12 @@ import RequestsTable from "lib/components/RequestsTable";
 function Requests(): JSX.Element {
   const interceptedRequests = useInterceptedRequests();
 
-  const router = useRouter();
-  const activeId = router.query.id as string | undefined;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const activeId = searchParams.get("id") ?? undefined;
 
   const handleRowClick = (id: string) => {
-    router.push(`/proxy/intercept?id=${id}`);
+    navigate(`/proxy/intercept?id=${id}`);
   };
 
   return (

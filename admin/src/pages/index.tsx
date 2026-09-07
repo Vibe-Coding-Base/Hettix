@@ -1,6 +1,6 @@
 import FolderIcon from "@mui/icons-material/Folder";
 import { Box, Button, Typography } from "@mui/material";
-import Link from "next/link";
+import { Link as RouterLink } from "react-router-dom";
 
 import { Layout, Page } from "features/Layout";
 
@@ -36,18 +36,17 @@ function Index(): JSX.Element {
           . Get started by creating a project.
         </Typography>
 
-        <Link href="/projects" passHref>
-          <Button
-            sx={{ mr: 2 }}
-            variant="contained"
-            color="primary"
-            component="a"
-            size="large"
-            startIcon={<FolderIcon />}
-          >
-            Manage projects
-          </Button>
-        </Link>
+        <Button
+          component={RouterLink}
+          to="/projects"
+          sx={{ mr: 2 }}
+          variant="contained"
+          color="primary"
+          size="large"
+          startIcon={<FolderIcon />}
+        >
+          Manage projects
+        </Button>
       </Box>
     </Layout>
   );

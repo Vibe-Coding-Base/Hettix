@@ -1,7 +1,7 @@
 import AltRouteIcon from "@mui/icons-material/AltRoute";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Alert, Badge, Button, IconButton, Tooltip } from "@mui/material";
-import Link from "next/link";
+import { Link as RouterLink } from "react-router-dom";
 
 import { useActiveProject } from "lib/ActiveProjectContext";
 import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
@@ -31,23 +31,22 @@ function Actions(): JSX.Element {
       )}
 
       {(activeProject?.settings.intercept.requestsEnabled || activeProject?.settings.intercept.responsesEnabled) && (
-        <Link href="/proxy/intercept/?id=" passHref>
-          <Button
-            variant="contained"
-            disabled={interceptedRequests === null || interceptedRequests.length === 0}
-            color="primary"
-            component="a"
-            size="large"
-            startIcon={
-              <Badge color="error" badgeContent={interceptedRequests?.length || 0}>
-                <AltRouteIcon />
-              </Badge>
-            }
-            sx={{ mr: 1 }}
-          >
-            Review Intercepted…
-          </Button>
-        </Link>
+        <Button
+          component={RouterLink}
+          to="/proxy/intercept/?id="
+          variant="contained"
+          disabled={interceptedRequests === null || interceptedRequests.length === 0}
+          color="primary"
+          size="large"
+          startIcon={
+            <Badge color="error" badgeContent={interceptedRequests?.length || 0}>
+              <AltRouteIcon />
+            </Badge>
+          }
+          sx={{ mr: 1 }}
+        >
+          Review Intercepted…
+        </Button>
       )}
 
       <Tooltip title="Clear all">
