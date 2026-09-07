@@ -13,7 +13,7 @@ function Index(): JSX.Element {
         <Box mb={4} width="60%">
           <Typography variant="h2">
             <Box component="span" sx={highlightSx}>
-              Hetty://
+              Hettix://
             </Box>
             <br />
             The simple HTTP toolkit for security research.
@@ -31,7 +31,7 @@ function Index(): JSX.Element {
         >
           Welcome to{" "}
           <Box component="span" sx={highlightSx}>
-            Hetty
+            Hettix
           </Box>
           . Get started by creating a project.
         </Typography>

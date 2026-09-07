@@ -27,7 +27,7 @@ Subcommands:
 
 Run ` + "`hetty cert <subcommand> --help`" + ` for subcommand specific usage instructions.
 
-Visit https://hetty.xyz to learn more about Hetty.
+Hettix - an HTTP toolkit for security research.
 `
 
 var certInstallUsage = `
@@ -38,13 +38,13 @@ Installs a certificate to the system trust store, and (optionally) to the Firefo
 and Java trust stores.
 
 Options:
-    --cert         Path to certificate. (Default: "~/.hetty/hetty_cert.pem")
+    --cert         Path to certificate. (Default: "~/.hettix/hettix_cert.pem")
     --firefox      Install certificate to Firefox trust store. (Default: false)
     --java         Install certificate to Java trust store. (Default: false)
     --skip-system  Skip installing certificate to system trust store (Default: false)
     --help, -h     Output this usage text.
 
-Visit https://hetty.xyz to learn more about Hetty.
+Hettix - an HTTP toolkit for security research.
 `
 
 var certUninstallUsage = `
@@ -55,13 +55,13 @@ Uninstalls a certificate from the system trust store, and (optionally) from the 
 and Java trust stores.
 
 Options:
-    --cert         Path to certificate. (Default: "~/.hetty/hetty_cert.pem")
+    --cert         Path to certificate. (Default: "~/.hettix/hettix_cert.pem")
     --firefox      Uninstall certificate from Firefox trust store. (Default: false)
     --java         Uninstall certificate from Java trust store. (Default: false)
     --skip-system  Skip uninstalling certificate from system trust store (Default: false)
     --help, -h     Output this usage text.
 
-Visit https://hetty.xyz to learn more about Hetty.
+Hettix - an HTTP toolkit for security research.
 `
 
 type CertInstallCommand struct {
@@ -102,7 +102,7 @@ func NewCertInstallCommand(rootConfig *Config) *ffcli.Command {
 	}
 	fs := flag.NewFlagSet("hetty cert install", flag.ExitOnError)
 
-	fs.StringVar(&cmd.cert, "cert", "~/.hetty/hetty_cert.pem", "Path to certificate.")
+	fs.StringVar(&cmd.cert, "cert", "~/.hettix/hettix_cert.pem", "Path to certificate.")
 	fs.BoolVar(&cmd.firefox, "firefox", false, "Install certificate to Firefox trust store. (Default: false)")
 	fs.BoolVar(&cmd.java, "java", false, "Install certificate to Java trust store. (Default: false)")
 	fs.BoolVar(&cmd.skipSystem, "skip-system", false, "Skip installing certificate to system trust store (Default: false)")
@@ -159,7 +159,7 @@ func NewCertUninstallCommand(rootConfig *Config) *ffcli.Command {
 	}
 	fs := flag.NewFlagSet("hetty cert uninstall", flag.ExitOnError)
 
-	fs.StringVar(&cmd.cert, "cert", "~/.hetty/hetty_cert.pem", "Path to certificate.")
+	fs.StringVar(&cmd.cert, "cert", "~/.hettix/hettix_cert.pem", "Path to certificate.")
 	fs.BoolVar(&cmd.firefox, "firefox", false, "Uninstall certificate from Firefox trust store. (Default: false)")
 	fs.BoolVar(&cmd.java, "java", false, "Uninstall certificate from Java trust store. (Default: false)")
 	fs.BoolVar(&cmd.skipSystem, "skip-system", false,

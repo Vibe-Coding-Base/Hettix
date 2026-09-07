@@ -170,7 +170,7 @@ export default function Settings(): JSX.Element {
         Settings
       </Typography>
       <Typography paragraph sx={{ mb: 4 }}>
-        Settings allow you to tweak the behaviour of Hetty’s features.
+        Settings allow you to tweak the behaviour of Hettix’s features.
       </Typography>
       <Typography variant="h5" sx={{ mb: 2 }}>
         Project settings

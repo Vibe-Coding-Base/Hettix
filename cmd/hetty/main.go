@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	hettyCmd, cfg := NewHettyCommand()
+	hettyCmd, cfg := NewHettixCommand()
 
 	if err := hettyCmd.Parse(os.Args[1:]); err != nil {
 		llog.Fatalf("Failed to parse command line arguments: %v", err)

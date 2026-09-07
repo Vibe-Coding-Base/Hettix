@@ -16,7 +16,7 @@ let theme = createTheme({
   palette: {
     mode: "dark",
     primary: {
-      main: colors.teal["A400"],
+      main: colors.red["A400"],
     },
     secondary: {
       main: colors.grey[900],
@@ -39,11 +39,13 @@ theme = createTheme(theme, {
       default: theme.palette.secondary.main,
       paper: theme.palette.secondary.light,
     },
+    // Semantic colors are kept independent of the red brand so success and
+    // info states don't render red, which would read as an error.
     info: {
-      main: theme.palette.primary.main,
+      main: colors.blue["A400"],
     },
     success: {
-      main: theme.palette.primary.main,
+      main: colors.green["A400"],
     },
   },
   components: {
