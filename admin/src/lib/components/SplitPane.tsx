@@ -1,53 +1,44 @@
 import { alpha, styled } from "@mui/material/styles";
-import ReactSplitPane, { SplitPaneProps } from "react-split-pane";
+import { Allotment } from "allotment";
+import React, { Children } from "react";
 
-const BORDER_WIDTH_FACTOR = 1.75;
-const SIZE_FACTOR = 4;
-const MARGIN_FACTOR = -1.75;
+import "allotment/dist/style.css";
 
-const SplitPane = styled(ReactSplitPane)<SplitPaneProps>(({ theme }) => ({
-  ".Resizer": {
-    zIndex: theme.zIndex.mobileStepper,
-    boxSizing: "border-box",
-    backgroundClip: "padding-box",
-    backgroundColor: alpha(theme.palette.grey[400], 0.05),
-  },
-  ".Resizer:hover": {
-    transition: "all 0.5s ease",
-    backgroundColor: alpha(theme.palette.primary.main, 1),
-  },
+// `react-split-pane` is unmaintained and only supports React 16, so the split
+// view is built on `allotment` instead. This component keeps the original
+// `react-split-pane` API (a `split` direction, a `size` for the first pane, and
+// two children) so call sites did not have to change.
+export interface SplitPaneProps {
+  split: "horizontal" | "vertical";
+  size?: string | number;
+  children: React.ReactNode;
+}
 
-  ".Resizer.horizontal": {
-    height: theme.spacing(SIZE_FACTOR),
-    marginTop: theme.spacing(MARGIN_FACTOR),
-    marginBottom: theme.spacing(MARGIN_FACTOR),
-    borderTop: `${theme.spacing(BORDER_WIDTH_FACTOR)} solid rgba(255, 255, 255, 0)`,
-    borderBottom: `${theme.spacing(BORDER_WIDTH_FACTOR)} solid rgba(255, 255, 255, 0)`,
-    borderBottomColor: "rgba(255, 255, 255, 0)",
-    cursor: "row-resize",
-    width: "100%",
-  },
-
-  ".Resizer.vertical": {
-    width: theme.spacing(SIZE_FACTOR),
-    marginLeft: theme.spacing(MARGIN_FACTOR),
-    marginRight: theme.spacing(MARGIN_FACTOR),
-    borderLeft: `${theme.spacing(BORDER_WIDTH_FACTOR)} solid rgba(255, 255, 255, 0)`,
-    borderRight: `${theme.spacing(BORDER_WIDTH_FACTOR)} solid rgba(255, 255, 255, 0)`,
-    cursor: "col-resize",
-  },
-
-  ".Resizer.disabled": {
-    cursor: "not-allowed",
-  },
-
-  ".Resizer.disabled:hover": {
-    borderColor: "transparent",
-  },
-
-  ".Pane": {
-    overflow: "hidden",
-  },
+// `react-split-pane` positioned itself absolutely within the nearest positioned
+// ancestor. Call sites rely on that to fill their container, so it's preserved.
+const StyledAllotment = styled(Allotment)(({ theme }) => ({
+  position: "absolute",
+  inset: 0,
+  "--focus-border": theme.palette.primary.main,
+  "--separator-border": alpha(theme.palette.grey[400], 0.15),
 }));
 
-export default SplitPane;
+export default function SplitPane({ split, size, children }: SplitPaneProps): JSX.Element {
+  // `split="horizontal"` stacks the panes top/bottom, which is Allotment's
+  // `vertical` orientation.
+  const vertical = split === "horizontal";
+
+  // Call sites may render a falsy second child (e.g. a response that isn't
+  // there yet), so only real children become panes.
+  const panes = Children.toArray(children);
+
+  return (
+    <StyledAllotment vertical={vertical}>
+      {panes.map((child, index) => (
+        <Allotment.Pane key={index} preferredSize={index === 0 ? size : undefined}>
+          {child}
+        </Allotment.Pane>
+      ))}
+    </StyledAllotment>
+  );
+}

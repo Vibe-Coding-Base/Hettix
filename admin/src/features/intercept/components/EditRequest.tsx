@@ -155,9 +155,9 @@ function EditRequest(): JSX.Element {
           },
         },
         update(cache) {
-          cache.modify({
+          cache.modify<{ interceptedRequests: HttpRequest[] }>({
             fields: {
-              interceptedRequests(existing: HttpRequest[], { readField }) {
+              interceptedRequests(existing, { readField }) {
                 return existing.filter((ref) => interceptedReq.id !== readField("id", ref));
               },
             },
@@ -180,9 +180,9 @@ function EditRequest(): JSX.Element {
           },
         },
         update(cache) {
-          cache.modify({
+          cache.modify<{ interceptedRequests: HttpRequest[] }>({
             fields: {
-              interceptedRequests(existing: HttpRequest[], { readField }) {
+              interceptedRequests(existing, { readField }) {
                 return existing.filter((ref) => interceptedRes.id !== readField("id", ref));
               },
             },
@@ -203,9 +203,9 @@ function EditRequest(): JSX.Element {
         id: interceptedReq.id,
       },
       update(cache) {
-        cache.modify({
+        cache.modify<{ interceptedRequests: HttpRequest[] }>({
           fields: {
-            interceptedRequests(existing: HttpRequest[], { readField }) {
+            interceptedRequests(existing, { readField }) {
               return existing.filter((ref) => interceptedReq.id !== readField("id", ref));
             },
           },
@@ -225,9 +225,9 @@ function EditRequest(): JSX.Element {
         requestID: interceptedRes.id,
       },
       update(cache) {
-        cache.modify({
+        cache.modify<{ interceptedRequests: HttpRequest[] }>({
           fields: {
-            interceptedRequests(existing: HttpRequest[], { readField }) {
+            interceptedRequests(existing, { readField }) {
               return existing.filter((ref) => interceptedRes.id !== readField("id", ref));
             },
           },
