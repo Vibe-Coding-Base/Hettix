@@ -11,11 +11,13 @@ import {
   Paper,
   Popper,
   Tooltip,
+  Typography,
   useTheme,
 } from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import React, { useRef, useState } from "react";
 
+import HttpqlHighlight from "lib/components/HttpqlHighlight";
 import {
   HttpRequestLogFilterDocument,
   useHttpRequestLogFilterQuery,
@@ -106,7 +108,7 @@ function Search(): JSX.Element {
                 ml: 1,
                 flex: 1,
               }}
-              placeholder="Search proxy logs…"
+              placeholder='Search, e.g. req.method eq "POST" and resp.code gte 400'
               value={searchExpr}
               onChange={(e) => setSearchExpr(e.target.value)}
               onFocus={() => setFilterOpen(true)}
@@ -131,6 +133,17 @@ function Search(): JSX.Element {
                   p: 1.5,
                 }}
               >
+                {searchExpr.trim() !== "" && (
+                  <Box sx={{ mb: 1, p: 1, borderRadius: 1, bgcolor: "action.hover", overflowX: "auto" }}>
+                    <HttpqlHighlight query={searchExpr} />
+                  </Box>
+                )}
+                <Typography variant="caption" color="text.secondary" component="div" sx={{ mb: 1 }}>
+                  HTTPQL — fields <code>req.method</code>, <code>req.host</code>, <code>req.path</code>,{" "}
+                  <code>req.body</code>, <code>req.header[&quot;Name&quot;]</code>, <code>resp.code</code>,{" "}
+                  <code>resp.body</code>; operators <code>eq ne cont regex gt gte lt lte</code>; combine with{" "}
+                  <code>and</code> <code>or</code> <code>not</code>.
+                </Typography>
                 <FormControlLabel
                   control={
                     <Checkbox
