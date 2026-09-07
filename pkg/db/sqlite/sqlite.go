@@ -103,6 +103,27 @@ func (d *Database) Close() error {
 	return d.db.Close()
 }
 
+// paginate applies an offset and limit to an already-filtered slice. A limit of
+// zero means no limit. Slicing happens after in-memory refinement so the offset
+// and limit count exact matches, not push-down candidates.
+func paginate[T any](items []T, offset, limit int) []T {
+	if offset < 0 {
+		offset = 0
+	}
+
+	if offset >= len(items) {
+		return nil
+	}
+
+	items = items[offset:]
+
+	if limit > 0 && limit < len(items) {
+		items = items[:limit]
+	}
+
+	return items
+}
+
 func marshalHeader(h http.Header) (string, error) {
 	if h == nil {
 		return "{}", nil

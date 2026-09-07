@@ -147,7 +147,7 @@ func (d *Database) FindRequestLogs(
 		return nil, fmt.Errorf("sqlite: failed to iterate request logs: %w", err)
 	}
 
-	return reqLogs, nil
+	return paginate(reqLogs, filter.Offset, filter.Limit), nil
 }
 
 func (d *Database) ClearRequestLogs(ctx context.Context, projectID ulid.ULID) error {

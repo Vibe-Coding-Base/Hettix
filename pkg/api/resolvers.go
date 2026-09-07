@@ -53,8 +53,8 @@ type (
 func (r *Resolver) Query() QueryResolver       { return &queryResolver{r} }
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
-func (r *queryResolver) HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, error) {
-	reqs, err := r.RequestLogService.FindRequests(ctx)
+func (r *queryResolver) HTTPRequestLogs(ctx context.Context, offset *int, limit *int) ([]HTTPRequestLog, error) {
+	reqs, err := r.RequestLogService.FindRequests(ctx, offset, limit)
 	if errors.Is(err, proj.ErrNoProject) {
 		return nil, noActiveProjectErr(ctx)
 	} else if err != nil {
@@ -367,8 +367,8 @@ func (r *queryResolver) SenderRequest(ctx context.Context, id ulid.ULID) (*Sende
 	return &req, nil
 }
 
-func (r *queryResolver) SenderRequests(ctx context.Context) ([]SenderRequest, error) {
-	reqs, err := r.SenderService.FindRequests(ctx)
+func (r *queryResolver) SenderRequests(ctx context.Context, offset *int, limit *int) ([]SenderRequest, error) {
+	reqs, err := r.SenderService.FindRequests(ctx, offset, limit)
 	if errors.Is(err, proj.ErrNoProject) {
 		return nil, noActiveProjectErr(ctx)
 	} else if err != nil {

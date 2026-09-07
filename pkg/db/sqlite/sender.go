@@ -150,7 +150,7 @@ func (d *Database) FindSenderRequests(
 		return nil, fmt.Errorf("sqlite: failed to iterate sender requests: %w", err)
 	}
 
-	return reqs, nil
+	return paginate(reqs, filter.Offset, filter.Limit), nil
 }
 
 func (d *Database) DeleteSenderRequests(ctx context.Context, projectID ulid.ULID) error {

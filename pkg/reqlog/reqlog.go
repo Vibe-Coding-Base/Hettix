@@ -65,6 +65,8 @@ type FindRequestsFilter struct {
 	ProjectID   ulid.ULID
 	OnlyInScope bool
 	SearchExpr  httpql.Expression
+	Offset      int
+	Limit       int
 }
 
 type Config struct {
@@ -89,8 +91,16 @@ func NewService(cfg Config) *Service {
 	return s
 }
 
-func (svc *Service) FindRequests(ctx context.Context) ([]RequestLog, error) {
-	return svc.repo.FindRequestLogs(ctx, svc.findReqsFilter, svc.scope)
+func (svc *Service) FindRequests(ctx context.Context, offset, limit *int) ([]RequestLog, error) {
+	f := svc.findReqsFilter
+	if offset != nil {
+		f.Offset = *offset
+	}
+	if limit != nil {
+		f.Limit = *limit
+	}
+
+	return svc.repo.FindRequestLogs(ctx, f, svc.scope)
 }
 
 func (svc *Service) FindRequestLogByID(ctx context.Context, id ulid.ULID) (RequestLog, error) {

@@ -168,13 +168,13 @@ type ComplexityRoot struct {
 		ActiveProject        func(childComplexity int) int
 		HTTPRequestLog       func(childComplexity int, id ulid.ULID) int
 		HTTPRequestLogFilter func(childComplexity int) int
-		HTTPRequestLogs      func(childComplexity int) int
+		HTTPRequestLogs      func(childComplexity int, offset *int, limit *int) int
 		InterceptedRequest   func(childComplexity int, id ulid.ULID) int
 		InterceptedRequests  func(childComplexity int) int
 		Projects             func(childComplexity int) int
 		Scope                func(childComplexity int) int
 		SenderRequest        func(childComplexity int, id ulid.ULID) int
-		SenderRequests       func(childComplexity int) int
+		SenderRequests       func(childComplexity int, offset *int, limit *int) int
 	}
 
 	ScopeHeader struct {
@@ -227,13 +227,13 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error)
-	HTTPRequestLogs(ctx context.Context) ([]HTTPRequestLog, error)
+	HTTPRequestLogs(ctx context.Context, offset *int, limit *int) ([]HTTPRequestLog, error)
 	HTTPRequestLogFilter(ctx context.Context) (*HTTPRequestLogFilter, error)
 	ActiveProject(ctx context.Context) (*Project, error)
 	Projects(ctx context.Context) ([]Project, error)
 	Scope(ctx context.Context) ([]ScopeRule, error)
 	SenderRequest(ctx context.Context, id ulid.ULID) (*SenderRequest, error)
-	SenderRequests(ctx context.Context) ([]SenderRequest, error)
+	SenderRequests(ctx context.Context, offset *int, limit *int) ([]SenderRequest, error)
 	InterceptedRequests(ctx context.Context) ([]HTTPRequest, error)
 	InterceptedRequest(ctx context.Context, id ulid.ULID) (*HTTPRequest, error)
 }
@@ -809,7 +809,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.HTTPRequestLogs(childComplexity), true
+		args, err := ec.field_Query_httpRequestLogs_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.HTTPRequestLogs(childComplexity, args["offset"].(*int), args["limit"].(*int)), true
 
 	case "Query.interceptedRequest":
 		if e.complexity.Query.InterceptedRequest == nil {
@@ -861,7 +866,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.SenderRequests(childComplexity), true
+		args, err := ec.field_Query_senderRequests_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.SenderRequests(childComplexity, args["offset"].(*int), args["limit"].(*int)), true
 
 	case "ScopeHeader.key":
 		if e.complexity.ScopeHeader.Key == nil {
@@ -1235,13 +1245,13 @@ type InterceptSettings {
 
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
-  httpRequestLogs: [HttpRequestLog!]!
+  httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
   httpRequestLogFilter: HttpRequestLogFilter
   activeProject: Project
   projects: [Project!]!
   scope: [ScopeRule!]!
   senderRequest(id: ID!): SenderRequest
-  senderRequests: [SenderRequest!]!
+  senderRequests(offset: Int, limit: Int): [SenderRequest!]!
   interceptedRequests: [HttpRequest!]!
   interceptedRequest(id: ID!): HttpRequest
 }
@@ -1335,7 +1345,7 @@ func (ec *executionContext) field_Mutation_createOrUpdateSenderRequest_args(ctx 
 	var arg0 SenderRequestInput
 	if tmp, ok := rawArgs["request"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("request"))
-		arg0, err = ec.unmarshalNSenderRequestInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequestInput(ctx, tmp)
+		arg0, err = ec.unmarshalNSenderRequestInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequestInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1395,7 +1405,7 @@ func (ec *executionContext) field_Mutation_modifyRequest_args(ctx context.Contex
 	var arg0 ModifyRequestInput
 	if tmp, ok := rawArgs["request"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("request"))
-		arg0, err = ec.unmarshalNModifyRequestInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyRequestInput(ctx, tmp)
+		arg0, err = ec.unmarshalNModifyRequestInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyRequestInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1410,7 +1420,7 @@ func (ec *executionContext) field_Mutation_modifyResponse_args(ctx context.Conte
 	var arg0 ModifyResponseInput
 	if tmp, ok := rawArgs["response"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("response"))
-		arg0, err = ec.unmarshalNModifyResponseInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyResponseInput(ctx, tmp)
+		arg0, err = ec.unmarshalNModifyResponseInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyResponseInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1455,7 +1465,7 @@ func (ec *executionContext) field_Mutation_setHttpRequestLogFilter_args(ctx cont
 	var arg0 *HTTPRequestLogFilterInput
 	if tmp, ok := rawArgs["filter"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filter"))
-		arg0, err = ec.unmarshalOHttpRequestLogFilterInput2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLogFilterInput(ctx, tmp)
+		arg0, err = ec.unmarshalOHttpRequestLogFilterInput2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestLogFilterInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1470,7 +1480,7 @@ func (ec *executionContext) field_Mutation_setScope_args(ctx context.Context, ra
 	var arg0 []ScopeRuleInput
 	if tmp, ok := rawArgs["scope"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scope"))
-		arg0, err = ec.unmarshalNScopeRuleInput2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeRuleInputᚄ(ctx, tmp)
+		arg0, err = ec.unmarshalNScopeRuleInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeRuleInputᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1485,7 +1495,7 @@ func (ec *executionContext) field_Mutation_setSenderRequestFilter_args(ctx conte
 	var arg0 *SenderRequestFilterInput
 	if tmp, ok := rawArgs["filter"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filter"))
-		arg0, err = ec.unmarshalOSenderRequestFilterInput2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequestFilterInput(ctx, tmp)
+		arg0, err = ec.unmarshalOSenderRequestFilterInput2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequestFilterInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1500,7 +1510,7 @@ func (ec *executionContext) field_Mutation_updateInterceptSettings_args(ctx cont
 	var arg0 UpdateInterceptSettingsInput
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalNUpdateInterceptSettingsInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐUpdateInterceptSettingsInput(ctx, tmp)
+		arg0, err = ec.unmarshalNUpdateInterceptSettingsInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐUpdateInterceptSettingsInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1539,6 +1549,30 @@ func (ec *executionContext) field_Query_httpRequestLog_args(ctx context.Context,
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_httpRequestLogs_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["offset"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["offset"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_interceptedRequest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1566,6 +1600,30 @@ func (ec *executionContext) field_Query_senderRequest_args(ctx context.Context, 
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_senderRequests_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["offset"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["offset"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg1
 	return args, nil
 }
 
@@ -1989,7 +2047,7 @@ func (ec *executionContext) _HttpRequest_method(ctx context.Context, field graph
 	}
 	res := resTmp.(HTTPMethod)
 	fc.Result = res
-	return ec.marshalNHttpMethod2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx, field.Selections, res)
+	return ec.marshalNHttpMethod2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPMethod(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpRequest_proto(ctx context.Context, field graphql.CollectedField, obj *HTTPRequest) (ret graphql.Marshaler) {
@@ -2024,7 +2082,7 @@ func (ec *executionContext) _HttpRequest_proto(ctx context.Context, field graphq
 	}
 	res := resTmp.(HTTPProtocol)
 	fc.Result = res
-	return ec.marshalNHttpProtocol2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPProtocol(ctx, field.Selections, res)
+	return ec.marshalNHttpProtocol2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPProtocol(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpRequest_headers(ctx context.Context, field graphql.CollectedField, obj *HTTPRequest) (ret graphql.Marshaler) {
@@ -2059,7 +2117,7 @@ func (ec *executionContext) _HttpRequest_headers(ctx context.Context, field grap
 	}
 	res := resTmp.([]HTTPHeader)
 	fc.Result = res
-	return ec.marshalNHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
+	return ec.marshalNHttpHeader2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpRequest_body(ctx context.Context, field graphql.CollectedField, obj *HTTPRequest) (ret graphql.Marshaler) {
@@ -2123,7 +2181,7 @@ func (ec *executionContext) _HttpRequest_response(ctx context.Context, field gra
 	}
 	res := resTmp.(*HTTPResponse)
 	fc.Result = res
-	return ec.marshalOHttpResponse2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPResponse(ctx, field.Selections, res)
+	return ec.marshalOHttpResponse2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpRequestLog_id(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
@@ -2228,7 +2286,7 @@ func (ec *executionContext) _HttpRequestLog_method(ctx context.Context, field gr
 	}
 	res := resTmp.(HTTPMethod)
 	fc.Result = res
-	return ec.marshalNHttpMethod2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx, field.Selections, res)
+	return ec.marshalNHttpMethod2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPMethod(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpRequestLog_proto(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
@@ -2298,7 +2356,7 @@ func (ec *executionContext) _HttpRequestLog_headers(ctx context.Context, field g
 	}
 	res := resTmp.([]HTTPHeader)
 	fc.Result = res
-	return ec.marshalNHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
+	return ec.marshalNHttpHeader2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpRequestLog_body(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLog) (ret graphql.Marshaler) {
@@ -2397,7 +2455,7 @@ func (ec *executionContext) _HttpRequestLog_response(ctx context.Context, field 
 	}
 	res := resTmp.(*HTTPResponseLog)
 	fc.Result = res
-	return ec.marshalOHttpResponseLog2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPResponseLog(ctx, field.Selections, res)
+	return ec.marshalOHttpResponseLog2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPResponseLog(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpRequestLogFilter_onlyInScope(ctx context.Context, field graphql.CollectedField, obj *HTTPRequestLogFilter) (ret graphql.Marshaler) {
@@ -2534,7 +2592,7 @@ func (ec *executionContext) _HttpResponse_proto(ctx context.Context, field graph
 	}
 	res := resTmp.(HTTPProtocol)
 	fc.Result = res
-	return ec.marshalNHttpProtocol2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPProtocol(ctx, field.Selections, res)
+	return ec.marshalNHttpProtocol2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPProtocol(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpResponse_statusCode(ctx context.Context, field graphql.CollectedField, obj *HTTPResponse) (ret graphql.Marshaler) {
@@ -2671,7 +2729,7 @@ func (ec *executionContext) _HttpResponse_headers(ctx context.Context, field gra
 	}
 	res := resTmp.([]HTTPHeader)
 	fc.Result = res
-	return ec.marshalNHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
+	return ec.marshalNHttpHeader2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpResponseLog_id(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
@@ -2741,7 +2799,7 @@ func (ec *executionContext) _HttpResponseLog_proto(ctx context.Context, field gr
 	}
 	res := resTmp.(HTTPProtocol)
 	fc.Result = res
-	return ec.marshalNHttpProtocol2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPProtocol(ctx, field.Selections, res)
+	return ec.marshalNHttpProtocol2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPProtocol(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpResponseLog_statusCode(ctx context.Context, field graphql.CollectedField, obj *HTTPResponseLog) (ret graphql.Marshaler) {
@@ -2878,7 +2936,7 @@ func (ec *executionContext) _HttpResponseLog_headers(ctx context.Context, field 
 	}
 	res := resTmp.([]HTTPHeader)
 	fc.Result = res
-	return ec.marshalNHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
+	return ec.marshalNHttpHeader2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _InterceptSettings_requestsEnabled(ctx context.Context, field graphql.CollectedField, obj *InterceptSettings) (ret graphql.Marshaler) {
@@ -3121,7 +3179,7 @@ func (ec *executionContext) _Mutation_createProject(ctx context.Context, field g
 	}
 	res := resTmp.(*Project)
 	fc.Result = res
-	return ec.marshalOProject2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProject(ctx, field.Selections, res)
+	return ec.marshalOProject2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProject(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_openProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3160,7 +3218,7 @@ func (ec *executionContext) _Mutation_openProject(ctx context.Context, field gra
 	}
 	res := resTmp.(*Project)
 	fc.Result = res
-	return ec.marshalOProject2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProject(ctx, field.Selections, res)
+	return ec.marshalOProject2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProject(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_closeProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3195,7 +3253,7 @@ func (ec *executionContext) _Mutation_closeProject(ctx context.Context, field gr
 	}
 	res := resTmp.(*CloseProjectResult)
 	fc.Result = res
-	return ec.marshalNCloseProjectResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCloseProjectResult(ctx, field.Selections, res)
+	return ec.marshalNCloseProjectResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐCloseProjectResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_deleteProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3237,7 +3295,7 @@ func (ec *executionContext) _Mutation_deleteProject(ctx context.Context, field g
 	}
 	res := resTmp.(*DeleteProjectResult)
 	fc.Result = res
-	return ec.marshalNDeleteProjectResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐDeleteProjectResult(ctx, field.Selections, res)
+	return ec.marshalNDeleteProjectResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteProjectResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_clearHTTPRequestLog(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3272,7 +3330,7 @@ func (ec *executionContext) _Mutation_clearHTTPRequestLog(ctx context.Context, f
 	}
 	res := resTmp.(*ClearHTTPRequestLogResult)
 	fc.Result = res
-	return ec.marshalNClearHTTPRequestLogResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐClearHTTPRequestLogResult(ctx, field.Selections, res)
+	return ec.marshalNClearHTTPRequestLogResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐClearHTTPRequestLogResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_setScope(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3314,7 +3372,7 @@ func (ec *executionContext) _Mutation_setScope(ctx context.Context, field graphq
 	}
 	res := resTmp.([]ScopeRule)
 	fc.Result = res
-	return ec.marshalNScopeRule2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeRuleᚄ(ctx, field.Selections, res)
+	return ec.marshalNScopeRule2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeRuleᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_setHttpRequestLogFilter(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3353,7 +3411,7 @@ func (ec *executionContext) _Mutation_setHttpRequestLogFilter(ctx context.Contex
 	}
 	res := resTmp.(*HTTPRequestLogFilter)
 	fc.Result = res
-	return ec.marshalOHttpRequestLogFilter2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLogFilter(ctx, field.Selections, res)
+	return ec.marshalOHttpRequestLogFilter2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestLogFilter(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_setSenderRequestFilter(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3392,7 +3450,7 @@ func (ec *executionContext) _Mutation_setSenderRequestFilter(ctx context.Context
 	}
 	res := resTmp.(*SenderRequestFilter)
 	fc.Result = res
-	return ec.marshalOSenderRequestFilter2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequestFilter(ctx, field.Selections, res)
+	return ec.marshalOSenderRequestFilter2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequestFilter(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_createOrUpdateSenderRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3434,7 +3492,7 @@ func (ec *executionContext) _Mutation_createOrUpdateSenderRequest(ctx context.Co
 	}
 	res := resTmp.(*SenderRequest)
 	fc.Result = res
-	return ec.marshalNSenderRequest2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequest(ctx, field.Selections, res)
+	return ec.marshalNSenderRequest2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequest(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_createSenderRequestFromHttpRequestLog(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3476,7 +3534,7 @@ func (ec *executionContext) _Mutation_createSenderRequestFromHttpRequestLog(ctx 
 	}
 	res := resTmp.(*SenderRequest)
 	fc.Result = res
-	return ec.marshalNSenderRequest2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequest(ctx, field.Selections, res)
+	return ec.marshalNSenderRequest2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequest(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_sendRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3518,7 +3576,7 @@ func (ec *executionContext) _Mutation_sendRequest(ctx context.Context, field gra
 	}
 	res := resTmp.(*SenderRequest)
 	fc.Result = res
-	return ec.marshalNSenderRequest2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequest(ctx, field.Selections, res)
+	return ec.marshalNSenderRequest2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequest(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_deleteSenderRequests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3553,7 +3611,7 @@ func (ec *executionContext) _Mutation_deleteSenderRequests(ctx context.Context, 
 	}
 	res := resTmp.(*DeleteSenderRequestsResult)
 	fc.Result = res
-	return ec.marshalNDeleteSenderRequestsResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐDeleteSenderRequestsResult(ctx, field.Selections, res)
+	return ec.marshalNDeleteSenderRequestsResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteSenderRequestsResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_modifyRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3595,7 +3653,7 @@ func (ec *executionContext) _Mutation_modifyRequest(ctx context.Context, field g
 	}
 	res := resTmp.(*ModifyRequestResult)
 	fc.Result = res
-	return ec.marshalNModifyRequestResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyRequestResult(ctx, field.Selections, res)
+	return ec.marshalNModifyRequestResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyRequestResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_cancelRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3637,7 +3695,7 @@ func (ec *executionContext) _Mutation_cancelRequest(ctx context.Context, field g
 	}
 	res := resTmp.(*CancelRequestResult)
 	fc.Result = res
-	return ec.marshalNCancelRequestResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCancelRequestResult(ctx, field.Selections, res)
+	return ec.marshalNCancelRequestResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐCancelRequestResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_modifyResponse(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3679,7 +3737,7 @@ func (ec *executionContext) _Mutation_modifyResponse(ctx context.Context, field 
 	}
 	res := resTmp.(*ModifyResponseResult)
 	fc.Result = res
-	return ec.marshalNModifyResponseResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyResponseResult(ctx, field.Selections, res)
+	return ec.marshalNModifyResponseResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyResponseResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_cancelResponse(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3721,7 +3779,7 @@ func (ec *executionContext) _Mutation_cancelResponse(ctx context.Context, field 
 	}
 	res := resTmp.(*CancelResponseResult)
 	fc.Result = res
-	return ec.marshalNCancelResponseResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCancelResponseResult(ctx, field.Selections, res)
+	return ec.marshalNCancelResponseResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐCancelResponseResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_updateInterceptSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3763,7 +3821,7 @@ func (ec *executionContext) _Mutation_updateInterceptSettings(ctx context.Contex
 	}
 	res := resTmp.(*InterceptSettings)
 	fc.Result = res
-	return ec.marshalNInterceptSettings2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐInterceptSettings(ctx, field.Selections, res)
+	return ec.marshalNInterceptSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐInterceptSettings(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
@@ -3903,7 +3961,7 @@ func (ec *executionContext) _Project_settings(ctx context.Context, field graphql
 	}
 	res := resTmp.(*ProjectSettings)
 	fc.Result = res
-	return ec.marshalNProjectSettings2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProjectSettings(ctx, field.Selections, res)
+	return ec.marshalNProjectSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProjectSettings(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ProjectSettings_intercept(ctx context.Context, field graphql.CollectedField, obj *ProjectSettings) (ret graphql.Marshaler) {
@@ -3938,7 +3996,7 @@ func (ec *executionContext) _ProjectSettings_intercept(ctx context.Context, fiel
 	}
 	res := resTmp.(*InterceptSettings)
 	fc.Result = res
-	return ec.marshalNInterceptSettings2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐInterceptSettings(ctx, field.Selections, res)
+	return ec.marshalNInterceptSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐInterceptSettings(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_httpRequestLog(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3977,7 +4035,7 @@ func (ec *executionContext) _Query_httpRequestLog(ctx context.Context, field gra
 	}
 	res := resTmp.(*HTTPRequestLog)
 	fc.Result = res
-	return ec.marshalOHttpRequestLog2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLog(ctx, field.Selections, res)
+	return ec.marshalOHttpRequestLog2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestLog(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_httpRequestLogs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3996,9 +4054,16 @@ func (ec *executionContext) _Query_httpRequestLogs(ctx context.Context, field gr
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_httpRequestLogs_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().HTTPRequestLogs(rctx)
+		return ec.resolvers.Query().HTTPRequestLogs(rctx, args["offset"].(*int), args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4012,7 +4077,7 @@ func (ec *executionContext) _Query_httpRequestLogs(ctx context.Context, field gr
 	}
 	res := resTmp.([]HTTPRequestLog)
 	fc.Result = res
-	return ec.marshalNHttpRequestLog2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLogᚄ(ctx, field.Selections, res)
+	return ec.marshalNHttpRequestLog2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestLogᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_httpRequestLogFilter(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4044,7 +4109,7 @@ func (ec *executionContext) _Query_httpRequestLogFilter(ctx context.Context, fie
 	}
 	res := resTmp.(*HTTPRequestLogFilter)
 	fc.Result = res
-	return ec.marshalOHttpRequestLogFilter2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLogFilter(ctx, field.Selections, res)
+	return ec.marshalOHttpRequestLogFilter2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestLogFilter(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_activeProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4076,7 +4141,7 @@ func (ec *executionContext) _Query_activeProject(ctx context.Context, field grap
 	}
 	res := resTmp.(*Project)
 	fc.Result = res
-	return ec.marshalOProject2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProject(ctx, field.Selections, res)
+	return ec.marshalOProject2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProject(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4111,7 +4176,7 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 	}
 	res := resTmp.([]Project)
 	fc.Result = res
-	return ec.marshalNProject2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProjectᚄ(ctx, field.Selections, res)
+	return ec.marshalNProject2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProjectᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_scope(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4146,7 +4211,7 @@ func (ec *executionContext) _Query_scope(ctx context.Context, field graphql.Coll
 	}
 	res := resTmp.([]ScopeRule)
 	fc.Result = res
-	return ec.marshalNScopeRule2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeRuleᚄ(ctx, field.Selections, res)
+	return ec.marshalNScopeRule2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeRuleᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_senderRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4185,7 +4250,7 @@ func (ec *executionContext) _Query_senderRequest(ctx context.Context, field grap
 	}
 	res := resTmp.(*SenderRequest)
 	fc.Result = res
-	return ec.marshalOSenderRequest2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequest(ctx, field.Selections, res)
+	return ec.marshalOSenderRequest2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequest(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_senderRequests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4204,9 +4269,16 @@ func (ec *executionContext) _Query_senderRequests(ctx context.Context, field gra
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_senderRequests_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().SenderRequests(rctx)
+		return ec.resolvers.Query().SenderRequests(rctx, args["offset"].(*int), args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4220,7 +4292,7 @@ func (ec *executionContext) _Query_senderRequests(ctx context.Context, field gra
 	}
 	res := resTmp.([]SenderRequest)
 	fc.Result = res
-	return ec.marshalNSenderRequest2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequestᚄ(ctx, field.Selections, res)
+	return ec.marshalNSenderRequest2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequestᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_interceptedRequests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4255,7 +4327,7 @@ func (ec *executionContext) _Query_interceptedRequests(ctx context.Context, fiel
 	}
 	res := resTmp.([]HTTPRequest)
 	fc.Result = res
-	return ec.marshalNHttpRequest2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestᚄ(ctx, field.Selections, res)
+	return ec.marshalNHttpRequest2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_interceptedRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4294,7 +4366,7 @@ func (ec *executionContext) _Query_interceptedRequest(ctx context.Context, field
 	}
 	res := resTmp.(*HTTPRequest)
 	fc.Result = res
-	return ec.marshalOHttpRequest2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequest(ctx, field.Selections, res)
+	return ec.marshalOHttpRequest2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequest(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4493,7 +4565,7 @@ func (ec *executionContext) _ScopeRule_header(ctx context.Context, field graphql
 	}
 	res := resTmp.(*ScopeHeader)
 	fc.Result = res
-	return ec.marshalOScopeHeader2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeHeader(ctx, field.Selections, res)
+	return ec.marshalOScopeHeader2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeHeader(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ScopeRule_body(ctx context.Context, field graphql.CollectedField, obj *ScopeRule) (ret graphql.Marshaler) {
@@ -4662,7 +4734,7 @@ func (ec *executionContext) _SenderRequest_method(ctx context.Context, field gra
 	}
 	res := resTmp.(HTTPMethod)
 	fc.Result = res
-	return ec.marshalNHttpMethod2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx, field.Selections, res)
+	return ec.marshalNHttpMethod2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPMethod(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _SenderRequest_proto(ctx context.Context, field graphql.CollectedField, obj *SenderRequest) (ret graphql.Marshaler) {
@@ -4697,7 +4769,7 @@ func (ec *executionContext) _SenderRequest_proto(ctx context.Context, field grap
 	}
 	res := resTmp.(HTTPProtocol)
 	fc.Result = res
-	return ec.marshalNHttpProtocol2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPProtocol(ctx, field.Selections, res)
+	return ec.marshalNHttpProtocol2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPProtocol(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _SenderRequest_headers(ctx context.Context, field graphql.CollectedField, obj *SenderRequest) (ret graphql.Marshaler) {
@@ -4729,7 +4801,7 @@ func (ec *executionContext) _SenderRequest_headers(ctx context.Context, field gr
 	}
 	res := resTmp.([]HTTPHeader)
 	fc.Result = res
-	return ec.marshalOHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
+	return ec.marshalOHttpHeader2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _SenderRequest_body(ctx context.Context, field graphql.CollectedField, obj *SenderRequest) (ret graphql.Marshaler) {
@@ -4828,7 +4900,7 @@ func (ec *executionContext) _SenderRequest_response(ctx context.Context, field g
 	}
 	res := resTmp.(*HTTPResponseLog)
 	fc.Result = res
-	return ec.marshalOHttpResponseLog2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPResponseLog(ctx, field.Selections, res)
+	return ec.marshalOHttpResponseLog2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPResponseLog(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _SenderRequestFilter_onlyInScope(ctx context.Context, field graphql.CollectedField, obj *SenderRequestFilter) (ret graphql.Marshaler) {
@@ -6111,7 +6183,7 @@ func (ec *executionContext) unmarshalInputModifyRequestInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("method"))
-			it.Method, err = ec.unmarshalNHttpMethod2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx, v)
+			it.Method, err = ec.unmarshalNHttpMethod2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPMethod(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -6119,7 +6191,7 @@ func (ec *executionContext) unmarshalInputModifyRequestInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proto"))
-			it.Proto, err = ec.unmarshalNHttpProtocol2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPProtocol(ctx, v)
+			it.Proto, err = ec.unmarshalNHttpProtocol2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPProtocol(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -6127,7 +6199,7 @@ func (ec *executionContext) unmarshalInputModifyRequestInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headers"))
-			it.Headers, err = ec.unmarshalOHttpHeaderInput2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderInputᚄ(ctx, v)
+			it.Headers, err = ec.unmarshalOHttpHeaderInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -6174,7 +6246,7 @@ func (ec *executionContext) unmarshalInputModifyResponseInput(ctx context.Contex
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proto"))
-			it.Proto, err = ec.unmarshalNHttpProtocol2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPProtocol(ctx, v)
+			it.Proto, err = ec.unmarshalNHttpProtocol2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPProtocol(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -6182,7 +6254,7 @@ func (ec *executionContext) unmarshalInputModifyResponseInput(ctx context.Contex
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headers"))
-			it.Headers, err = ec.unmarshalOHttpHeaderInput2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderInputᚄ(ctx, v)
+			it.Headers, err = ec.unmarshalOHttpHeaderInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -6268,7 +6340,7 @@ func (ec *executionContext) unmarshalInputScopeRuleInput(ctx context.Context, ob
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("header"))
-			it.Header, err = ec.unmarshalOScopeHeaderInput2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeHeaderInput(ctx, v)
+			it.Header, err = ec.unmarshalOScopeHeaderInput2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeHeaderInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -6346,7 +6418,7 @@ func (ec *executionContext) unmarshalInputSenderRequestInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("method"))
-			it.Method, err = ec.unmarshalOHttpMethod2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx, v)
+			it.Method, err = ec.unmarshalOHttpMethod2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPMethod(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -6354,7 +6426,7 @@ func (ec *executionContext) unmarshalInputSenderRequestInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proto"))
-			it.Proto, err = ec.unmarshalOHttpProtocol2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPProtocol(ctx, v)
+			it.Proto, err = ec.unmarshalOHttpProtocol2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPProtocol(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -6362,7 +6434,7 @@ func (ec *executionContext) unmarshalInputSenderRequestInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headers"))
-			it.Headers, err = ec.unmarshalOHttpHeaderInput2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderInputᚄ(ctx, v)
+			it.Headers, err = ec.unmarshalOHttpHeaderInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -7679,11 +7751,11 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNCancelRequestResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCancelRequestResult(ctx context.Context, sel ast.SelectionSet, v CancelRequestResult) graphql.Marshaler {
+func (ec *executionContext) marshalNCancelRequestResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐCancelRequestResult(ctx context.Context, sel ast.SelectionSet, v CancelRequestResult) graphql.Marshaler {
 	return ec._CancelRequestResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNCancelRequestResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCancelRequestResult(ctx context.Context, sel ast.SelectionSet, v *CancelRequestResult) graphql.Marshaler {
+func (ec *executionContext) marshalNCancelRequestResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐCancelRequestResult(ctx context.Context, sel ast.SelectionSet, v *CancelRequestResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -7693,11 +7765,11 @@ func (ec *executionContext) marshalNCancelRequestResult2ᚖgithubᚗcomᚋdstoti
 	return ec._CancelRequestResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNCancelResponseResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCancelResponseResult(ctx context.Context, sel ast.SelectionSet, v CancelResponseResult) graphql.Marshaler {
+func (ec *executionContext) marshalNCancelResponseResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐCancelResponseResult(ctx context.Context, sel ast.SelectionSet, v CancelResponseResult) graphql.Marshaler {
 	return ec._CancelResponseResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNCancelResponseResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCancelResponseResult(ctx context.Context, sel ast.SelectionSet, v *CancelResponseResult) graphql.Marshaler {
+func (ec *executionContext) marshalNCancelResponseResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐCancelResponseResult(ctx context.Context, sel ast.SelectionSet, v *CancelResponseResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -7707,11 +7779,11 @@ func (ec *executionContext) marshalNCancelResponseResult2ᚖgithubᚗcomᚋdstot
 	return ec._CancelResponseResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNClearHTTPRequestLogResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐClearHTTPRequestLogResult(ctx context.Context, sel ast.SelectionSet, v ClearHTTPRequestLogResult) graphql.Marshaler {
+func (ec *executionContext) marshalNClearHTTPRequestLogResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐClearHTTPRequestLogResult(ctx context.Context, sel ast.SelectionSet, v ClearHTTPRequestLogResult) graphql.Marshaler {
 	return ec._ClearHTTPRequestLogResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNClearHTTPRequestLogResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐClearHTTPRequestLogResult(ctx context.Context, sel ast.SelectionSet, v *ClearHTTPRequestLogResult) graphql.Marshaler {
+func (ec *executionContext) marshalNClearHTTPRequestLogResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐClearHTTPRequestLogResult(ctx context.Context, sel ast.SelectionSet, v *ClearHTTPRequestLogResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -7721,11 +7793,11 @@ func (ec *executionContext) marshalNClearHTTPRequestLogResult2ᚖgithubᚗcomᚋ
 	return ec._ClearHTTPRequestLogResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNCloseProjectResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCloseProjectResult(ctx context.Context, sel ast.SelectionSet, v CloseProjectResult) graphql.Marshaler {
+func (ec *executionContext) marshalNCloseProjectResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐCloseProjectResult(ctx context.Context, sel ast.SelectionSet, v CloseProjectResult) graphql.Marshaler {
 	return ec._CloseProjectResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNCloseProjectResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐCloseProjectResult(ctx context.Context, sel ast.SelectionSet, v *CloseProjectResult) graphql.Marshaler {
+func (ec *executionContext) marshalNCloseProjectResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐCloseProjectResult(ctx context.Context, sel ast.SelectionSet, v *CloseProjectResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -7735,11 +7807,11 @@ func (ec *executionContext) marshalNCloseProjectResult2ᚖgithubᚗcomᚋdstotij
 	return ec._CloseProjectResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNDeleteProjectResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐDeleteProjectResult(ctx context.Context, sel ast.SelectionSet, v DeleteProjectResult) graphql.Marshaler {
+func (ec *executionContext) marshalNDeleteProjectResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteProjectResult(ctx context.Context, sel ast.SelectionSet, v DeleteProjectResult) graphql.Marshaler {
 	return ec._DeleteProjectResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNDeleteProjectResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐDeleteProjectResult(ctx context.Context, sel ast.SelectionSet, v *DeleteProjectResult) graphql.Marshaler {
+func (ec *executionContext) marshalNDeleteProjectResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteProjectResult(ctx context.Context, sel ast.SelectionSet, v *DeleteProjectResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -7749,11 +7821,11 @@ func (ec *executionContext) marshalNDeleteProjectResult2ᚖgithubᚗcomᚋdstoti
 	return ec._DeleteProjectResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNDeleteSenderRequestsResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐDeleteSenderRequestsResult(ctx context.Context, sel ast.SelectionSet, v DeleteSenderRequestsResult) graphql.Marshaler {
+func (ec *executionContext) marshalNDeleteSenderRequestsResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteSenderRequestsResult(ctx context.Context, sel ast.SelectionSet, v DeleteSenderRequestsResult) graphql.Marshaler {
 	return ec._DeleteSenderRequestsResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNDeleteSenderRequestsResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐDeleteSenderRequestsResult(ctx context.Context, sel ast.SelectionSet, v *DeleteSenderRequestsResult) graphql.Marshaler {
+func (ec *executionContext) marshalNDeleteSenderRequestsResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteSenderRequestsResult(ctx context.Context, sel ast.SelectionSet, v *DeleteSenderRequestsResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -7763,11 +7835,11 @@ func (ec *executionContext) marshalNDeleteSenderRequestsResult2ᚖgithubᚗcom�
 	return ec._DeleteSenderRequestsResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNHttpHeader2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeader(ctx context.Context, sel ast.SelectionSet, v HTTPHeader) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpHeader2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeader(ctx context.Context, sel ast.SelectionSet, v HTTPHeader) graphql.Marshaler {
 	return ec._HttpHeader(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPHeader) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpHeader2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPHeader) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7791,7 +7863,7 @@ func (ec *executionContext) marshalNHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhett
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNHttpHeader2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeader(ctx, sel, v[i])
+			ret[i] = ec.marshalNHttpHeader2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeader(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7811,36 +7883,36 @@ func (ec *executionContext) marshalNHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhett
 	return ret
 }
 
-func (ec *executionContext) unmarshalNHttpHeaderInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderInput(ctx context.Context, v interface{}) (HTTPHeaderInput, error) {
+func (ec *executionContext) unmarshalNHttpHeaderInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderInput(ctx context.Context, v interface{}) (HTTPHeaderInput, error) {
 	res, err := ec.unmarshalInputHttpHeaderInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNHttpMethod2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, v interface{}) (HTTPMethod, error) {
+func (ec *executionContext) unmarshalNHttpMethod2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, v interface{}) (HTTPMethod, error) {
 	var res HTTPMethod
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNHttpMethod2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, sel ast.SelectionSet, v HTTPMethod) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpMethod2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, sel ast.SelectionSet, v HTTPMethod) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) unmarshalNHttpProtocol2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPProtocol(ctx context.Context, v interface{}) (HTTPProtocol, error) {
+func (ec *executionContext) unmarshalNHttpProtocol2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPProtocol(ctx context.Context, v interface{}) (HTTPProtocol, error) {
 	var res HTTPProtocol
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNHttpProtocol2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPProtocol(ctx context.Context, sel ast.SelectionSet, v HTTPProtocol) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpProtocol2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPProtocol(ctx context.Context, sel ast.SelectionSet, v HTTPProtocol) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNHttpRequest2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequest(ctx context.Context, sel ast.SelectionSet, v HTTPRequest) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpRequest2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequest(ctx context.Context, sel ast.SelectionSet, v HTTPRequest) graphql.Marshaler {
 	return ec._HttpRequest(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNHttpRequest2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPRequest) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpRequest2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPRequest) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7864,7 +7936,7 @@ func (ec *executionContext) marshalNHttpRequest2ᚕgithubᚗcomᚋdstotijnᚋhet
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNHttpRequest2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequest(ctx, sel, v[i])
+			ret[i] = ec.marshalNHttpRequest2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequest(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7884,11 +7956,11 @@ func (ec *executionContext) marshalNHttpRequest2ᚕgithubᚗcomᚋdstotijnᚋhet
 	return ret
 }
 
-func (ec *executionContext) marshalNHttpRequestLog2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v HTTPRequestLog) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpRequestLog2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v HTTPRequestLog) graphql.Marshaler {
 	return ec._HttpRequestLog(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNHttpRequestLog2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLogᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPRequestLog) graphql.Marshaler {
+func (ec *executionContext) marshalNHttpRequestLog2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestLogᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPRequestLog) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7912,7 +7984,7 @@ func (ec *executionContext) marshalNHttpRequestLog2ᚕgithubᚗcomᚋdstotijnᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNHttpRequestLog2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLog(ctx, sel, v[i])
+			ret[i] = ec.marshalNHttpRequestLog2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestLog(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7962,11 +8034,11 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
-func (ec *executionContext) marshalNInterceptSettings2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐInterceptSettings(ctx context.Context, sel ast.SelectionSet, v InterceptSettings) graphql.Marshaler {
+func (ec *executionContext) marshalNInterceptSettings2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐInterceptSettings(ctx context.Context, sel ast.SelectionSet, v InterceptSettings) graphql.Marshaler {
 	return ec._InterceptSettings(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNInterceptSettings2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐInterceptSettings(ctx context.Context, sel ast.SelectionSet, v *InterceptSettings) graphql.Marshaler {
+func (ec *executionContext) marshalNInterceptSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐInterceptSettings(ctx context.Context, sel ast.SelectionSet, v *InterceptSettings) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -7976,16 +8048,16 @@ func (ec *executionContext) marshalNInterceptSettings2ᚖgithubᚗcomᚋdstotijn
 	return ec._InterceptSettings(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNModifyRequestInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyRequestInput(ctx context.Context, v interface{}) (ModifyRequestInput, error) {
+func (ec *executionContext) unmarshalNModifyRequestInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyRequestInput(ctx context.Context, v interface{}) (ModifyRequestInput, error) {
 	res, err := ec.unmarshalInputModifyRequestInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNModifyRequestResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyRequestResult(ctx context.Context, sel ast.SelectionSet, v ModifyRequestResult) graphql.Marshaler {
+func (ec *executionContext) marshalNModifyRequestResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyRequestResult(ctx context.Context, sel ast.SelectionSet, v ModifyRequestResult) graphql.Marshaler {
 	return ec._ModifyRequestResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNModifyRequestResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyRequestResult(ctx context.Context, sel ast.SelectionSet, v *ModifyRequestResult) graphql.Marshaler {
+func (ec *executionContext) marshalNModifyRequestResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyRequestResult(ctx context.Context, sel ast.SelectionSet, v *ModifyRequestResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -7995,16 +8067,16 @@ func (ec *executionContext) marshalNModifyRequestResult2ᚖgithubᚗcomᚋdstoti
 	return ec._ModifyRequestResult(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNModifyResponseInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyResponseInput(ctx context.Context, v interface{}) (ModifyResponseInput, error) {
+func (ec *executionContext) unmarshalNModifyResponseInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyResponseInput(ctx context.Context, v interface{}) (ModifyResponseInput, error) {
 	res, err := ec.unmarshalInputModifyResponseInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNModifyResponseResult2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyResponseResult(ctx context.Context, sel ast.SelectionSet, v ModifyResponseResult) graphql.Marshaler {
+func (ec *executionContext) marshalNModifyResponseResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyResponseResult(ctx context.Context, sel ast.SelectionSet, v ModifyResponseResult) graphql.Marshaler {
 	return ec._ModifyResponseResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNModifyResponseResult2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐModifyResponseResult(ctx context.Context, sel ast.SelectionSet, v *ModifyResponseResult) graphql.Marshaler {
+func (ec *executionContext) marshalNModifyResponseResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyResponseResult(ctx context.Context, sel ast.SelectionSet, v *ModifyResponseResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -8014,11 +8086,11 @@ func (ec *executionContext) marshalNModifyResponseResult2ᚖgithubᚗcomᚋdstot
 	return ec._ModifyResponseResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNProject2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProject(ctx context.Context, sel ast.SelectionSet, v Project) graphql.Marshaler {
+func (ec *executionContext) marshalNProject2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProject(ctx context.Context, sel ast.SelectionSet, v Project) graphql.Marshaler {
 	return ec._Project(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNProject2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProjectᚄ(ctx context.Context, sel ast.SelectionSet, v []Project) graphql.Marshaler {
+func (ec *executionContext) marshalNProject2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProjectᚄ(ctx context.Context, sel ast.SelectionSet, v []Project) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -8042,7 +8114,7 @@ func (ec *executionContext) marshalNProject2ᚕgithubᚗcomᚋdstotijnᚋhetty�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNProject2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProject(ctx, sel, v[i])
+			ret[i] = ec.marshalNProject2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProject(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -8062,7 +8134,7 @@ func (ec *executionContext) marshalNProject2ᚕgithubᚗcomᚋdstotijnᚋhetty�
 	return ret
 }
 
-func (ec *executionContext) marshalNProjectSettings2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProjectSettings(ctx context.Context, sel ast.SelectionSet, v *ProjectSettings) graphql.Marshaler {
+func (ec *executionContext) marshalNProjectSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProjectSettings(ctx context.Context, sel ast.SelectionSet, v *ProjectSettings) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -8072,11 +8144,11 @@ func (ec *executionContext) marshalNProjectSettings2ᚖgithubᚗcomᚋdstotijn�
 	return ec._ProjectSettings(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNScopeRule2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeRule(ctx context.Context, sel ast.SelectionSet, v ScopeRule) graphql.Marshaler {
+func (ec *executionContext) marshalNScopeRule2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeRule(ctx context.Context, sel ast.SelectionSet, v ScopeRule) graphql.Marshaler {
 	return ec._ScopeRule(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNScopeRule2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeRuleᚄ(ctx context.Context, sel ast.SelectionSet, v []ScopeRule) graphql.Marshaler {
+func (ec *executionContext) marshalNScopeRule2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeRuleᚄ(ctx context.Context, sel ast.SelectionSet, v []ScopeRule) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -8100,7 +8172,7 @@ func (ec *executionContext) marshalNScopeRule2ᚕgithubᚗcomᚋdstotijnᚋhetty
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNScopeRule2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeRule(ctx, sel, v[i])
+			ret[i] = ec.marshalNScopeRule2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeRule(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -8120,12 +8192,12 @@ func (ec *executionContext) marshalNScopeRule2ᚕgithubᚗcomᚋdstotijnᚋhetty
 	return ret
 }
 
-func (ec *executionContext) unmarshalNScopeRuleInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeRuleInput(ctx context.Context, v interface{}) (ScopeRuleInput, error) {
+func (ec *executionContext) unmarshalNScopeRuleInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeRuleInput(ctx context.Context, v interface{}) (ScopeRuleInput, error) {
 	res, err := ec.unmarshalInputScopeRuleInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNScopeRuleInput2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeRuleInputᚄ(ctx context.Context, v interface{}) ([]ScopeRuleInput, error) {
+func (ec *executionContext) unmarshalNScopeRuleInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeRuleInputᚄ(ctx context.Context, v interface{}) ([]ScopeRuleInput, error) {
 	var vSlice []interface{}
 	if v != nil {
 		if tmp1, ok := v.([]interface{}); ok {
@@ -8138,7 +8210,7 @@ func (ec *executionContext) unmarshalNScopeRuleInput2ᚕgithubᚗcomᚋdstotijn�
 	res := make([]ScopeRuleInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNScopeRuleInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeRuleInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNScopeRuleInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeRuleInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -8146,11 +8218,11 @@ func (ec *executionContext) unmarshalNScopeRuleInput2ᚕgithubᚗcomᚋdstotijn�
 	return res, nil
 }
 
-func (ec *executionContext) marshalNSenderRequest2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequest(ctx context.Context, sel ast.SelectionSet, v SenderRequest) graphql.Marshaler {
+func (ec *executionContext) marshalNSenderRequest2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequest(ctx context.Context, sel ast.SelectionSet, v SenderRequest) graphql.Marshaler {
 	return ec._SenderRequest(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNSenderRequest2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequestᚄ(ctx context.Context, sel ast.SelectionSet, v []SenderRequest) graphql.Marshaler {
+func (ec *executionContext) marshalNSenderRequest2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequestᚄ(ctx context.Context, sel ast.SelectionSet, v []SenderRequest) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -8174,7 +8246,7 @@ func (ec *executionContext) marshalNSenderRequest2ᚕgithubᚗcomᚋdstotijnᚋh
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNSenderRequest2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequest(ctx, sel, v[i])
+			ret[i] = ec.marshalNSenderRequest2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequest(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -8194,7 +8266,7 @@ func (ec *executionContext) marshalNSenderRequest2ᚕgithubᚗcomᚋdstotijnᚋh
 	return ret
 }
 
-func (ec *executionContext) marshalNSenderRequest2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequest(ctx context.Context, sel ast.SelectionSet, v *SenderRequest) graphql.Marshaler {
+func (ec *executionContext) marshalNSenderRequest2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequest(ctx context.Context, sel ast.SelectionSet, v *SenderRequest) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -8204,7 +8276,7 @@ func (ec *executionContext) marshalNSenderRequest2ᚖgithubᚗcomᚋdstotijnᚋh
 	return ec._SenderRequest(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNSenderRequestInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequestInput(ctx context.Context, v interface{}) (SenderRequestInput, error) {
+func (ec *executionContext) unmarshalNSenderRequestInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequestInput(ctx context.Context, v interface{}) (SenderRequestInput, error) {
 	res, err := ec.unmarshalInputSenderRequestInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -8260,7 +8332,7 @@ func (ec *executionContext) marshalNURL2ᚖnetᚋurlᚐURL(ctx context.Context, 
 	return res
 }
 
-func (ec *executionContext) unmarshalNUpdateInterceptSettingsInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐUpdateInterceptSettingsInput(ctx context.Context, v interface{}) (UpdateInterceptSettingsInput, error) {
+func (ec *executionContext) unmarshalNUpdateInterceptSettingsInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐUpdateInterceptSettingsInput(ctx context.Context, v interface{}) (UpdateInterceptSettingsInput, error) {
 	res, err := ec.unmarshalInputUpdateInterceptSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -8546,7 +8618,7 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return graphql.MarshalBoolean(*v)
 }
 
-func (ec *executionContext) marshalOHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPHeader) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpHeader2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderᚄ(ctx context.Context, sel ast.SelectionSet, v []HTTPHeader) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -8573,7 +8645,7 @@ func (ec *executionContext) marshalOHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhett
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNHttpHeader2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeader(ctx, sel, v[i])
+			ret[i] = ec.marshalNHttpHeader2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeader(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -8593,7 +8665,7 @@ func (ec *executionContext) marshalOHttpHeader2ᚕgithubᚗcomᚋdstotijnᚋhett
 	return ret
 }
 
-func (ec *executionContext) unmarshalOHttpHeaderInput2ᚕgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderInputᚄ(ctx context.Context, v interface{}) ([]HTTPHeaderInput, error) {
+func (ec *executionContext) unmarshalOHttpHeaderInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderInputᚄ(ctx context.Context, v interface{}) ([]HTTPHeaderInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -8609,7 +8681,7 @@ func (ec *executionContext) unmarshalOHttpHeaderInput2ᚕgithubᚗcomᚋdstotijn
 	res := make([]HTTPHeaderInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHttpHeaderInput2githubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPHeaderInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHttpHeaderInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeaderInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -8617,7 +8689,7 @@ func (ec *executionContext) unmarshalOHttpHeaderInput2ᚕgithubᚗcomᚋdstotijn
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHttpMethod2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, v interface{}) (*HTTPMethod, error) {
+func (ec *executionContext) unmarshalOHttpMethod2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, v interface{}) (*HTTPMethod, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -8626,14 +8698,14 @@ func (ec *executionContext) unmarshalOHttpMethod2ᚖgithubᚗcomᚋdstotijnᚋhe
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOHttpMethod2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, sel ast.SelectionSet, v *HTTPMethod) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpMethod2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPMethod(ctx context.Context, sel ast.SelectionSet, v *HTTPMethod) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return v
 }
 
-func (ec *executionContext) unmarshalOHttpProtocol2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPProtocol(ctx context.Context, v interface{}) (*HTTPProtocol, error) {
+func (ec *executionContext) unmarshalOHttpProtocol2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPProtocol(ctx context.Context, v interface{}) (*HTTPProtocol, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -8642,35 +8714,35 @@ func (ec *executionContext) unmarshalOHttpProtocol2ᚖgithubᚗcomᚋdstotijnᚋ
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOHttpProtocol2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPProtocol(ctx context.Context, sel ast.SelectionSet, v *HTTPProtocol) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpProtocol2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPProtocol(ctx context.Context, sel ast.SelectionSet, v *HTTPProtocol) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return v
 }
 
-func (ec *executionContext) marshalOHttpRequest2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequest(ctx context.Context, sel ast.SelectionSet, v *HTTPRequest) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpRequest2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequest(ctx context.Context, sel ast.SelectionSet, v *HTTPRequest) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._HttpRequest(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOHttpRequestLog2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v *HTTPRequestLog) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpRequestLog2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestLog(ctx context.Context, sel ast.SelectionSet, v *HTTPRequestLog) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._HttpRequestLog(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOHttpRequestLogFilter2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLogFilter(ctx context.Context, sel ast.SelectionSet, v *HTTPRequestLogFilter) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpRequestLogFilter2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestLogFilter(ctx context.Context, sel ast.SelectionSet, v *HTTPRequestLogFilter) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._HttpRequestLogFilter(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOHttpRequestLogFilterInput2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPRequestLogFilterInput(ctx context.Context, v interface{}) (*HTTPRequestLogFilterInput, error) {
+func (ec *executionContext) unmarshalOHttpRequestLogFilterInput2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequestLogFilterInput(ctx context.Context, v interface{}) (*HTTPRequestLogFilterInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -8678,14 +8750,14 @@ func (ec *executionContext) unmarshalOHttpRequestLogFilterInput2ᚖgithubᚗcom�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOHttpResponse2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPResponse(ctx context.Context, sel ast.SelectionSet, v *HTTPResponse) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpResponse2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPResponse(ctx context.Context, sel ast.SelectionSet, v *HTTPResponse) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._HttpResponse(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOHttpResponseLog2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐHTTPResponseLog(ctx context.Context, sel ast.SelectionSet, v *HTTPResponseLog) graphql.Marshaler {
+func (ec *executionContext) marshalOHttpResponseLog2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPResponseLog(ctx context.Context, sel ast.SelectionSet, v *HTTPResponseLog) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -8707,7 +8779,22 @@ func (ec *executionContext) marshalOID2ᚖgithubᚗcomᚋoklogᚋulidᚐULID(ctx
 	return MarshalULID(*v)
 }
 
-func (ec *executionContext) marshalOProject2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐProject(ctx context.Context, sel ast.SelectionSet, v *Project) graphql.Marshaler {
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalInt(*v)
+}
+
+func (ec *executionContext) marshalOProject2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProject(ctx context.Context, sel ast.SelectionSet, v *Project) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -8729,14 +8816,14 @@ func (ec *executionContext) marshalORegexp2ᚖstring(ctx context.Context, sel as
 	return graphql.MarshalString(*v)
 }
 
-func (ec *executionContext) marshalOScopeHeader2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeHeader(ctx context.Context, sel ast.SelectionSet, v *ScopeHeader) graphql.Marshaler {
+func (ec *executionContext) marshalOScopeHeader2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeHeader(ctx context.Context, sel ast.SelectionSet, v *ScopeHeader) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._ScopeHeader(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOScopeHeaderInput2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐScopeHeaderInput(ctx context.Context, v interface{}) (*ScopeHeaderInput, error) {
+func (ec *executionContext) unmarshalOScopeHeaderInput2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeHeaderInput(ctx context.Context, v interface{}) (*ScopeHeaderInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -8744,21 +8831,21 @@ func (ec *executionContext) unmarshalOScopeHeaderInput2ᚖgithubᚗcomᚋdstotij
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOSenderRequest2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequest(ctx context.Context, sel ast.SelectionSet, v *SenderRequest) graphql.Marshaler {
+func (ec *executionContext) marshalOSenderRequest2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequest(ctx context.Context, sel ast.SelectionSet, v *SenderRequest) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._SenderRequest(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOSenderRequestFilter2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequestFilter(ctx context.Context, sel ast.SelectionSet, v *SenderRequestFilter) graphql.Marshaler {
+func (ec *executionContext) marshalOSenderRequestFilter2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequestFilter(ctx context.Context, sel ast.SelectionSet, v *SenderRequestFilter) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._SenderRequestFilter(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOSenderRequestFilterInput2ᚖgithubᚗcomᚋdstotijnᚋhettyᚋpkgᚋapiᚐSenderRequestFilterInput(ctx context.Context, v interface{}) (*SenderRequestFilterInput, error) {
+func (ec *executionContext) unmarshalOSenderRequestFilterInput2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequestFilterInput(ctx context.Context, v interface{}) (*SenderRequestFilterInput, error) {
 	if v == nil {
 		return nil, nil
 	}
