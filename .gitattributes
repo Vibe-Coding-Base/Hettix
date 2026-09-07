@@ -1,0 +1,9 @@
+# Normalize line endings: LF in the repository, and on checkout everywhere.
+# Without this, a Windows checkout with core.autocrlf=true produces CRLF files
+# that fail the `prettier/prettier` ESLint rule during `next build`.
+* text=auto eol=lf
+
+# Binary files must never be normalized.
+*.png binary
+*.ico binary
+*.pem binary
