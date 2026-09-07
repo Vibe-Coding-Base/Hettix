@@ -69,13 +69,13 @@ build the Go binary:
 
 ```sh
 make build-admin
-go build ./cmd/hetty
+go build ./cmd/hettix
 ```
 
 To install the binary into your `$PATH`, run:
 
 ```sh
-go install ./cmd/hetty
+go install ./cmd/hettix
 ```
 
 #### Docker

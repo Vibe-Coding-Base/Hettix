@@ -1,7 +1,7 @@
 *.vscode
 /dist
-/hetty
-/hetty.exe
-/cmd/hetty/admin
+/hettix
+/hettix.exe
+/cmd/hettix/admin
 *.pem
 *.test

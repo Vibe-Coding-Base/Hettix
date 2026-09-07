@@ -8,8 +8,8 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/dstotijn/hetty/pkg/filter"
-	"github.com/dstotijn/hetty/pkg/scope"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 )
 
 var reqLogSearchKeyFns = map[string]func(rl RequestLog) string{

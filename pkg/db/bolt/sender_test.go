@@ -12,10 +12,10 @@ import (
 	"github.com/oklog/ulid"
 	"go.etcd.io/bbolt"
 
-	"github.com/dstotijn/hetty/pkg/db/bolt"
-	"github.com/dstotijn/hetty/pkg/proj"
-	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/db/bolt"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
 )
 
 var exampleURL = func() *url.URL {

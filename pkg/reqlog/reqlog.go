@@ -12,10 +12,10 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/dstotijn/hetty/pkg/filter"
-	"github.com/dstotijn/hetty/pkg/log"
-	"github.com/dstotijn/hetty/pkg/proxy"
-	"github.com/dstotijn/hetty/pkg/scope"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/log"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 )
 
 type contextKey int

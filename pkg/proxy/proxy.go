@@ -16,7 +16,7 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/dstotijn/hetty/pkg/log"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/log"
 )
 
 //nolint:gosec

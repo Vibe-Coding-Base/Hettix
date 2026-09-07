@@ -3,9 +3,9 @@ package sender_test
 import (
 	"testing"
 
-	"github.com/dstotijn/hetty/pkg/filter"
-	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
 )
 
 func TestRequestLogMatch(t *testing.T) {

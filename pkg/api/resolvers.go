@@ -18,13 +18,13 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
-	"github.com/dstotijn/hetty/pkg/filter"
-	"github.com/dstotijn/hetty/pkg/proj"
-	"github.com/dstotijn/hetty/pkg/proxy"
-	"github.com/dstotijn/hetty/pkg/proxy/intercept"
-	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/scope"
-	"github.com/dstotijn/hetty/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
 )
 
 var httpProtocolMap = map[string]HTTPProtocol{

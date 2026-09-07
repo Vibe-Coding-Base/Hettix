@@ -5,7 +5,7 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/dstotijn/hetty/pkg/scope"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 )
 
 type Repository interface {

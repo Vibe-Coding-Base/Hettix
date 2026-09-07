@@ -18,13 +18,13 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY pkg ./pkg
-COPY --from=node-builder /app/dist ./cmd/hetty/admin
-RUN go build -ldflags="-s -w -X main.version=${HETTY_VERSION}" ./cmd/hetty
+COPY --from=node-builder /app/dist ./cmd/hettix/admin
+RUN go build -ldflags="-s -w -X main.version=${HETTY_VERSION}" ./cmd/hettix
 
 FROM alpine:${ALPINE_VERSION}
 WORKDIR /app
-COPY --from=go-builder /app/hetty .
+COPY --from=go-builder /app/hettix .
 
-ENTRYPOINT ["./hetty"]
+ENTRYPOINT ["./hettix"]
 
 EXPOSE 8080

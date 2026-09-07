@@ -3,19 +3,19 @@ export NEXT_TELEMETRY_DISABLED = 1
 
 .PHONY: build
 build: build-admin
-	go build ./cmd/hetty
+	go build ./cmd/hettix
 
 .PHONY: build-admin
 build-admin:
 	cd admin && \
 	yarn install --frozen-lockfile && \
 	yarn run export && \
-	rm -rf ../cmd/hetty/admin && \
-	cp -R dist ../cmd/hetty/admin
+	rm -rf ../cmd/hettix/admin && \
+	cp -R dist ../cmd/hettix/admin
 
 .PHONY: clean
 clean:
-	rm -f hetty
-	rm -rf ./cmd/hetty/admin
+	rm -f hettix
+	rm -rf ./cmd/hettix/admin
 	rm -rf ./admin/dist
 	rm -rf ./admin/.next

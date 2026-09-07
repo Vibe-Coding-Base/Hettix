@@ -9,7 +9,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/dstotijn/hetty/pkg/log"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/log"
 )
 
 func main() {

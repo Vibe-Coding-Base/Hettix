@@ -11,11 +11,11 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/dstotijn/hetty/pkg/filter"
-	"github.com/dstotijn/hetty/pkg/proxy/intercept"
-	"github.com/dstotijn/hetty/pkg/reqlog"
-	"github.com/dstotijn/hetty/pkg/scope"
-	"github.com/dstotijn/hetty/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/filter"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
 )
 
 //nolint:gosec
