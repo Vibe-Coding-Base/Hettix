@@ -12,7 +12,6 @@ require (
 	github.com/peterbourgon/ff/v3 v3.1.2
 	github.com/smallstep/truststore v0.11.0
 	github.com/vektah/gqlparser/v2 v2.2.0
-	go.etcd.io/bbolt v1.4.0-beta.0
 	go.uber.org/zap v1.21.0
 	modernc.org/sqlite v1.58.0
 )
@@ -39,6 +38,7 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
+	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/urfave/cli/v2 v2.1.1 // indirect
 	github.com/vektah/dataloaden v0.2.1-0.20190515034641-a19b9a6e7c9e // indirect
 	go.uber.org/atomic v1.7.0 // indirect

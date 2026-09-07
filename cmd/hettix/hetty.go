@@ -17,12 +17,11 @@ import (
 
 	"github.com/chromedp/chromedp"
 	"github.com/peterbourgon/ff/v3/ffcli"
-	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
 	"github.com/Vibe-Coding-Base/Hettix/pkg/api"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/chrome"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/db/bolt"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/db/sqlite"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
@@ -151,21 +150,17 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		cmd.config.logger.Fatal("Failed to load or create CA key pair.", zap.Error(err))
 	}
 
-	dbLogger := cmd.config.logger.Named("boltdb").Sugar()
-	boltOpts := *bbolt.DefaultOptions
-	boltOpts.Logger = &bolt.Logger{SugaredLogger: dbLogger}
-
-	boltDB, err := bolt.OpenDatabase(dbPath, &boltOpts)
+	db, err := sqlite.OpenDatabase(dbPath)
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to open database.", zap.Error(err))
 	}
-	defer func() { _ = boltDB.Close() }()
+	defer func() { _ = db.Close() }()
 
 	scope := &scope.Scope{}
 
 	reqLogService := reqlog.NewService(reqlog.Config{
 		Scope:      scope,
-		Repository: boltDB,
+		Repository: db,
 		Logger:     cmd.config.logger.Named("reqlog").Sugar(),
 	})
 
@@ -174,12 +169,12 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 	})
 
 	senderService := sender.NewService(sender.Config{
-		Repository:    boltDB,
+		Repository:    db,
 		ReqLogService: reqLogService,
 	})
 
 	projService, err := proj.NewService(proj.Config{
-		Repository:       boltDB,
+		Repository:       db,
 		InterceptService: interceptService,
 		ReqLogService:    reqLogService,
 		SenderService:    senderService,

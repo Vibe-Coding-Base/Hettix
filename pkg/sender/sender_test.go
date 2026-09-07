@@ -8,15 +8,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/oklog/ulid"
-	"go.etcd.io/bbolt"
 
-	"github.com/Vibe-Coding-Base/Hettix/pkg/db/bolt"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/db/sqlite"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
@@ -55,16 +55,9 @@ func TestStoreRequest(t *testing.T) {
 	t.Run("with active project", func(t *testing.T) {
 		t.Parallel()
 
-		path := t.TempDir() + "bolt.db"
-		boltDB, err := bbolt.Open(path, 0o600, nil)
+		db, err := sqlite.OpenDatabase(filepath.Join(t.TempDir(), "hettix.db"))
 		if err != nil {
-			t.Fatalf("failed to open bolt database: %v", err)
-		}
-		defer boltDB.Close()
-
-		db, err := bolt.DatabaseFromBoltDB(boltDB)
-		if err != nil {
-			t.Fatalf("failed to create database: %v", err)
+			t.Fatalf("failed to open database: %v", err)
 		}
 		defer db.Close()
 
@@ -149,16 +142,9 @@ func TestCloneFromRequestLog(t *testing.T) {
 	t.Run("with active project", func(t *testing.T) {
 		t.Parallel()
 
-		path := t.TempDir() + "bolt.db"
-		boltDB, err := bbolt.Open(path, 0o600, nil)
+		db, err := sqlite.OpenDatabase(filepath.Join(t.TempDir(), "hettix.db"))
 		if err != nil {
-			t.Fatalf("failed to open bolt database: %v", err)
-		}
-		defer boltDB.Close()
-
-		db, err := bolt.DatabaseFromBoltDB(boltDB)
-		if err != nil {
-			t.Fatalf("failed to create database: %v", err)
+			t.Fatalf("failed to open database: %v", err)
 		}
 		defer db.Close()
 
@@ -223,16 +209,9 @@ func TestCloneFromRequestLog(t *testing.T) {
 func TestSendRequest(t *testing.T) {
 	t.Parallel()
 
-	path := t.TempDir() + "bolt.db"
-	boltDB, err := bbolt.Open(path, 0o600, nil)
+	db, err := sqlite.OpenDatabase(filepath.Join(t.TempDir(), "hettix.db"))
 	if err != nil {
-		t.Fatalf("failed to open bolt database: %v", err)
-	}
-	defer boltDB.Close()
-
-	db, err := bolt.DatabaseFromBoltDB(boltDB)
-	if err != nil {
-		t.Fatalf("failed to create database: %v", err)
+		t.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()
 
