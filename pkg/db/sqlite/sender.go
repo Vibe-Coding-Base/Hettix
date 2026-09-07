@@ -9,10 +9,27 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
 )
+
+// senderRequestColumns maps HTTPQL fields to sender_requests columns for query
+// push-down. Fields absent here are refined by the in-memory evaluator.
+var senderRequestColumns = map[string]httpql.SQLColumn{
+	"req.id":         {Expr: "id", Kind: httpql.ColumnString},
+	"req.method":     {Expr: "method", Kind: httpql.ColumnString},
+	"req.host":       {Expr: "host", Kind: httpql.ColumnString},
+	"req.path":       {Expr: "path", Kind: httpql.ColumnString},
+	"req.url":        {Expr: "url", Kind: httpql.ColumnString},
+	"req.proto":      {Expr: "proto", Kind: httpql.ColumnString},
+	"req.created_at": {Expr: "created_at", Kind: httpql.ColumnTime},
+	"resp.code":      {Expr: "res_status_code", Kind: httpql.ColumnInt},
+	"resp.proto":     {Expr: "res_proto", Kind: httpql.ColumnString},
+	"resp.reason":    {Expr: "res_status_reason", Kind: httpql.ColumnString},
+	"resp.roundtrip": {Expr: "res_roundtrip_ms", Kind: httpql.ColumnInt},
+}
 
 func (d *Database) StoreSenderRequest(ctx context.Context, req sender.Request) error {
 	headers, err := marshalHeader(req.Header)
@@ -94,7 +111,10 @@ func (d *Database) FindSenderRequests(
 		return nil, sender.ErrProjectIDMustBeSet
 	}
 
-	rows, err := d.db.QueryContext(ctx, senderSelect+` WHERE project_id = ? ORDER BY id DESC`, filter.ProjectID.String())
+	where, whereArgs := httpql.CompileSQL(filter.SearchExpr, senderRequestColumns)
+	args := append([]any{filter.ProjectID.String()}, whereArgs...)
+
+	rows, err := d.db.QueryContext(ctx, senderSelect+` WHERE project_id = ? AND `+where+` ORDER BY id DESC`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: failed to query sender requests: %w", err)
 	}

@@ -6,12 +6,14 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/oklog/ulid"
 
 	"github.com/Vibe-Coding-Base/Hettix/pkg/db/sqlite"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
@@ -184,5 +186,93 @@ func TestSenderRequestRoundTrip(t *testing.T) {
 	reqs, _ = db.FindSenderRequests(ctx, sender.FindRequestsFilter{ProjectID: projectID}, nil)
 	if len(reqs) != 0 {
 		t.Fatalf("expected 0 after delete, got %d", len(reqs))
+	}
+}
+
+func TestRequestLogPushdownMatchesInMemory(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+	projectID := newULID(t)
+
+	type row struct {
+		method, rawURL, body string
+		code                 int
+	}
+	rows := []row{
+		{"GET", "https://api.example.com/v1/users", "list", 200},
+		{"POST", "https://api.example.com/v1/login", "password=secret", 401},
+		{"GET", "https://web.example.com/home", "home", 200},
+		{"DELETE", "http://api.example.com/v1/users/1", "", 500},
+		{"GET", "https://api.other.com/health", "ok", 204},
+	}
+
+	for _, r := range rows {
+		u, _ := url.Parse(r.rawURL)
+		id := newULID(t)
+		if err := db.StoreRequestLog(ctx, reqlog.RequestLog{
+			ID: id, ProjectID: projectID, Method: r.method, URL: u, Proto: "HTTP/1.1",
+			Header: http.Header{"X-Test": {"v"}}, Body: []byte(r.body),
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.StoreResponseLog(ctx, projectID, id, reqlog.ResponseLog{
+			Proto: "HTTP/1.1", StatusCode: r.code, Status: strconv.Itoa(r.code),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Reference set: everything, filtered purely in memory.
+	all, err := db.FindRequestLogs(ctx, reqlog.FindRequestsFilter{ProjectID: projectID}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	queries := []string{
+		`req.method eq "GET"`,
+		`req.method ne "GET"`,
+		`resp.code gte 400`,
+		`resp.code eq 200`,
+		`req.host eq "api.example.com"`,
+		`req.host cont "example"`, // not pushed
+		`req.path cont "users"`,   // not pushed
+		`req.body cont "secret"`,  // not pushed
+		`req.method eq "GET" AND resp.code eq 200`,
+		`req.method eq "POST" OR resp.code eq 500`,
+		`NOT req.method eq "GET"`,
+		`req.url regex "v1/.*"`, // not pushed
+		`req.tls eq true`,       // not a column
+	}
+
+	for _, q := range queries {
+		expr, err := httpql.Parse(q)
+		if err != nil {
+			t.Fatalf("parse %q: %v", q, err)
+		}
+
+		want := map[string]bool{}
+		for _, rl := range all {
+			ok, err := rl.Matches(expr)
+			if err != nil {
+				t.Fatalf("in-memory match %q: %v", q, err)
+			}
+			if ok {
+				want[rl.ID.String()] = true
+			}
+		}
+
+		got, err := db.FindRequestLogs(ctx, reqlog.FindRequestsFilter{ProjectID: projectID, SearchExpr: expr}, nil)
+		if err != nil {
+			t.Fatalf("find %q: %v", q, err)
+		}
+
+		if len(got) != len(want) {
+			t.Fatalf("query %q: got %d rows, want %d", q, len(got), len(want))
+		}
+		for _, rl := range got {
+			if !want[rl.ID.String()] {
+				t.Fatalf("query %q: pushdown returned a row the in-memory filter rejects (%v)", q, rl.ID)
+			}
+		}
 	}
 }

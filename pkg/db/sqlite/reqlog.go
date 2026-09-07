@@ -9,9 +9,27 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 )
+
+// requestLogColumns maps HTTPQL fields to the columns of the request/response
+// join used by FindRequestLogs, enabling query push-down for exact-comparison
+// clauses. Fields absent here are refined by the in-memory evaluator.
+var requestLogColumns = map[string]httpql.SQLColumn{
+	"req.id":         {Expr: "r.id", Kind: httpql.ColumnString},
+	"req.method":     {Expr: "r.method", Kind: httpql.ColumnString},
+	"req.host":       {Expr: "r.host", Kind: httpql.ColumnString},
+	"req.path":       {Expr: "r.path", Kind: httpql.ColumnString},
+	"req.url":        {Expr: "r.url", Kind: httpql.ColumnString},
+	"req.proto":      {Expr: "r.proto", Kind: httpql.ColumnString},
+	"req.created_at": {Expr: "r.created_at", Kind: httpql.ColumnTime},
+	"resp.code":      {Expr: "resp.status_code", Kind: httpql.ColumnInt},
+	"resp.proto":     {Expr: "resp.proto", Kind: httpql.ColumnString},
+	"resp.reason":    {Expr: "resp.status_reason", Kind: httpql.ColumnString},
+	"resp.roundtrip": {Expr: "resp.roundtrip_ms", Kind: httpql.ColumnInt},
+}
 
 func (d *Database) StoreRequestLog(ctx context.Context, reqLog reqlog.RequestLog) error {
 	headers, err := marshalHeader(reqLog.Header)
@@ -89,8 +107,11 @@ func (d *Database) FindRequestLogs(
 		return nil, reqlog.ErrProjectIDMustBeSet
 	}
 
-	rows, err := d.db.QueryContext(ctx, requestLogSelect+` WHERE r.project_id = ? ORDER BY r.id DESC`,
-		filter.ProjectID.String())
+	where, whereArgs := httpql.CompileSQL(filter.SearchExpr, requestLogColumns)
+	args := append([]any{filter.ProjectID.String()}, whereArgs...)
+
+	rows, err := d.db.QueryContext(ctx,
+		requestLogSelect+` WHERE r.project_id = ? AND `+where+` ORDER BY r.id DESC`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: failed to query request logs: %w", err)
 	}
