@@ -1,0 +1,11 @@
+mutation RunAgent($input: RunAgentInput!) {
+  runAgent(input: $input) {
+    reply
+    actions {
+      tool
+      input
+      output
+      denied
+    }
+  }
+}

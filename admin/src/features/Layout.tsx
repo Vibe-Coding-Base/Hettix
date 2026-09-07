@@ -1,4 +1,5 @@
 import AltRouteIcon from "@mui/icons-material/AltRoute";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import FolderIcon from "@mui/icons-material/Folder";
@@ -42,6 +43,7 @@ export enum Page {
   Sender,
   Scope,
   Settings,
+  Assistant,
 }
 
 const drawerWidth = 240;
@@ -272,6 +274,20 @@ export function Layout({ title, page, children }: Props): JSX.Element {
               </ListItemIcon>
             </Tooltip>
             <ListItemText primary="Scope" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/assistant"
+            key="assistant"
+            disabled={!activeProject}
+            selected={page === Page.Assistant}
+          >
+            <Tooltip title="Assistant">
+              <ListItemIcon>
+                <AutoAwesomeIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Assistant" />
           </ListItemButton>
           <ListItemButton component={RouterLink} to="/projects" key="projects" selected={page === Page.Projects}>
             <Tooltip title="Projects">

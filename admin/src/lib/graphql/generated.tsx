@@ -18,6 +18,26 @@ export type Scalars = {
   URL: any;
 };
 
+export type AgentAction = {
+  __typename?: 'AgentAction';
+  denied: Scalars['Boolean'];
+  input: Scalars['String'];
+  output: Scalars['String'];
+  tool: Scalars['String'];
+};
+
+export enum AgentMode {
+  Ask = 'ASK',
+  Assist = 'ASSIST',
+  Auto = 'AUTO'
+}
+
+export type AgentReply = {
+  __typename?: 'AgentReply';
+  actions: Array<AgentAction>;
+  reply: Scalars['String'];
+};
+
 export type CancelRequestResult = {
   __typename?: 'CancelRequestResult';
   success: Scalars['Boolean'];
@@ -184,6 +204,7 @@ export type Mutation = {
   modifyRequest: ModifyRequestResult;
   modifyResponse: ModifyResponseResult;
   openProject?: Maybe<Project>;
+  runAgent: AgentReply;
   sendRequest: SenderRequest;
   setHttpRequestLogFilter?: Maybe<HttpRequestLogFilter>;
   setScope: Array<ScopeRule>;
@@ -234,6 +255,11 @@ export type MutationModifyResponseArgs = {
 
 export type MutationOpenProjectArgs = {
   id: Scalars['ID'];
+};
+
+
+export type MutationRunAgentArgs = {
+  input: RunAgentInput;
 };
 
 
@@ -294,6 +320,12 @@ export type QueryHttpRequestLogArgs = {
 };
 
 
+export type QueryHttpRequestLogsArgs = {
+  limit?: InputMaybe<Scalars['Int']>;
+  offset?: InputMaybe<Scalars['Int']>;
+};
+
+
 export type QueryInterceptedRequestArgs = {
   id: Scalars['ID'];
 };
@@ -301,6 +333,17 @@ export type QueryInterceptedRequestArgs = {
 
 export type QuerySenderRequestArgs = {
   id: Scalars['ID'];
+};
+
+
+export type QuerySenderRequestsArgs = {
+  limit?: InputMaybe<Scalars['Int']>;
+  offset?: InputMaybe<Scalars['Int']>;
+};
+
+export type RunAgentInput = {
+  message: Scalars['String'];
+  mode?: InputMaybe<AgentMode>;
 };
 
 export type ScopeHeader = {
@@ -366,6 +409,13 @@ export type UpdateInterceptSettingsInput = {
   responseFilter?: InputMaybe<Scalars['String']>;
   responsesEnabled: Scalars['Boolean'];
 };
+
+export type RunAgentMutationVariables = Exact<{
+  input: RunAgentInput;
+}>;
+
+
+export type RunAgentMutation = { __typename?: 'Mutation', runAgent: { __typename?: 'AgentReply', reply: string, actions: Array<{ __typename?: 'AgentAction', tool: string, input: string, output: string, denied: boolean }> } };
 
 export type CancelRequestMutationVariables = Exact<{
   id: Scalars['ID'];
@@ -525,6 +575,45 @@ export type GetInterceptedRequestsQueryVariables = Exact<{ [key: string]: never;
 export type GetInterceptedRequestsQuery = { __typename?: 'Query', interceptedRequests: Array<{ __typename?: 'HttpRequest', id: string, url: any, method: HttpMethod, response?: { __typename?: 'HttpResponse', statusCode: number, statusReason: string } | null }> };
 
 
+export const RunAgentDocument = gql`
+    mutation RunAgent($input: RunAgentInput!) {
+  runAgent(input: $input) {
+    reply
+    actions {
+      tool
+      input
+      output
+      denied
+    }
+  }
+}
+    `;
+export type RunAgentMutationFn = Apollo.MutationFunction<RunAgentMutation, RunAgentMutationVariables>;
+
+/**
+ * __useRunAgentMutation__
+ *
+ * To run a mutation, you first call `useRunAgentMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useRunAgentMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [runAgentMutation, { data, loading, error }] = useRunAgentMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useRunAgentMutation(baseOptions?: Apollo.MutationHookOptions<RunAgentMutation, RunAgentMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<RunAgentMutation, RunAgentMutationVariables>(RunAgentDocument, options);
+      }
+export type RunAgentMutationHookResult = ReturnType<typeof useRunAgentMutation>;
+export type RunAgentMutationResult = Apollo.MutationResult<RunAgentMutation>;
+export type RunAgentMutationOptions = Apollo.BaseMutationOptions<RunAgentMutation, RunAgentMutationVariables>;
 export const CancelRequestDocument = gql`
     mutation CancelRequest($id: ID!) {
   cancelRequest(id: $id) {

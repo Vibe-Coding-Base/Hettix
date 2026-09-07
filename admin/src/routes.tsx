@@ -1,5 +1,6 @@
 import { RouteObject } from "react-router-dom";
 
+import Assistant from "pages/assistant/index";
 import Home from "pages/index";
 import Projects from "pages/projects/index";
 import Proxy from "pages/proxy/index";
@@ -18,4 +19,5 @@ export const routes: RouteObject[] = [
   { path: "/scope", element: <Scope /> },
   { path: "/sender", element: <Sender /> },
   { path: "/settings", element: <Settings /> },
+  { path: "/assistant", element: <Assistant /> },
 ];
