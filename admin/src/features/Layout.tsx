@@ -116,6 +116,13 @@ const ListItemButton = styled(MuiListItemButton)<ListItemButtonProps>(({ theme }
     px: 1,
   },
   "&.MuiListItemButton-root": {
+    // The nav items are wrapped in Next.js <Link> anchors; without an explicit
+    // color the text inherits the browser's default link color (purple once
+    // visited), which is illegible on the dark drawer.
+    color: theme.palette.text.primary,
+    "& .MuiListItemText-root": {
+      color: theme.palette.text.primary,
+    },
     "&.Mui-selected": {
       backgroundColor: theme.palette.primary.main,
       "& .MuiListItemIcon-root": {
