@@ -103,6 +103,16 @@ func (svc *Service) FindRequests(ctx context.Context, offset, limit *int) ([]Req
 	return svc.repo.FindRequestLogs(ctx, f, svc.scope)
 }
 
+// FindByQuery runs an ad-hoc HTTPQL query against the active project's traffic,
+// independent of the persisted search filter. It is used by the AI agent.
+func (svc *Service) FindByQuery(ctx context.Context, expr httpql.Expression, limit int) ([]RequestLog, error) {
+	return svc.repo.FindRequestLogs(ctx, FindRequestsFilter{
+		ProjectID:  svc.activeProjectID,
+		SearchExpr: expr,
+		Limit:      limit,
+	}, svc.scope)
+}
+
 func (svc *Service) FindRequestLogByID(ctx context.Context, id ulid.ULID) (RequestLog, error) {
 	return svc.repo.FindRequestLogByID(ctx, svc.activeProjectID, id)
 }

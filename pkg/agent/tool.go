@@ -12,6 +12,10 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/llm"
 )
 
+// Handler runs a tool with JSON arguments and returns a textual result for the
+// model.
+type Handler func(ctx context.Context, args json.RawMessage) (string, error)
+
 // Tool is a capability the agent can invoke on the model's behalf.
 type Tool struct {
 	Name        string
@@ -22,7 +26,7 @@ type Tool struct {
 	// the operating mode.
 	Mutating bool
 	// Handler runs the tool and returns a textual result for the model.
-	Handler func(ctx context.Context, args json.RawMessage) (string, error)
+	Handler Handler
 }
 
 // Registry holds the tools available to an agent.
