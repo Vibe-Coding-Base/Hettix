@@ -64,7 +64,7 @@ func TestRequestModifier(t *testing.T) {
 
 		// Wait shortly, to allow the req modifier goroutine to add `req` to the
 		// array of intercepted reqs.
-		time.Sleep(10 * time.Millisecond)
+		waitForItem(t, svc, reqID)
 		cancel()
 
 		modReq := req.Clone(req.Context())
@@ -111,7 +111,7 @@ func TestRequestModifier(t *testing.T) {
 
 		// Wait shortly, to allow the req modifier goroutine to add `req` to the
 		// array of intercepted reqs.
-		time.Sleep(10 * time.Millisecond)
+		waitForItem(t, svc, reqID)
 
 		err := svc.ModifyRequest(reqID, modReq, nil)
 		if err != nil {
@@ -187,7 +187,7 @@ func TestResponseModifier(t *testing.T) {
 
 		// Wait shortly, to allow the res modifier goroutine to add `res` to the
 		// array of intercepted responses.
-		time.Sleep(10 * time.Millisecond)
+		waitForItem(t, svc, reqID)
 		cancel()
 
 		modRes := *res
@@ -250,7 +250,7 @@ func TestResponseModifier(t *testing.T) {
 
 		// Wait shortly, to allow the res modifier goroutine to add `req` to the
 		// array of intercepted reqs.
-		time.Sleep(10 * time.Millisecond)
+		waitForItem(t, svc, reqID)
 
 		err := svc.ModifyResponse(reqID, &modRes)
 		if err != nil {
@@ -267,4 +267,20 @@ func TestResponseModifier(t *testing.T) {
 			t.Fatalf("incorrect modified request header value (expected: %v, got: %v)", exp, gotHeader)
 		}
 	})
+}
+
+// waitForItem blocks until the request/response modifier goroutine has
+// registered the intercept item, replacing a fixed sleep that raced under load.
+func waitForItem(t *testing.T, svc *intercept.Service, id ulid.ULID) {
+	t.Helper()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := svc.ItemByID(id); err == nil {
+			return
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	t.Fatal("intercept item was not registered in time")
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/wsproxy"
 )
 
 var version = "0.0.0"
@@ -188,10 +189,17 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		cmd.config.logger.Fatal("Failed to create new projects service.", zap.Error(err))
 	}
 
+	wsLogger := cmd.config.logger.Named("websocket").Sugar()
 	proxy, err := proxy.NewProxy(proxy.Config{
 		CACert: caCert,
 		CAKey:  caKey,
 		Logger: cmd.config.logger.Named("proxy").Sugar(),
+		WebSocketCapture: func(m wsproxy.Message) {
+			wsLogger.Infow("WebSocket message.",
+				"direction", m.Direction.String(),
+				"opcode", uint8(m.Opcode),
+				"bytes", len(m.Payload))
+		},
 	})
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to create new proxy.", zap.Error(err))

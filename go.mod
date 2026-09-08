@@ -7,7 +7,9 @@ toolchain go1.26.2
 require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/chromedp/chromedp v0.7.8
+	github.com/gobwas/ws v1.1.0
 	github.com/google/go-cmp v0.6.0
+	github.com/gorilla/websocket v1.4.2
 	github.com/oklog/ulid v1.3.1
 	github.com/peterbourgon/ff/v3 v3.1.2
 	github.com/smallstep/truststore v0.11.0
@@ -24,9 +26,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
-	github.com/gobwas/ws v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect

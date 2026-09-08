@@ -17,6 +17,7 @@ import (
 	"github.com/oklog/ulid"
 
 	"github.com/Vibe-Coding-Base/Hettix/pkg/log"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/wsproxy"
 )
 
 //nolint:gosec
@@ -36,12 +37,17 @@ type Proxy struct {
 	// TODO: Add mutex for modifier funcs.
 	reqModifiers []RequestModifyMiddleware
 	resModifiers []ResponseModifyMiddleware
+
+	wsCapture wsproxy.CaptureFunc
 }
 
 type Config struct {
 	CACert *x509.Certificate
 	CAKey  crypto.PrivateKey
 	Logger log.Logger
+
+	// WebSocketCapture, if set, receives every relayed WebSocket message.
+	WebSocketCapture wsproxy.CaptureFunc
 }
 
 // NewProxy returns a new Proxy.
@@ -56,6 +62,7 @@ func NewProxy(cfg Config) (*Proxy, error) {
 		reqModifiers: make([]RequestModifyMiddleware, 0),
 		resModifiers: make([]ResponseModifyMiddleware, 0),
 		logger:       cfg.Logger,
+		wsCapture:    cfg.WebSocketCapture,
 	}
 
 	if p.logger == nil {
@@ -92,6 +99,13 @@ func NewProxy(cfg Config) (*Proxy, error) {
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodConnect {
 		p.handleConnect(w)
+		return
+	}
+
+	if wsproxy.IsUpgrade(r) {
+		if err := wsproxy.Handler(w, r, p.wsCapture); err != nil {
+			p.logger.Errorw("WebSocket proxying failed.", "error", err)
+		}
 		return
 	}
 
