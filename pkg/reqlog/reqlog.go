@@ -121,6 +121,15 @@ func (svc *Service) ClearRequests(ctx context.Context, projectID ulid.ULID) erro
 	return svc.repo.ClearRequestLogs(ctx, projectID)
 }
 
+// Sitemap returns the host+path endpoints seen in the active project's traffic.
+func (svc *Service) Sitemap(ctx context.Context) ([]SitemapEntry, error) {
+	if svc.activeProjectID.Compare(ulid.ULID{}) == 0 {
+		return nil, ErrProjectIDMustBeSet
+	}
+
+	return svc.repo.Sitemap(ctx, svc.activeProjectID)
+}
+
 func (svc *Service) storeResponse(ctx context.Context, reqLogID ulid.ULID, res *http.Response, roundTrip time.Duration) error {
 	resLog, err := ParseHTTPResponse(res)
 	if err != nil {

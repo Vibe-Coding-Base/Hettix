@@ -11,6 +11,7 @@ import ProxyLogs from "pages/proxy/logs/index";
 import Scope from "pages/scope/index";
 import Sender from "pages/sender/index";
 import Settings from "pages/settings/index";
+import Sitemap from "pages/sitemap/index";
 import WebSocket from "pages/websocket/index";
 
 export const routes: RouteObject[] = [
@@ -26,4 +27,5 @@ export const routes: RouteObject[] = [
   { path: "/match-replace", element: <MatchReplace /> },
   { path: "/websocket", element: <WebSocket /> },
   { path: "/intruder", element: <Intruder /> },
+  { path: "/sitemap", element: <Sitemap /> },
 ];

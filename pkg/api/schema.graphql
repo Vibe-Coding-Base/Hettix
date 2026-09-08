@@ -284,6 +284,14 @@ input StartIntruderAttackInput {
   payloads: [String!]!
 }
 
+type SitemapEntry {
+  host: String!
+  path: String!
+  methods: [String!]!
+  statusCodes: [Int!]!
+  count: Int!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -304,6 +312,7 @@ type Query {
   intruderAttacks: [IntruderAttack!]!
   intruderAttack(id: ID!): IntruderAttack
   intruderResults(attackId: ID!): [IntruderResult!]!
+  sitemap: [SitemapEntry!]!
 }
 
 enum MatchReplacePhase {

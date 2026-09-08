@@ -246,6 +246,7 @@ type ComplexityRoot struct {
 		Scope                        func(childComplexity int) int
 		SenderRequest                func(childComplexity int, id ulid.ULID) int
 		SenderRequests               func(childComplexity int, offset *int, limit *int) int
+		Sitemap                      func(childComplexity int) int
 		WebSocketConnection          func(childComplexity int, id ulid.ULID) int
 		WebSocketConnections         func(childComplexity int, searchExpression *string) int
 		WebSocketInterceptSettings   func(childComplexity int) int
@@ -279,6 +280,14 @@ type ComplexityRoot struct {
 	SenderRequestFilter struct {
 		OnlyInScope      func(childComplexity int) int
 		SearchExpression func(childComplexity int) int
+	}
+
+	SitemapEntry struct {
+		Count       func(childComplexity int) int
+		Host        func(childComplexity int) int
+		Methods     func(childComplexity int) int
+		Path        func(childComplexity int) int
+		StatusCodes func(childComplexity int) int
 	}
 
 	WebSocketConnection struct {
@@ -350,6 +359,7 @@ type QueryResolver interface {
 	IntruderAttacks(ctx context.Context) ([]IntruderAttack, error)
 	IntruderAttack(ctx context.Context, id ulid.ULID) (*IntruderAttack, error)
 	IntruderResults(ctx context.Context, attackID ulid.ULID) ([]IntruderResult, error)
+	Sitemap(ctx context.Context) ([]SitemapEntry, error)
 }
 
 type executableSchema struct {
@@ -1361,6 +1371,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.SenderRequests(childComplexity, args["offset"].(*int), args["limit"].(*int)), true
 
+	case "Query.sitemap":
+		if e.complexity.Query.Sitemap == nil {
+			break
+		}
+
+		return e.complexity.Query.Sitemap(childComplexity), true
+
 	case "Query.webSocketConnection":
 		if e.complexity.Query.WebSocketConnection == nil {
 			break
@@ -1522,6 +1539,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SenderRequestFilter.SearchExpression(childComplexity), true
+
+	case "SitemapEntry.count":
+		if e.complexity.SitemapEntry.Count == nil {
+			break
+		}
+
+		return e.complexity.SitemapEntry.Count(childComplexity), true
+
+	case "SitemapEntry.host":
+		if e.complexity.SitemapEntry.Host == nil {
+			break
+		}
+
+		return e.complexity.SitemapEntry.Host(childComplexity), true
+
+	case "SitemapEntry.methods":
+		if e.complexity.SitemapEntry.Methods == nil {
+			break
+		}
+
+		return e.complexity.SitemapEntry.Methods(childComplexity), true
+
+	case "SitemapEntry.path":
+		if e.complexity.SitemapEntry.Path == nil {
+			break
+		}
+
+		return e.complexity.SitemapEntry.Path(childComplexity), true
+
+	case "SitemapEntry.statusCodes":
+		if e.complexity.SitemapEntry.StatusCodes == nil {
+			break
+		}
+
+		return e.complexity.SitemapEntry.StatusCodes(childComplexity), true
 
 	case "WebSocketConnection.closedAt":
 		if e.complexity.WebSocketConnection.ClosedAt == nil {
@@ -1964,6 +2016,14 @@ input StartIntruderAttackInput {
   payloads: [String!]!
 }
 
+type SitemapEntry {
+  host: String!
+  path: String!
+  methods: [String!]!
+  statusCodes: [Int!]!
+  count: Int!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -1984,6 +2044,7 @@ type Query {
   intruderAttacks: [IntruderAttack!]!
   intruderAttack(id: ID!): IntruderAttack
   intruderResults(attackId: ID!): [IntruderResult!]!
+  sitemap: [SitemapEntry!]!
 }
 
 enum MatchReplacePhase {
@@ -7195,6 +7256,41 @@ func (ec *executionContext) _Query_intruderResults(ctx context.Context, field gr
 	return ec.marshalNIntruderResult2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderResultᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_sitemap(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Sitemap(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]SitemapEntry)
+	fc.Result = res
+	return ec.marshalNSitemapEntry2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSitemapEntryᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -7829,6 +7925,181 @@ func (ec *executionContext) _SenderRequestFilter_searchExpression(ctx context.Co
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SitemapEntry_host(ctx context.Context, field graphql.CollectedField, obj *SitemapEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SitemapEntry",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Host, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SitemapEntry_path(ctx context.Context, field graphql.CollectedField, obj *SitemapEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SitemapEntry",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Path, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SitemapEntry_methods(ctx context.Context, field graphql.CollectedField, obj *SitemapEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SitemapEntry",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Methods, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SitemapEntry_statusCodes(ctx context.Context, field graphql.CollectedField, obj *SitemapEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SitemapEntry",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StatusCodes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SitemapEntry_count(ctx context.Context, field graphql.CollectedField, obj *SitemapEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SitemapEntry",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _WebSocketConnection_id(ctx context.Context, field graphql.CollectedField, obj *WebSocketConnection) (ret graphql.Marshaler) {
@@ -11413,6 +11684,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "sitemap":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_sitemap(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -11560,6 +11845,53 @@ func (ec *executionContext) _SenderRequestFilter(ctx context.Context, sel ast.Se
 			}
 		case "searchExpression":
 			out.Values[i] = ec._SenderRequestFilter_searchExpression(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var sitemapEntryImplementors = []string{"SitemapEntry"}
+
+func (ec *executionContext) _SitemapEntry(ctx context.Context, sel ast.SelectionSet, obj *SitemapEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sitemapEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SitemapEntry")
+		case "host":
+			out.Values[i] = ec._SitemapEntry_host(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "path":
+			out.Values[i] = ec._SitemapEntry_path(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "methods":
+			out.Values[i] = ec._SitemapEntry_methods(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "statusCodes":
+			out.Values[i] = ec._SitemapEntry_statusCodes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "count":
+			out.Values[i] = ec._SitemapEntry_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -12320,6 +12652,42 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
+func (ec *executionContext) unmarshalNInt2ᚕintᚄ(ctx context.Context, v interface{}) ([]int, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]int, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInt2int(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNInt2ᚕintᚄ(ctx context.Context, sel ast.SelectionSet, v []int) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNInt2int(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNInterceptSettings2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐInterceptSettings(ctx context.Context, sel ast.SelectionSet, v InterceptSettings) graphql.Marshaler {
 	return ec._InterceptSettings(ctx, sel, &v)
 }
@@ -12842,6 +13210,54 @@ func (ec *executionContext) marshalNSenderRequest2ᚖgithubᚗcomᚋVibeᚑCodin
 func (ec *executionContext) unmarshalNSenderRequestInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSenderRequestInput(ctx context.Context, v interface{}) (SenderRequestInput, error) {
 	res, err := ec.unmarshalInputSenderRequestInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSitemapEntry2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSitemapEntry(ctx context.Context, sel ast.SelectionSet, v SitemapEntry) graphql.Marshaler {
+	return ec._SitemapEntry(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSitemapEntry2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSitemapEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []SitemapEntry) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNSitemapEntry2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSitemapEntry(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNStartIntruderAttackInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐStartIntruderAttackInput(ctx context.Context, v interface{}) (StartIntruderAttackInput, error) {

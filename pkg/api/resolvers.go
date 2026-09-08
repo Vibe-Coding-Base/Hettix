@@ -845,6 +845,28 @@ func webSocketConnectionToGraphQL(conn wslog.Connection) WebSocketConnection {
 	}
 }
 
+func (r *queryResolver) Sitemap(ctx context.Context) ([]SitemapEntry, error) {
+	entries, err := r.RequestLogService.Sitemap(ctx)
+	if errors.Is(err, reqlog.ErrProjectIDMustBeSet) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get sitemap: %w", err)
+	}
+
+	out := make([]SitemapEntry, len(entries))
+	for i, e := range entries {
+		out[i] = SitemapEntry{
+			Host:        e.Host,
+			Path:        e.Path,
+			Methods:     e.Methods,
+			StatusCodes: e.StatusCodes,
+			Count:       e.Count,
+		}
+	}
+
+	return out, nil
+}
+
 func (r *queryResolver) IntruderAttacks(ctx context.Context) ([]IntruderAttack, error) {
 	attacks, err := r.IntruderService.Attacks(ctx)
 	if errors.Is(err, intruder.ErrProjectIDMustBeSet) {

@@ -438,6 +438,7 @@ export type Query = {
   scope: Array<ScopeRule>;
   senderRequest?: Maybe<SenderRequest>;
   senderRequests: Array<SenderRequest>;
+  sitemap: Array<SitemapEntry>;
   webSocketConnection?: Maybe<WebSocketConnection>;
   webSocketConnections: Array<WebSocketConnection>;
   webSocketInterceptSettings: WebSocketInterceptSettings;
@@ -559,6 +560,15 @@ export type SenderRequestInput = {
   method?: InputMaybe<HttpMethod>;
   proto?: InputMaybe<HttpProtocol>;
   url: Scalars['URL'];
+};
+
+export type SitemapEntry = {
+  __typename?: 'SitemapEntry';
+  count: Scalars['Int'];
+  host: Scalars['String'];
+  methods: Array<Scalars['String']>;
+  path: Scalars['String'];
+  statusCodes: Array<Scalars['Int']>;
 };
 
 export type StartIntruderAttackInput = {
@@ -801,6 +811,11 @@ export type UpdateInterceptSettingsMutationVariables = Exact<{
 
 
 export type UpdateInterceptSettingsMutation = { __typename?: 'Mutation', updateInterceptSettings: { __typename?: 'InterceptSettings', requestsEnabled: boolean, responsesEnabled: boolean, requestFilter?: string | null, responseFilter?: string | null } };
+
+export type SitemapQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type SitemapQuery = { __typename?: 'Query', sitemap: Array<{ __typename?: 'SitemapEntry', host: string, path: string, methods: Array<string>, statusCodes: Array<number>, count: number }> };
 
 export type WebSocketConnectionsQueryVariables = Exact<{
   searchExpression?: InputMaybe<Scalars['String']>;
@@ -1999,6 +2014,44 @@ export function useUpdateInterceptSettingsMutation(baseOptions?: Apollo.Mutation
 export type UpdateInterceptSettingsMutationHookResult = ReturnType<typeof useUpdateInterceptSettingsMutation>;
 export type UpdateInterceptSettingsMutationResult = Apollo.MutationResult<UpdateInterceptSettingsMutation>;
 export type UpdateInterceptSettingsMutationOptions = Apollo.BaseMutationOptions<UpdateInterceptSettingsMutation, UpdateInterceptSettingsMutationVariables>;
+export const SitemapDocument = gql`
+    query Sitemap {
+  sitemap {
+    host
+    path
+    methods
+    statusCodes
+    count
+  }
+}
+    `;
+
+/**
+ * __useSitemapQuery__
+ *
+ * To run a query within a React component, call `useSitemapQuery` and pass it any options that fit your needs.
+ * When your component renders, `useSitemapQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useSitemapQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useSitemapQuery(baseOptions?: Apollo.QueryHookOptions<SitemapQuery, SitemapQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<SitemapQuery, SitemapQueryVariables>(SitemapDocument, options);
+      }
+export function useSitemapLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<SitemapQuery, SitemapQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<SitemapQuery, SitemapQueryVariables>(SitemapDocument, options);
+        }
+export type SitemapQueryHookResult = ReturnType<typeof useSitemapQuery>;
+export type SitemapLazyQueryHookResult = ReturnType<typeof useSitemapLazyQuery>;
+export type SitemapQueryResult = Apollo.QueryResult<SitemapQuery, SitemapQueryVariables>;
 export const WebSocketConnectionsDocument = gql`
     query WebSocketConnections($searchExpression: String) {
   webSocketConnections(searchExpression: $searchExpression) {

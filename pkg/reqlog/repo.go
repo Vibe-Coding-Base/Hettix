@@ -14,4 +14,14 @@ type Repository interface {
 	StoreRequestLog(ctx context.Context, reqLog RequestLog) error
 	StoreResponseLog(ctx context.Context, projectID, reqLogID ulid.ULID, resLog ResponseLog) error
 	ClearRequestLogs(ctx context.Context, projectID ulid.ULID) error
+	Sitemap(ctx context.Context, projectID ulid.ULID) ([]SitemapEntry, error)
+}
+
+// SitemapEntry aggregates the traffic seen for one host+path endpoint.
+type SitemapEntry struct {
+	Host        string
+	Path        string
+	Methods     []string
+	StatusCodes []int
+	Count       int
 }

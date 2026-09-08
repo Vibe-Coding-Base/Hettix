@@ -1,0 +1,9 @@
+query Sitemap {
+  sitemap {
+    host
+    path
+    methods
+    statusCodes
+    count
+  }
+}

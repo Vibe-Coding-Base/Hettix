@@ -283,6 +283,14 @@ type SenderRequestInput struct {
 	Body    *string           `json:"body"`
 }
 
+type SitemapEntry struct {
+	Host        string   `json:"host"`
+	Path        string   `json:"path"`
+	Methods     []string `json:"methods"`
+	StatusCodes []int    `json:"statusCodes"`
+	Count       int      `json:"count"`
+}
+
 type StartIntruderAttackInput struct {
 	Name     string                `json:"name"`
 	Method   HTTPMethod            `json:"method"`

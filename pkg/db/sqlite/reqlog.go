@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 
 	"github.com/oklog/ulid"
 
@@ -148,6 +149,90 @@ func (d *Database) FindRequestLogs(
 	}
 
 	return paginate(reqLogs, filter.Offset, filter.Limit), nil
+}
+
+// Sitemap aggregates the project's request logs into one entry per host+path,
+// collecting the distinct methods and response status codes seen and the total
+// request count.
+func (d *Database) Sitemap(ctx context.Context, projectID ulid.ULID) ([]reqlog.SitemapEntry, error) {
+	rows, err := d.db.QueryContext(ctx,
+		`SELECT r.host, r.path, r.method, resp.status_code
+		 FROM http_request_logs r
+		 LEFT JOIN http_response_logs resp ON resp.request_log_id = r.id
+		 WHERE r.project_id = ?
+		 ORDER BY r.host ASC, r.path ASC`, projectID.String())
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: failed to query sitemap: %w", err)
+	}
+	defer rows.Close()
+
+	type key struct{ host, path string }
+
+	type agg struct {
+		methods  map[string]struct{}
+		statuses map[int]struct{}
+		count    int
+	}
+
+	order := make([]key, 0)
+	byKey := make(map[key]*agg)
+
+	for rows.Next() {
+		var (
+			host, path, method string
+			statusCode         sql.NullInt64
+		)
+
+		if err := rows.Scan(&host, &path, &method, &statusCode); err != nil {
+			return nil, fmt.Errorf("sqlite: failed to scan sitemap row: %w", err)
+		}
+
+		k := key{host: host, path: path}
+
+		a, ok := byKey[k]
+		if !ok {
+			a = &agg{methods: map[string]struct{}{}, statuses: map[int]struct{}{}}
+			byKey[k] = a
+			order = append(order, k)
+		}
+
+		a.count++
+		a.methods[method] = struct{}{}
+		if statusCode.Valid {
+			a.statuses[int(statusCode.Int64)] = struct{}{}
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sqlite: failed to iterate sitemap rows: %w", err)
+	}
+
+	entries := make([]reqlog.SitemapEntry, 0, len(order))
+	for _, k := range order {
+		a := byKey[k]
+
+		methods := make([]string, 0, len(a.methods))
+		for m := range a.methods {
+			methods = append(methods, m)
+		}
+		sort.Strings(methods)
+
+		statuses := make([]int, 0, len(a.statuses))
+		for s := range a.statuses {
+			statuses = append(statuses, s)
+		}
+		sort.Ints(statuses)
+
+		entries = append(entries, reqlog.SitemapEntry{
+			Host:        k.host,
+			Path:        k.path,
+			Methods:     methods,
+			StatusCodes: statuses,
+			Count:       a.count,
+		})
+	}
+
+	return entries, nil
 }
 
 func (d *Database) ClearRequestLogs(ctx context.Context, projectID ulid.ULID) error {

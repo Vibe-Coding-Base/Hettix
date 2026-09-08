@@ -1,3 +1,4 @@
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import AltRouteIcon from "@mui/icons-material/AltRoute";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -50,6 +51,7 @@ export enum Page {
   MatchReplace,
   WebSocket,
   Intruder,
+  Sitemap,
 }
 
 const drawerWidth = 240;
@@ -322,6 +324,20 @@ export function Layout({ title, page, children }: Props): JSX.Element {
               </ListItemIcon>
             </Tooltip>
             <ListItemText primary="Intruder" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/sitemap"
+            key="sitemap"
+            disabled={!activeProject}
+            selected={page === Page.Sitemap}
+          >
+            <Tooltip title="Sitemap">
+              <ListItemIcon>
+                <AccountTreeIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Sitemap" />
           </ListItemButton>
           <ListItemButton
             component={RouterLink}
