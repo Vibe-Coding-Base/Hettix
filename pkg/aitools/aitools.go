@@ -16,6 +16,7 @@ import (
 
 	"github.com/Vibe-Coding-Base/Hettix/pkg/agent"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
@@ -39,10 +40,12 @@ resp.{code,reason,body,header["Name"],roundtrip}. Operators: eq ne cont regex
 gt gte lt lte, combined with and/or/not.
 
 You can also act: replay_request resends a captured request and returns the new
-response, and set_scope replaces the project scope with URL patterns. These
-change state or send traffic, so they are only available in assist or auto mode
-and are refused for out-of-scope targets. Investigate first, then act
-deliberately.
+response, set_scope replaces the project scope with URL patterns, and run_fuzzer
+starts a fuzzing attack that resends a request once per payload (mark the
+insertion point in the URL or body with the § character), whose outcomes you
+read back with get_fuzz_results. These change state or send traffic, so they are
+only available in assist or auto mode and are refused for out-of-scope targets.
+Investigate first, then act deliberately.
 
 Be concise. When you reference a request, include its id so the operator can
 open it.`
@@ -67,9 +70,22 @@ type ProjectService interface {
 	SetMatchReplaceRules(ctx context.Context, rules []matchreplace.Rule) error
 }
 
+// IntruderService is the subset of the fuzzer service the tools use.
+type IntruderService interface {
+	StartAttack(ctx context.Context, name string, tmpl intruder.Request, payloads []string) (intruder.Attack, error)
+	AttackByID(ctx context.Context, id ulid.ULID) (intruder.Attack, error)
+	Results(ctx context.Context, attackID ulid.ULID) ([]intruder.Result, error)
+}
+
 // NewRegistry builds the agent tool registry backed by the given services. The
 // sender and project services power the mutating tools; pass nil to omit them.
-func NewRegistry(reqLog RequestLogService, senderSvc SenderService, projSvc ProjectService) *agent.Registry {
+// The intruder service adds the fuzzing tools; pass nil to omit them.
+func NewRegistry(
+	reqLog RequestLogService,
+	senderSvc SenderService,
+	projSvc ProjectService,
+	intruderSvc IntruderService,
+) *agent.Registry {
 	reg := agent.NewRegistry()
 
 	reg.Register(agent.Tool{
@@ -147,6 +163,38 @@ func NewRegistry(reqLog RequestLogService, senderSvc SenderService, projSvc Proj
 				"required": ["name", "phase"]
 			}`),
 			Handler: addMatchReplaceRule(projSvc),
+		})
+	}
+
+	if intruderSvc != nil && projSvc != nil {
+		reg.Register(agent.Tool{
+			Name: "run_fuzzer",
+			Description: "Start a fuzzing attack: send a request once per payload, substituting the § marker " +
+				"in the URL or body with each payload. Returns the attack id. The target must be in scope.",
+			Mutating: true,
+			Schema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"name": {"type": "string", "description": "A short name for the attack"},
+					"method": {"type": "string", "description": "HTTP method (default GET)"},
+					"url": {"type": "string", "description": "Target URL; put § where each payload goes, e.g. https://t/search?q=§"},
+					"body": {"type": "string", "description": "Optional request body; may also contain §"},
+					"payloads": {"type": "array", "items": {"type": "string"}, "description": "The payloads to try"}
+				},
+				"required": ["url", "payloads"]
+			}`),
+			Handler: runFuzzer(projSvc, intruderSvc),
+		})
+
+		reg.Register(agent.Tool{
+			Name:        "get_fuzz_results",
+			Description: "Summarize the results of a fuzzing attack by its id: progress and notable responses.",
+			Schema: json.RawMessage(`{
+				"type": "object",
+				"properties": {"id": {"type": "string", "description": "The attack id (ULID)"}},
+				"required": ["id"]
+			}`),
+			Handler: getFuzzResults(intruderSvc),
 		})
 	}
 
@@ -272,6 +320,119 @@ func replayRequest(reqLog RequestLogService, senderSvc SenderService, projSvc Pr
 			writeBody(&b, sent.Response.Body)
 		} else {
 			b.WriteString("(no response)\n")
+		}
+
+		return b.String(), nil
+	}
+}
+
+func runFuzzer(projSvc ProjectService, intruderSvc IntruderService) agent.Handler {
+	return func(ctx context.Context, args json.RawMessage) (string, error) {
+		var in struct {
+			Name     string   `json:"name"`
+			Method   string   `json:"method"`
+			URL      string   `json:"url"`
+			Body     string   `json:"body"`
+			Payloads []string `json:"payloads"`
+		}
+		if err := json.Unmarshal(args, &in); err != nil {
+			return "", fmt.Errorf("invalid arguments: %w", err)
+		}
+
+		method := in.Method
+		if method == "" {
+			method = "GET"
+		}
+
+		tmpl := intruder.Request{Method: method, URL: in.URL, Body: in.Body}
+		if !tmpl.HasMarker() {
+			return "", errors.New("the request needs a § marker in the url or body to mark the insertion point")
+		}
+
+		// Scope enforcement at the tool layer: refuse to fuzz a host the operator
+		// has not put in scope. An empty scope means unrestricted.
+		check := strings.ReplaceAll(in.URL, intruder.Marker, "")
+		if s := projSvc.Scope(); len(s.Rules()) > 0 && !s.InScope(check, nil, nil) {
+			return "", fmt.Errorf("refusing to fuzz: %s is out of scope", check)
+		}
+
+		name := in.Name
+		if name == "" {
+			name = "Agent attack"
+		}
+
+		attack, err := intruderSvc.StartAttack(ctx, name, tmpl, in.Payloads)
+		if err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf(
+			"Started fuzzing attack %s (%q) with %d payloads. Call get_fuzz_results with this id to see the outcomes.",
+			attack.ID, name, len(in.Payloads),
+		), nil
+	}
+}
+
+func getFuzzResults(intruderSvc IntruderService) agent.Handler {
+	return func(ctx context.Context, args json.RawMessage) (string, error) {
+		var in struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(args, &in); err != nil {
+			return "", fmt.Errorf("invalid arguments: %w", err)
+		}
+
+		id, err := ulid.Parse(in.ID)
+		if err != nil {
+			return "", fmt.Errorf("invalid attack id %q", in.ID)
+		}
+
+		attack, err := intruderSvc.AttackByID(ctx, id)
+		if err != nil {
+			return "", err
+		}
+
+		results, err := intruderSvc.Results(ctx, id)
+		if err != nil {
+			return "", err
+		}
+
+		var b strings.Builder
+		fmt.Fprintf(&b, "Attack %q: %s, %d/%d done.\n", attack.Name, attack.Status, attack.Completed, attack.Total)
+
+		counts := map[int]int{}
+		var notable []intruder.Result
+
+		for _, r := range results {
+			counts[r.StatusCode]++
+			if r.Error != "" || r.StatusCode == 0 || r.StatusCode >= 400 {
+				notable = append(notable, r)
+			}
+		}
+
+		if len(counts) > 0 {
+			b.WriteString("Status codes:")
+			for code, n := range counts {
+				fmt.Fprintf(&b, " %d×%d", code, n)
+			}
+			b.WriteString("\n")
+		}
+
+		if len(notable) == 0 {
+			b.WriteString("No error or 4xx/5xx responses.\n")
+		} else {
+			fmt.Fprintf(&b, "Notable (%d):\n", len(notable))
+			for i, r := range notable {
+				if i >= 15 {
+					fmt.Fprintf(&b, "... and %d more\n", len(notable)-15)
+					break
+				}
+				if r.Error != "" {
+					fmt.Fprintf(&b, "  %q -> error: %s\n", r.Payload, r.Error)
+				} else {
+					fmt.Fprintf(&b, "  %q -> %d (%d bytes, %dms)\n", r.Payload, r.StatusCode, r.Length, r.DurationMs)
+				}
+			}
 		}
 
 		return b.String(), nil

@@ -149,6 +149,24 @@ type ComplexityRoot struct {
 		Payload      func(childComplexity int) int
 	}
 
+	IntruderAttack struct {
+		Completed func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Name      func(childComplexity int) int
+		Status    func(childComplexity int) int
+		Timestamp func(childComplexity int) int
+		Total     func(childComplexity int) int
+	}
+
+	IntruderResult struct {
+		DurationMs func(childComplexity int) int
+		Error      func(childComplexity int) int
+		Index      func(childComplexity int) int
+		Length     func(childComplexity int) int
+		Payload    func(childComplexity int) int
+		StatusCode func(childComplexity int) int
+	}
+
 	MatchReplaceRule struct {
 		BodyMatcher     func(childComplexity int) int
 		BodyReplacement func(childComplexity int) int
@@ -196,6 +214,7 @@ type ComplexityRoot struct {
 		SetMatchReplaceRules                  func(childComplexity int, rules []MatchReplaceRuleInput) int
 		SetScope                              func(childComplexity int, scope []ScopeRuleInput) int
 		SetSenderRequestFilter                func(childComplexity int, filter *SenderRequestFilterInput) int
+		StartIntruderAttack                   func(childComplexity int, input StartIntruderAttackInput) int
 		UpdateInterceptSettings               func(childComplexity int, input UpdateInterceptSettingsInput) int
 		UpdateWebSocketInterceptSettings      func(childComplexity int, input UpdateWebSocketInterceptSettingsInput) int
 	}
@@ -219,6 +238,9 @@ type ComplexityRoot struct {
 		InterceptedRequest           func(childComplexity int, id ulid.ULID) int
 		InterceptedRequests          func(childComplexity int) int
 		InterceptedWebSocketMessages func(childComplexity int) int
+		IntruderAttack               func(childComplexity int, id ulid.ULID) int
+		IntruderAttacks              func(childComplexity int) int
+		IntruderResults              func(childComplexity int, attackID ulid.ULID) int
 		MatchReplaceRules            func(childComplexity int) int
 		Projects                     func(childComplexity int) int
 		Scope                        func(childComplexity int) int
@@ -306,6 +328,7 @@ type MutationResolver interface {
 	ModifyWebSocketMessage(ctx context.Context, input ModifyWebSocketMessageInput) (*ModifyWebSocketMessageResult, error)
 	ForwardWebSocketMessage(ctx context.Context, id ulid.ULID) (*ModifyWebSocketMessageResult, error)
 	DropWebSocketMessage(ctx context.Context, id ulid.ULID) (*DropWebSocketMessageResult, error)
+	StartIntruderAttack(ctx context.Context, input StartIntruderAttackInput) (*IntruderAttack, error)
 }
 type QueryResolver interface {
 	HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error)
@@ -324,6 +347,9 @@ type QueryResolver interface {
 	WebSocketMessages(ctx context.Context, connectionID ulid.ULID, searchExpression *string) ([]WebSocketMessage, error)
 	InterceptedWebSocketMessages(ctx context.Context) ([]InterceptedWebSocketMessage, error)
 	WebSocketInterceptSettings(ctx context.Context) (*WebSocketInterceptSettings, error)
+	IntruderAttacks(ctx context.Context) ([]IntruderAttack, error)
+	IntruderAttack(ctx context.Context, id ulid.ULID) (*IntruderAttack, error)
+	IntruderResults(ctx context.Context, attackID ulid.ULID) ([]IntruderResult, error)
 }
 
 type executableSchema struct {
@@ -712,6 +738,90 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.InterceptedWebSocketMessage.Payload(childComplexity), true
 
+	case "IntruderAttack.completed":
+		if e.complexity.IntruderAttack.Completed == nil {
+			break
+		}
+
+		return e.complexity.IntruderAttack.Completed(childComplexity), true
+
+	case "IntruderAttack.id":
+		if e.complexity.IntruderAttack.ID == nil {
+			break
+		}
+
+		return e.complexity.IntruderAttack.ID(childComplexity), true
+
+	case "IntruderAttack.name":
+		if e.complexity.IntruderAttack.Name == nil {
+			break
+		}
+
+		return e.complexity.IntruderAttack.Name(childComplexity), true
+
+	case "IntruderAttack.status":
+		if e.complexity.IntruderAttack.Status == nil {
+			break
+		}
+
+		return e.complexity.IntruderAttack.Status(childComplexity), true
+
+	case "IntruderAttack.timestamp":
+		if e.complexity.IntruderAttack.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.IntruderAttack.Timestamp(childComplexity), true
+
+	case "IntruderAttack.total":
+		if e.complexity.IntruderAttack.Total == nil {
+			break
+		}
+
+		return e.complexity.IntruderAttack.Total(childComplexity), true
+
+	case "IntruderResult.durationMs":
+		if e.complexity.IntruderResult.DurationMs == nil {
+			break
+		}
+
+		return e.complexity.IntruderResult.DurationMs(childComplexity), true
+
+	case "IntruderResult.error":
+		if e.complexity.IntruderResult.Error == nil {
+			break
+		}
+
+		return e.complexity.IntruderResult.Error(childComplexity), true
+
+	case "IntruderResult.index":
+		if e.complexity.IntruderResult.Index == nil {
+			break
+		}
+
+		return e.complexity.IntruderResult.Index(childComplexity), true
+
+	case "IntruderResult.length":
+		if e.complexity.IntruderResult.Length == nil {
+			break
+		}
+
+		return e.complexity.IntruderResult.Length(childComplexity), true
+
+	case "IntruderResult.payload":
+		if e.complexity.IntruderResult.Payload == nil {
+			break
+		}
+
+		return e.complexity.IntruderResult.Payload(childComplexity), true
+
+	case "IntruderResult.statusCode":
+		if e.complexity.IntruderResult.StatusCode == nil {
+			break
+		}
+
+		return e.complexity.IntruderResult.StatusCode(childComplexity), true
+
 	case "MatchReplaceRule.bodyMatcher":
 		if e.complexity.MatchReplaceRule.BodyMatcher == nil {
 			break
@@ -1040,6 +1150,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.SetSenderRequestFilter(childComplexity, args["filter"].(*SenderRequestFilterInput)), true
 
+	case "Mutation.startIntruderAttack":
+		if e.complexity.Mutation.StartIntruderAttack == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_startIntruderAttack_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.StartIntruderAttack(childComplexity, args["input"].(StartIntruderAttackInput)), true
+
 	case "Mutation.updateInterceptSettings":
 		if e.complexity.Mutation.UpdateInterceptSettings == nil {
 			break
@@ -1162,6 +1284,37 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.InterceptedWebSocketMessages(childComplexity), true
+
+	case "Query.intruderAttack":
+		if e.complexity.Query.IntruderAttack == nil {
+			break
+		}
+
+		args, err := ec.field_Query_intruderAttack_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.IntruderAttack(childComplexity, args["id"].(ulid.ULID)), true
+
+	case "Query.intruderAttacks":
+		if e.complexity.Query.IntruderAttacks == nil {
+			break
+		}
+
+		return e.complexity.Query.IntruderAttacks(childComplexity), true
+
+	case "Query.intruderResults":
+		if e.complexity.Query.IntruderResults == nil {
+			break
+		}
+
+		args, err := ec.field_Query_intruderResults_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.IntruderResults(childComplexity, args["attackId"].(ulid.ULID)), true
 
 	case "Query.matchReplaceRules":
 		if e.complexity.Query.MatchReplaceRules == nil {
@@ -1774,6 +1927,43 @@ type DropWebSocketMessageResult {
   success: Boolean!
 }
 
+enum IntruderAttackStatus {
+  RUNNING
+  COMPLETED
+}
+
+type IntruderAttack {
+  id: ID!
+  name: String!
+  status: IntruderAttackStatus!
+  total: Int!
+  completed: Int!
+  timestamp: Time!
+}
+
+type IntruderResult {
+  index: Int!
+  payload: String!
+  statusCode: Int!
+  length: Int!
+  durationMs: Int!
+  error: String
+}
+
+input IntruderHeaderInput {
+  key: String!
+  value: String!
+}
+
+input StartIntruderAttackInput {
+  name: String!
+  method: HttpMethod!
+  url: String!
+  headers: [IntruderHeaderInput!]
+  body: String
+  payloads: [String!]!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -1791,6 +1981,9 @@ type Query {
   webSocketMessages(connectionId: ID!, searchExpression: String): [WebSocketMessage!]!
   interceptedWebSocketMessages: [InterceptedWebSocketMessage!]!
   webSocketInterceptSettings: WebSocketInterceptSettings!
+  intruderAttacks: [IntruderAttack!]!
+  intruderAttack(id: ID!): IntruderAttack
+  intruderResults(attackId: ID!): [IntruderResult!]!
 }
 
 enum MatchReplacePhase {
@@ -1853,6 +2046,7 @@ type Mutation {
   modifyWebSocketMessage(input: ModifyWebSocketMessageInput!): ModifyWebSocketMessageResult!
   forwardWebSocketMessage(id: ID!): ModifyWebSocketMessageResult!
   dropWebSocketMessage(id: ID!): DropWebSocketMessageResult!
+  startIntruderAttack(input: StartIntruderAttackInput!): IntruderAttack!
 }
 
 enum AgentMode {
@@ -2177,6 +2371,21 @@ func (ec *executionContext) field_Mutation_setSenderRequestFilter_args(ctx conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_startIntruderAttack_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 StartIntruderAttackInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNStartIntruderAttackInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐStartIntruderAttackInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updateInterceptSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -2273,6 +2482,36 @@ func (ec *executionContext) field_Query_interceptedRequest_args(ctx context.Cont
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_intruderAttack_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_intruderResults_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["attackId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("attackId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["attackId"] = arg0
 	return args, nil
 }
 
@@ -4235,6 +4474,423 @@ func (ec *executionContext) _InterceptedWebSocketMessage_payload(ctx context.Con
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _IntruderAttack_id(ctx context.Context, field graphql.CollectedField, obj *IntruderAttack) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderAttack",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(ulid.ULID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IntruderAttack_name(ctx context.Context, field graphql.CollectedField, obj *IntruderAttack) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderAttack",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IntruderAttack_status(ctx context.Context, field graphql.CollectedField, obj *IntruderAttack) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderAttack",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(IntruderAttackStatus)
+	fc.Result = res
+	return ec.marshalNIntruderAttackStatus2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttackStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IntruderAttack_total(ctx context.Context, field graphql.CollectedField, obj *IntruderAttack) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderAttack",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Total, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IntruderAttack_completed(ctx context.Context, field graphql.CollectedField, obj *IntruderAttack) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderAttack",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Completed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IntruderAttack_timestamp(ctx context.Context, field graphql.CollectedField, obj *IntruderAttack) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderAttack",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IntruderResult_index(ctx context.Context, field graphql.CollectedField, obj *IntruderResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Index, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IntruderResult_payload(ctx context.Context, field graphql.CollectedField, obj *IntruderResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Payload, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IntruderResult_statusCode(ctx context.Context, field graphql.CollectedField, obj *IntruderResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StatusCode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IntruderResult_length(ctx context.Context, field graphql.CollectedField, obj *IntruderResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Length, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IntruderResult_durationMs(ctx context.Context, field graphql.CollectedField, obj *IntruderResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DurationMs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IntruderResult_error(ctx context.Context, field graphql.CollectedField, obj *IntruderResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IntruderResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Error, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _MatchReplaceRule_id(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -5608,6 +6264,48 @@ func (ec *executionContext) _Mutation_dropWebSocketMessage(ctx context.Context, 
 	return ec.marshalNDropWebSocketMessageResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDropWebSocketMessageResult(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_startIntruderAttack(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_startIntruderAttack_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().StartIntruderAttack(rctx, args["input"].(StartIntruderAttackInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*IntruderAttack)
+	fc.Result = res
+	return ec.marshalNIntruderAttack2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttack(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -6379,6 +7077,122 @@ func (ec *executionContext) _Query_webSocketInterceptSettings(ctx context.Contex
 	res := resTmp.(*WebSocketInterceptSettings)
 	fc.Result = res
 	return ec.marshalNWebSocketInterceptSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketInterceptSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_intruderAttacks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().IntruderAttacks(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]IntruderAttack)
+	fc.Result = res
+	return ec.marshalNIntruderAttack2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttackᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_intruderAttack(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_intruderAttack_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().IntruderAttack(rctx, args["id"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*IntruderAttack)
+	fc.Result = res
+	return ec.marshalOIntruderAttack2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttack(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_intruderResults(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_intruderResults_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().IntruderResults(rctx, args["attackId"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]IntruderResult)
+	fc.Result = res
+	return ec.marshalNIntruderResult2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderResultᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -8650,6 +9464,37 @@ func (ec *executionContext) unmarshalInputHttpRequestLogFilterInput(ctx context.
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputIntruderHeaderInput(ctx context.Context, obj interface{}) (IntruderHeaderInput, error) {
+	var it IntruderHeaderInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "key":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			it.Key, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "value":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			it.Value, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputMatchReplaceRuleInput(ctx context.Context, obj interface{}) (MatchReplaceRuleInput, error) {
 	var it MatchReplaceRuleInput
 	asMap := map[string]interface{}{}
@@ -9096,6 +9941,69 @@ func (ec *executionContext) unmarshalInputSenderRequestInput(ctx context.Context
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("body"))
 			it.Body, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputStartIntruderAttackInput(ctx context.Context, obj interface{}) (StartIntruderAttackInput, error) {
+	var it StartIntruderAttackInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			it.Name, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "method":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("method"))
+			it.Method, err = ec.unmarshalNHttpMethod2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPMethod(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "url":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			it.URL, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "headers":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headers"))
+			it.Headers, err = ec.unmarshalOIntruderHeaderInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderHeaderInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "body":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("body"))
+			it.Body, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "payloads":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("payloads"))
+			it.Payloads, err = ec.unmarshalNString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -9803,6 +10711,107 @@ func (ec *executionContext) _InterceptedWebSocketMessage(ctx context.Context, se
 	return out
 }
 
+var intruderAttackImplementors = []string{"IntruderAttack"}
+
+func (ec *executionContext) _IntruderAttack(ctx context.Context, sel ast.SelectionSet, obj *IntruderAttack) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, intruderAttackImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("IntruderAttack")
+		case "id":
+			out.Values[i] = ec._IntruderAttack_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+			out.Values[i] = ec._IntruderAttack_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "status":
+			out.Values[i] = ec._IntruderAttack_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "total":
+			out.Values[i] = ec._IntruderAttack_total(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "completed":
+			out.Values[i] = ec._IntruderAttack_completed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "timestamp":
+			out.Values[i] = ec._IntruderAttack_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var intruderResultImplementors = []string{"IntruderResult"}
+
+func (ec *executionContext) _IntruderResult(ctx context.Context, sel ast.SelectionSet, obj *IntruderResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, intruderResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("IntruderResult")
+		case "index":
+			out.Values[i] = ec._IntruderResult_index(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "payload":
+			out.Values[i] = ec._IntruderResult_payload(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "statusCode":
+			out.Values[i] = ec._IntruderResult_statusCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "length":
+			out.Values[i] = ec._IntruderResult_length(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "durationMs":
+			out.Values[i] = ec._IntruderResult_durationMs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "error":
+			out.Values[i] = ec._IntruderResult_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var matchReplaceRuleImplementors = []string{"MatchReplaceRule"}
 
 func (ec *executionContext) _MatchReplaceRule(ctx context.Context, sel ast.SelectionSet, obj *MatchReplaceRule) graphql.Marshaler {
@@ -10056,6 +11065,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "dropWebSocketMessage":
 			out.Values[i] = ec._Mutation_dropWebSocketMessage(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "startIntruderAttack":
+			out.Values[i] = ec._Mutation_startIntruderAttack(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -10355,6 +11369,45 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_webSocketInterceptSettings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "intruderAttacks":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_intruderAttacks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "intruderAttack":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_intruderAttack(ctx, field)
+				return res
+			})
+		case "intruderResults":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_intruderResults(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -11329,6 +12382,127 @@ func (ec *executionContext) marshalNInterceptedWebSocketMessage2ᚕgithubᚗcom�
 	return ret
 }
 
+func (ec *executionContext) marshalNIntruderAttack2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttack(ctx context.Context, sel ast.SelectionSet, v IntruderAttack) graphql.Marshaler {
+	return ec._IntruderAttack(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNIntruderAttack2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttackᚄ(ctx context.Context, sel ast.SelectionSet, v []IntruderAttack) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNIntruderAttack2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttack(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNIntruderAttack2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttack(ctx context.Context, sel ast.SelectionSet, v *IntruderAttack) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._IntruderAttack(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNIntruderAttackStatus2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttackStatus(ctx context.Context, v interface{}) (IntruderAttackStatus, error) {
+	var res IntruderAttackStatus
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNIntruderAttackStatus2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttackStatus(ctx context.Context, sel ast.SelectionSet, v IntruderAttackStatus) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNIntruderHeaderInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderHeaderInput(ctx context.Context, v interface{}) (IntruderHeaderInput, error) {
+	res, err := ec.unmarshalInputIntruderHeaderInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNIntruderResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderResult(ctx context.Context, sel ast.SelectionSet, v IntruderResult) graphql.Marshaler {
+	return ec._IntruderResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNIntruderResult2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderResultᚄ(ctx context.Context, sel ast.SelectionSet, v []IntruderResult) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNIntruderResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderResult(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalNMatchReplacePhase2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplacePhase(ctx context.Context, v interface{}) (MatchReplacePhase, error) {
 	var res MatchReplacePhase
 	err := res.UnmarshalGQL(v)
@@ -11670,6 +12844,11 @@ func (ec *executionContext) unmarshalNSenderRequestInput2githubᚗcomᚋVibeᚑC
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNStartIntruderAttackInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐStartIntruderAttackInput(ctx context.Context, v interface{}) (StartIntruderAttackInput, error) {
+	res, err := ec.unmarshalInputStartIntruderAttackInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -11683,6 +12862,42 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
@@ -12322,6 +13537,37 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 		return graphql.Null
 	}
 	return graphql.MarshalInt(*v)
+}
+
+func (ec *executionContext) marshalOIntruderAttack2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttack(ctx context.Context, sel ast.SelectionSet, v *IntruderAttack) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._IntruderAttack(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOIntruderHeaderInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderHeaderInputᚄ(ctx context.Context, v interface{}) ([]IntruderHeaderInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]IntruderHeaderInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNIntruderHeaderInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderHeaderInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOProject2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProject(ctx context.Context, sel ast.SelectionSet, v *Project) graphql.Marshaler {

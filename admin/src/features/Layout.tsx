@@ -5,6 +5,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import FindReplaceIcon from "@mui/icons-material/FindReplace";
 import FolderIcon from "@mui/icons-material/Folder";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
+import GpsFixedIcon from "@mui/icons-material/GpsFixed";
 import HomeIcon from "@mui/icons-material/Home";
 import LocationSearchingIcon from "@mui/icons-material/LocationSearching";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -48,6 +49,7 @@ export enum Page {
   Assistant,
   MatchReplace,
   WebSocket,
+  Intruder,
 }
 
 const drawerWidth = 240;
@@ -306,6 +308,20 @@ export function Layout({ title, page, children }: Props): JSX.Element {
               </ListItemIcon>
             </Tooltip>
             <ListItemText primary="WebSocket" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/intruder"
+            key="intruder"
+            disabled={!activeProject}
+            selected={page === Page.Intruder}
+          >
+            <Tooltip title="Intruder">
+              <ListItemIcon>
+                <GpsFixedIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Intruder" />
           </ListItemButton>
           <ListItemButton
             component={RouterLink}

@@ -21,6 +21,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/agent"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/aitools"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/llm"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
@@ -53,6 +54,7 @@ type Resolver struct {
 	SenderService             *sender.Service
 	WebSocketService          *wslog.Service
 	WebSocketInterceptService *wsintercept.Service
+	IntruderService           *intruder.Service
 	LLMProvider               llm.Provider
 }
 
@@ -713,7 +715,7 @@ func (r *mutationResolver) RunAgent(ctx context.Context, input RunAgentInput) (*
 
 	ag := agent.New(agent.Config{
 		Provider:     r.LLMProvider,
-		Registry:     aitools.NewRegistry(r.RequestLogService, r.SenderService, r.ProjectService),
+		Registry:     aitools.NewRegistry(r.RequestLogService, r.SenderService, r.ProjectService, r.IntruderService),
 		Mode:         mode,
 		SystemPrompt: aitools.SystemPrompt,
 		OnEvent: func(e agent.Event) {
@@ -841,6 +843,128 @@ func webSocketConnectionToGraphQL(conn wslog.Connection) WebSocketConnection {
 		ClosedAt:     conn.ClosedAt,
 		MessageCount: conn.MessageCount,
 	}
+}
+
+func (r *queryResolver) IntruderAttacks(ctx context.Context) ([]IntruderAttack, error) {
+	attacks, err := r.IntruderService.Attacks(ctx)
+	if errors.Is(err, intruder.ErrProjectIDMustBeSet) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get intruder attacks: %w", err)
+	}
+
+	out := make([]IntruderAttack, len(attacks))
+	for i, attack := range attacks {
+		out[i] = intruderAttackToGraphQL(attack)
+	}
+
+	return out, nil
+}
+
+func (r *queryResolver) IntruderAttack(ctx context.Context, id ulid.ULID) (*IntruderAttack, error) {
+	attack, err := r.IntruderService.AttackByID(ctx, id)
+	switch {
+	case errors.Is(err, intruder.ErrAttackNotFound):
+		return nil, nil
+	case errors.Is(err, intruder.ErrProjectIDMustBeSet):
+		return nil, noActiveProjectErr(ctx)
+	case err != nil:
+		return nil, fmt.Errorf("could not get intruder attack: %w", err)
+	}
+
+	out := intruderAttackToGraphQL(attack)
+
+	return &out, nil
+}
+
+func (r *queryResolver) IntruderResults(ctx context.Context, attackID ulid.ULID) ([]IntruderResult, error) {
+	results, err := r.IntruderService.Results(ctx, attackID)
+	switch {
+	case errors.Is(err, intruder.ErrAttackNotFound):
+		return nil, nil
+	case errors.Is(err, intruder.ErrProjectIDMustBeSet):
+		return nil, noActiveProjectErr(ctx)
+	case err != nil:
+		return nil, fmt.Errorf("could not get intruder results: %w", err)
+	}
+
+	out := make([]IntruderResult, len(results))
+	for i, res := range results {
+		out[i] = intruderResultToGraphQL(res)
+	}
+
+	return out, nil
+}
+
+func (r *mutationResolver) StartIntruderAttack(
+	ctx context.Context,
+	input StartIntruderAttackInput,
+) (*IntruderAttack, error) {
+	header := make(http.Header, len(input.Headers))
+	for _, h := range input.Headers {
+		header.Add(h.Key, h.Value)
+	}
+
+	var body string
+	if input.Body != nil {
+		body = *input.Body
+	}
+
+	tmpl := intruder.Request{
+		Method: string(input.Method),
+		URL:    input.URL,
+		Header: header,
+		Body:   body,
+	}
+
+	attack, err := r.IntruderService.StartAttack(ctx, input.Name, tmpl, input.Payloads)
+	switch {
+	case errors.Is(err, intruder.ErrProjectIDMustBeSet):
+		return nil, noActiveProjectErr(ctx)
+	case errors.Is(err, intruder.ErrNoMarker):
+		return nil, gqlerror.Errorf("The request must contain at least one insertion marker (§).")
+	case errors.Is(err, intruder.ErrNoPayloads):
+		return nil, gqlerror.Errorf("At least one payload is required.")
+	case err != nil:
+		return nil, fmt.Errorf("could not start intruder attack: %w", err)
+	}
+
+	out := intruderAttackToGraphQL(attack)
+
+	return &out, nil
+}
+
+func intruderAttackToGraphQL(attack intruder.Attack) IntruderAttack {
+	status := IntruderAttackStatusRunning
+	if attack.Status == intruder.StatusCompleted {
+		status = IntruderAttackStatusCompleted
+	}
+
+	return IntruderAttack{
+		ID:        attack.ID,
+		Name:      attack.Name,
+		Status:    status,
+		Total:     attack.Total,
+		Completed: attack.Completed,
+		Timestamp: attack.CreatedAt,
+	}
+}
+
+func intruderResultToGraphQL(res intruder.Result) IntruderResult {
+	out := IntruderResult{
+		Index:      res.Index,
+		Payload:    res.Payload,
+		StatusCode: res.StatusCode,
+		Length:     res.Length,
+		DurationMs: int(res.DurationMs),
+	}
+
+	if res.Error != "" {
+		errMsg := res.Error
+		out.Error = &errMsg
+	}
+
+	return out
 }
 
 func parseSearchExpression(s *string) (httpql.Expression, error) {

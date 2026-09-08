@@ -19,7 +19,9 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
 )
 
-var entropy = rand.New(rand.NewSource(1))
+// entropy is monotonic so that ULIDs created within the same millisecond are
+// strictly increasing, which the ordering assertions rely on.
+var entropy = ulid.Monotonic(rand.New(rand.NewSource(1)), 0)
 
 func newULID(t *testing.T) ulid.ULID {
 	t.Helper()

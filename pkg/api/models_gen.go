@@ -128,6 +128,29 @@ type InterceptedWebSocketMessage struct {
 	Payload      string             `json:"payload"`
 }
 
+type IntruderAttack struct {
+	ID        ulid.ULID            `json:"id"`
+	Name      string               `json:"name"`
+	Status    IntruderAttackStatus `json:"status"`
+	Total     int                  `json:"total"`
+	Completed int                  `json:"completed"`
+	Timestamp time.Time            `json:"timestamp"`
+}
+
+type IntruderHeaderInput struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type IntruderResult struct {
+	Index      int     `json:"index"`
+	Payload    string  `json:"payload"`
+	StatusCode int     `json:"statusCode"`
+	Length     int     `json:"length"`
+	DurationMs int     `json:"durationMs"`
+	Error      *string `json:"error"`
+}
+
 type MatchReplaceRule struct {
 	ID              ulid.ULID         `json:"id"`
 	Name            string            `json:"name"`
@@ -258,6 +281,15 @@ type SenderRequestInput struct {
 	Proto   *HTTPProtocol     `json:"proto"`
 	Headers []HTTPHeaderInput `json:"headers"`
 	Body    *string           `json:"body"`
+}
+
+type StartIntruderAttackInput struct {
+	Name     string                `json:"name"`
+	Method   HTTPMethod            `json:"method"`
+	URL      string                `json:"url"`
+	Headers  []IntruderHeaderInput `json:"headers"`
+	Body     *string               `json:"body"`
+	Payloads []string              `json:"payloads"`
 }
 
 type UpdateInterceptSettingsInput struct {
@@ -432,6 +464,47 @@ func (e *HTTPProtocol) UnmarshalGQL(v interface{}) error {
 }
 
 func (e HTTPProtocol) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type IntruderAttackStatus string
+
+const (
+	IntruderAttackStatusRunning   IntruderAttackStatus = "RUNNING"
+	IntruderAttackStatusCompleted IntruderAttackStatus = "COMPLETED"
+)
+
+var AllIntruderAttackStatus = []IntruderAttackStatus{
+	IntruderAttackStatusRunning,
+	IntruderAttackStatusCompleted,
+}
+
+func (e IntruderAttackStatus) IsValid() bool {
+	switch e {
+	case IntruderAttackStatusRunning, IntruderAttackStatusCompleted:
+		return true
+	}
+	return false
+}
+
+func (e IntruderAttackStatus) String() string {
+	return string(e)
+}
+
+func (e *IntruderAttackStatus) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = IntruderAttackStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid IntruderAttackStatus", str)
+	}
+	return nil
+}
+
+func (e IntruderAttackStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

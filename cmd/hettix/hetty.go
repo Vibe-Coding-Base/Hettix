@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/chromedp/chromedp"
 	"github.com/peterbourgon/ff/v3/ffcli"
@@ -22,6 +23,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/api"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/chrome"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/db/sqlite"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
@@ -187,6 +189,13 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		Logger: cmd.config.logger.Named("wsintercept").Sugar(),
 	})
 
+	intruderClient := &http.Client{Transport: &sender.HTTPTransport{}, Timeout: 30 * time.Second}
+	intruderService := intruder.NewService(intruder.Config{
+		Repository: db,
+		Runner:     intruder.NewRunner(intruderClient, 15),
+		Logger:     cmd.config.logger.Named("intruder").Sugar(),
+	})
+
 	projService, err := proj.NewService(proj.Config{
 		Repository:                db,
 		InterceptService:          interceptService,
@@ -194,6 +203,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		SenderService:             senderService,
 		WebSocketService:          wsLogService,
 		WebSocketInterceptService: wsInterceptService,
+		IntruderService:           intruderService,
 		Scope:                     scope,
 		MatchReplaceEngine:        matchReplaceEngine,
 	})
@@ -237,6 +247,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		SenderService:             senderService,
 		WebSocketService:          wsLogService,
 		WebSocketInterceptService: wsInterceptService,
+		IntruderService:           intruderService,
 		LLMProvider:               llmProviderFromEnv(),
 	}, gqlEndpoint))
 	adminMux.Handle("/", adminHandler)

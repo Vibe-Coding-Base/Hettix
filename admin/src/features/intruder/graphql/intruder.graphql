@@ -1,0 +1,32 @@
+query IntruderAttacks {
+  intruderAttacks {
+    id
+    name
+    status
+    total
+    completed
+    timestamp
+  }
+}
+
+query IntruderResults($attackId: ID!) {
+  intruderResults(attackId: $attackId) {
+    index
+    payload
+    statusCode
+    length
+    durationMs
+    error
+  }
+}
+
+mutation StartIntruderAttack($input: StartIntruderAttackInput!) {
+  startIntruderAttack(input: $input) {
+    id
+    name
+    status
+    total
+    completed
+    timestamp
+  }
+}

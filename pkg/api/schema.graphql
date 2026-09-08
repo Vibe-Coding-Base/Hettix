@@ -247,6 +247,43 @@ type DropWebSocketMessageResult {
   success: Boolean!
 }
 
+enum IntruderAttackStatus {
+  RUNNING
+  COMPLETED
+}
+
+type IntruderAttack {
+  id: ID!
+  name: String!
+  status: IntruderAttackStatus!
+  total: Int!
+  completed: Int!
+  timestamp: Time!
+}
+
+type IntruderResult {
+  index: Int!
+  payload: String!
+  statusCode: Int!
+  length: Int!
+  durationMs: Int!
+  error: String
+}
+
+input IntruderHeaderInput {
+  key: String!
+  value: String!
+}
+
+input StartIntruderAttackInput {
+  name: String!
+  method: HttpMethod!
+  url: String!
+  headers: [IntruderHeaderInput!]
+  body: String
+  payloads: [String!]!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -264,6 +301,9 @@ type Query {
   webSocketMessages(connectionId: ID!, searchExpression: String): [WebSocketMessage!]!
   interceptedWebSocketMessages: [InterceptedWebSocketMessage!]!
   webSocketInterceptSettings: WebSocketInterceptSettings!
+  intruderAttacks: [IntruderAttack!]!
+  intruderAttack(id: ID!): IntruderAttack
+  intruderResults(attackId: ID!): [IntruderResult!]!
 }
 
 enum MatchReplacePhase {
@@ -326,6 +366,7 @@ type Mutation {
   modifyWebSocketMessage(input: ModifyWebSocketMessageInput!): ModifyWebSocketMessageResult!
   forwardWebSocketMessage(id: ID!): ModifyWebSocketMessageResult!
   dropWebSocketMessage(id: ID!): DropWebSocketMessageResult!
+  startIntruderAttack(input: StartIntruderAttackInput!): IntruderAttack!
 }
 
 enum AgentMode {

@@ -95,6 +95,29 @@ CREATE TABLE IF NOT EXISTS websocket_messages (
 	FOREIGN KEY (connection_id) REFERENCES websocket_connections (id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_ws_messages_connection ON websocket_messages (connection_id, id);
+
+CREATE TABLE IF NOT EXISTS intruder_attacks (
+	id         TEXT PRIMARY KEY,
+	project_id TEXT NOT NULL,
+	name       TEXT NOT NULL,
+	status     TEXT NOT NULL,
+	total      INTEGER NOT NULL,
+	created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_intruder_attacks_project ON intruder_attacks (project_id, id);
+
+CREATE TABLE IF NOT EXISTS intruder_results (
+	id          INTEGER PRIMARY KEY AUTOINCREMENT,
+	attack_id   TEXT NOT NULL,
+	idx         INTEGER NOT NULL,
+	payload     TEXT NOT NULL,
+	status_code INTEGER NOT NULL,
+	length      INTEGER NOT NULL,
+	duration_ms INTEGER NOT NULL,
+	error       TEXT NOT NULL,
+	FOREIGN KEY (attack_id) REFERENCES intruder_attacks (id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_intruder_results_attack ON intruder_results (attack_id, idx);
 `
 
 // OpenDatabase opens (creating if needed) a SQLite database at path and ensures

@@ -175,6 +175,36 @@ export type InterceptedWebSocketMessage = {
   payload: Scalars['String'];
 };
 
+export type IntruderAttack = {
+  __typename?: 'IntruderAttack';
+  completed: Scalars['Int'];
+  id: Scalars['ID'];
+  name: Scalars['String'];
+  status: IntruderAttackStatus;
+  timestamp: Scalars['Time'];
+  total: Scalars['Int'];
+};
+
+export enum IntruderAttackStatus {
+  Completed = 'COMPLETED',
+  Running = 'RUNNING'
+}
+
+export type IntruderHeaderInput = {
+  key: Scalars['String'];
+  value: Scalars['String'];
+};
+
+export type IntruderResult = {
+  __typename?: 'IntruderResult';
+  durationMs: Scalars['Int'];
+  error?: Maybe<Scalars['String']>;
+  index: Scalars['Int'];
+  length: Scalars['Int'];
+  payload: Scalars['String'];
+  statusCode: Scalars['Int'];
+};
+
 export enum MatchReplacePhase {
   Request = 'REQUEST',
   Response = 'RESPONSE'
@@ -268,6 +298,7 @@ export type Mutation = {
   setMatchReplaceRules: Array<MatchReplaceRule>;
   setScope: Array<ScopeRule>;
   setSenderRequestFilter?: Maybe<SenderRequestFilter>;
+  startIntruderAttack: IntruderAttack;
   updateInterceptSettings: InterceptSettings;
   updateWebSocketInterceptSettings: WebSocketInterceptSettings;
 };
@@ -363,6 +394,11 @@ export type MutationSetSenderRequestFilterArgs = {
 };
 
 
+export type MutationStartIntruderAttackArgs = {
+  input: StartIntruderAttackInput;
+};
+
+
 export type MutationUpdateInterceptSettingsArgs = {
   input: UpdateInterceptSettingsInput;
 };
@@ -394,6 +430,9 @@ export type Query = {
   interceptedRequest?: Maybe<HttpRequest>;
   interceptedRequests: Array<HttpRequest>;
   interceptedWebSocketMessages: Array<InterceptedWebSocketMessage>;
+  intruderAttack?: Maybe<IntruderAttack>;
+  intruderAttacks: Array<IntruderAttack>;
+  intruderResults: Array<IntruderResult>;
   matchReplaceRules: Array<MatchReplaceRule>;
   projects: Array<Project>;
   scope: Array<ScopeRule>;
@@ -419,6 +458,16 @@ export type QueryHttpRequestLogsArgs = {
 
 export type QueryInterceptedRequestArgs = {
   id: Scalars['ID'];
+};
+
+
+export type QueryIntruderAttackArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type QueryIntruderResultsArgs = {
+  attackId: Scalars['ID'];
 };
 
 
@@ -512,6 +561,15 @@ export type SenderRequestInput = {
   url: Scalars['URL'];
 };
 
+export type StartIntruderAttackInput = {
+  body?: InputMaybe<Scalars['String']>;
+  headers?: InputMaybe<Array<IntruderHeaderInput>>;
+  method: HttpMethod;
+  name: Scalars['String'];
+  payloads: Array<Scalars['String']>;
+  url: Scalars['String'];
+};
+
 export type UpdateInterceptSettingsInput = {
   requestFilter?: InputMaybe<Scalars['String']>;
   requestsEnabled: Scalars['Boolean'];
@@ -595,6 +653,25 @@ export type ModifyResponseMutationVariables = Exact<{
 
 
 export type ModifyResponseMutation = { __typename?: 'Mutation', modifyResponse: { __typename?: 'ModifyResponseResult', success: boolean } };
+
+export type IntruderAttacksQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type IntruderAttacksQuery = { __typename?: 'Query', intruderAttacks: Array<{ __typename?: 'IntruderAttack', id: string, name: string, status: IntruderAttackStatus, total: number, completed: number, timestamp: any }> };
+
+export type IntruderResultsQueryVariables = Exact<{
+  attackId: Scalars['ID'];
+}>;
+
+
+export type IntruderResultsQuery = { __typename?: 'Query', intruderResults: Array<{ __typename?: 'IntruderResult', index: number, payload: string, statusCode: number, length: number, durationMs: number, error?: string | null }> };
+
+export type StartIntruderAttackMutationVariables = Exact<{
+  input: StartIntruderAttackInput;
+}>;
+
+
+export type StartIntruderAttackMutation = { __typename?: 'Mutation', startIntruderAttack: { __typename?: 'IntruderAttack', id: string, name: string, status: IntruderAttackStatus, total: number, completed: number, timestamp: any } };
 
 export type MatchReplaceRulesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1009,6 +1086,123 @@ export function useModifyResponseMutation(baseOptions?: Apollo.MutationHookOptio
 export type ModifyResponseMutationHookResult = ReturnType<typeof useModifyResponseMutation>;
 export type ModifyResponseMutationResult = Apollo.MutationResult<ModifyResponseMutation>;
 export type ModifyResponseMutationOptions = Apollo.BaseMutationOptions<ModifyResponseMutation, ModifyResponseMutationVariables>;
+export const IntruderAttacksDocument = gql`
+    query IntruderAttacks {
+  intruderAttacks {
+    id
+    name
+    status
+    total
+    completed
+    timestamp
+  }
+}
+    `;
+
+/**
+ * __useIntruderAttacksQuery__
+ *
+ * To run a query within a React component, call `useIntruderAttacksQuery` and pass it any options that fit your needs.
+ * When your component renders, `useIntruderAttacksQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useIntruderAttacksQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useIntruderAttacksQuery(baseOptions?: Apollo.QueryHookOptions<IntruderAttacksQuery, IntruderAttacksQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<IntruderAttacksQuery, IntruderAttacksQueryVariables>(IntruderAttacksDocument, options);
+      }
+export function useIntruderAttacksLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<IntruderAttacksQuery, IntruderAttacksQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<IntruderAttacksQuery, IntruderAttacksQueryVariables>(IntruderAttacksDocument, options);
+        }
+export type IntruderAttacksQueryHookResult = ReturnType<typeof useIntruderAttacksQuery>;
+export type IntruderAttacksLazyQueryHookResult = ReturnType<typeof useIntruderAttacksLazyQuery>;
+export type IntruderAttacksQueryResult = Apollo.QueryResult<IntruderAttacksQuery, IntruderAttacksQueryVariables>;
+export const IntruderResultsDocument = gql`
+    query IntruderResults($attackId: ID!) {
+  intruderResults(attackId: $attackId) {
+    index
+    payload
+    statusCode
+    length
+    durationMs
+    error
+  }
+}
+    `;
+
+/**
+ * __useIntruderResultsQuery__
+ *
+ * To run a query within a React component, call `useIntruderResultsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useIntruderResultsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useIntruderResultsQuery({
+ *   variables: {
+ *      attackId: // value for 'attackId'
+ *   },
+ * });
+ */
+export function useIntruderResultsQuery(baseOptions: Apollo.QueryHookOptions<IntruderResultsQuery, IntruderResultsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<IntruderResultsQuery, IntruderResultsQueryVariables>(IntruderResultsDocument, options);
+      }
+export function useIntruderResultsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<IntruderResultsQuery, IntruderResultsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<IntruderResultsQuery, IntruderResultsQueryVariables>(IntruderResultsDocument, options);
+        }
+export type IntruderResultsQueryHookResult = ReturnType<typeof useIntruderResultsQuery>;
+export type IntruderResultsLazyQueryHookResult = ReturnType<typeof useIntruderResultsLazyQuery>;
+export type IntruderResultsQueryResult = Apollo.QueryResult<IntruderResultsQuery, IntruderResultsQueryVariables>;
+export const StartIntruderAttackDocument = gql`
+    mutation StartIntruderAttack($input: StartIntruderAttackInput!) {
+  startIntruderAttack(input: $input) {
+    id
+    name
+    status
+    total
+    completed
+    timestamp
+  }
+}
+    `;
+export type StartIntruderAttackMutationFn = Apollo.MutationFunction<StartIntruderAttackMutation, StartIntruderAttackMutationVariables>;
+
+/**
+ * __useStartIntruderAttackMutation__
+ *
+ * To run a mutation, you first call `useStartIntruderAttackMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useStartIntruderAttackMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [startIntruderAttackMutation, { data, loading, error }] = useStartIntruderAttackMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useStartIntruderAttackMutation(baseOptions?: Apollo.MutationHookOptions<StartIntruderAttackMutation, StartIntruderAttackMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<StartIntruderAttackMutation, StartIntruderAttackMutationVariables>(StartIntruderAttackDocument, options);
+      }
+export type StartIntruderAttackMutationHookResult = ReturnType<typeof useStartIntruderAttackMutation>;
+export type StartIntruderAttackMutationResult = Apollo.MutationResult<StartIntruderAttackMutation>;
+export type StartIntruderAttackMutationOptions = Apollo.BaseMutationOptions<StartIntruderAttackMutation, StartIntruderAttackMutationVariables>;
 export const MatchReplaceRulesDocument = gql`
     query MatchReplaceRules {
   matchReplaceRules {
