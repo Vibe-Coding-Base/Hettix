@@ -18,6 +18,7 @@ import { ScopeDocument, ScopeQuery, ScopeRule, useSetScopeMutation } from "lib/g
 
 function AddRule(): JSX.Element {
   const [ruleType, setRuleType] = useState("url");
+  const [membership, setMembership] = useState("include");
   const [expression, setExpression] = useState("");
 
   const client = useApolloClient();
@@ -49,7 +50,10 @@ function AddRule(): JSX.Element {
 
     setScope({
       variables: {
-        scope: [...scope.map(({ url }) => ({ url })), { url: expression }],
+        scope: [
+          ...scope.map(({ url, exclude }) => ({ url, exclude })),
+          { url: expression, exclude: membership === "exclude" },
+        ],
       },
     });
   };
@@ -68,6 +72,15 @@ function AddRule(): JSX.Element {
           </FormLabel>
           <RadioGroup row name="ruleType" value={ruleType} onChange={handleTypeChange}>
             <FormControlLabel value="url" control={<Radio />} label="URL" />
+          </RadioGroup>
+        </FormControl>
+        <FormControl fullWidth>
+          <FormLabel color="primary" component="legend">
+            Membership
+          </FormLabel>
+          <RadioGroup row name="membership" value={membership} onChange={(_, value) => setMembership(value)}>
+            <FormControlLabel value="include" control={<Radio />} label="Include" />
+            <FormControlLabel value="exclude" control={<Radio />} label="Exclude" />
           </RadioGroup>
         </FormControl>
         <FormControl fullWidth>

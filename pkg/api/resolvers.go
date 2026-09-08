@@ -325,7 +325,8 @@ func (r *mutationResolver) SetScope(ctx context.Context, input []ScopeRuleInput)
 				Key:   headerKey,
 				Value: headerValue,
 			},
-			Body: body,
+			Body:    body,
+			Exclude: rule.Exclude != nil && *rule.Exclude,
 		}
 	}
 
@@ -1195,6 +1196,7 @@ func scopeToScopeRules(rules []scope.Rule) []ScopeRule {
 		}
 
 		scopeRules[i].Body = regexpToStringPtr(rule.Body)
+		scopeRules[i].Exclude = rule.Exclude
 	}
 
 	return scopeRules

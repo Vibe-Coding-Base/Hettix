@@ -195,15 +195,17 @@ type ScopeHeaderInput struct {
 }
 
 type ScopeRule struct {
-	URL    *string      `json:"url"`
-	Header *ScopeHeader `json:"header"`
-	Body   *string      `json:"body"`
+	URL     *string      `json:"url"`
+	Header  *ScopeHeader `json:"header"`
+	Body    *string      `json:"body"`
+	Exclude bool         `json:"exclude"`
 }
 
 type ScopeRuleInput struct {
-	URL    *string           `json:"url"`
-	Header *ScopeHeaderInput `json:"header"`
-	Body   *string           `json:"body"`
+	URL     *string           `json:"url"`
+	Header  *ScopeHeaderInput `json:"header"`
+	Body    *string           `json:"body"`
+	Exclude *bool             `json:"exclude"`
 }
 
 type SenderRequest struct {

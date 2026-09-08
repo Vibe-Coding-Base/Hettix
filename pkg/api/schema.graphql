@@ -41,12 +41,14 @@ type ScopeRule {
   url: Regexp
   header: ScopeHeader
   body: Regexp
+  exclude: Boolean!
 }
 
 input ScopeRuleInput {
   url: Regexp
   header: ScopeHeaderInput
   body: Regexp
+  exclude: Boolean
 }
 
 type ScopeHeader {

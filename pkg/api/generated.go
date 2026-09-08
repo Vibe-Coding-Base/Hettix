@@ -214,9 +214,10 @@ type ComplexityRoot struct {
 	}
 
 	ScopeRule struct {
-		Body   func(childComplexity int) int
-		Header func(childComplexity int) int
-		URL    func(childComplexity int) int
+		Body    func(childComplexity int) int
+		Exclude func(childComplexity int) int
+		Header  func(childComplexity int) int
+		URL     func(childComplexity int) int
 	}
 
 	SenderRequest struct {
@@ -1127,6 +1128,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ScopeRule.Body(childComplexity), true
 
+	case "ScopeRule.exclude":
+		if e.complexity.ScopeRule.Exclude == nil {
+			break
+		}
+
+		return e.complexity.ScopeRule.Exclude(childComplexity), true
+
 	case "ScopeRule.header":
 		if e.complexity.ScopeRule.Header == nil {
 			break
@@ -1402,12 +1410,14 @@ type ScopeRule {
   url: Regexp
   header: ScopeHeader
   body: Regexp
+  exclude: Boolean!
 }
 
 input ScopeRuleInput {
   url: Regexp
   header: ScopeHeaderInput
   body: Regexp
+  exclude: Boolean
 }
 
 type ScopeHeader {
@@ -5862,6 +5872,41 @@ func (ec *executionContext) _ScopeRule_body(ctx context.Context, field graphql.C
 	return ec.marshalORegexp2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _ScopeRule_exclude(ctx context.Context, field graphql.CollectedField, obj *ScopeRule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ScopeRule",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exclude, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _SenderRequest_id(ctx context.Context, field graphql.CollectedField, obj *SenderRequest) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -8114,6 +8159,14 @@ func (ec *executionContext) unmarshalInputScopeRuleInput(ctx context.Context, ob
 			if err != nil {
 				return it, err
 			}
+		case "exclude":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exclude"))
+			it.Exclude, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -9347,6 +9400,11 @@ func (ec *executionContext) _ScopeRule(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._ScopeRule_header(ctx, field, obj)
 		case "body":
 			out.Values[i] = ec._ScopeRule_body(ctx, field, obj)
+		case "exclude":
+			out.Values[i] = ec._ScopeRule_exclude(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

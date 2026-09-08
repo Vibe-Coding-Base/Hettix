@@ -67,49 +67,12 @@ func urlPort(port string, tls bool) int {
 	return 80
 }
 
-// MatchScope reports whether the sender request matches any of the scope's rules.
+// MatchScope reports whether the sender request is in scope.
 func (req Request) MatchScope(s *scope.Scope) bool {
-	for _, rule := range s.Rules() {
-		if rule.URL != nil && req.URL != nil {
-			if matches := rule.URL.MatchString(req.URL.String()); matches {
-				return true
-			}
-		}
-
-		for key, values := range req.Header {
-			var keyMatches, valueMatches bool
-
-			if rule.Header.Key != nil {
-				if matches := rule.Header.Key.MatchString(key); matches {
-					keyMatches = true
-				}
-			}
-
-			if rule.Header.Value != nil {
-				for _, value := range values {
-					if matches := rule.Header.Value.MatchString(value); matches {
-						valueMatches = true
-						break
-					}
-				}
-			}
-
-			switch {
-			case rule.Header.Key != nil && rule.Header.Value == nil && keyMatches:
-				return true
-			case rule.Header.Key == nil && rule.Header.Value != nil && valueMatches:
-				return true
-			case rule.Header.Key != nil && rule.Header.Value != nil && keyMatches && valueMatches:
-				return true
-			}
-		}
-
-		if rule.Body != nil {
-			if matches := rule.Body.Match(req.Body); matches {
-				return true
-			}
-		}
+	var rawURL string
+	if req.URL != nil {
+		rawURL = req.URL.String()
 	}
 
-	return false
+	return s.InScope(rawURL, req.Header, req.Body)
 }

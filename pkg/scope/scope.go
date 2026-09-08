@@ -17,6 +17,10 @@ type Rule struct {
 	URL    *regexp.Regexp
 	Header Header
 	Body   *regexp.Regexp
+
+	// Exclude inverts the rule: a request matching an exclude rule is out of
+	// scope, taking precedence over any include rule it also matches.
+	Exclude bool
 }
 
 type Header struct {
@@ -39,37 +43,84 @@ func (s *Scope) SetRules(rules []Rule) {
 }
 
 func (s *Scope) Match(req *http.Request, body []byte) bool {
+	var rawURL string
+	if req.URL != nil {
+		rawURL = req.URL.String()
+	}
+
+	return s.InScope(rawURL, req.Header, body)
+}
+
+// InScope reports whether a request identified by its URL, headers and body is
+// in scope. A request is in scope when it matches no exclude rule and either
+// there are no include rules matching against an exclude-only set or it matches
+// an include rule. An empty rule set puts everything out of scope.
+func (s *Scope) InScope(rawURL string, header http.Header, body []byte) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	if len(s.rules) == 0 {
+		return false
+	}
+
+	matchedInclude := false
+	hasInclude := false
+
 	for _, rule := range s.rules {
-		if matches := rule.Match(req, body); matches {
-			return true
+		matches := rule.matches(rawURL, header, body)
+
+		if rule.Exclude {
+			if matches {
+				return false
+			}
+
+			continue
+		}
+
+		hasInclude = true
+		if matches {
+			matchedInclude = true
 		}
 	}
 
-	return false
+	// With only exclude rules, everything that isn't excluded is in scope.
+	if !hasInclude {
+		return true
+	}
+
+	return matchedInclude
 }
 
 func (r Rule) Match(req *http.Request, body []byte) bool {
-	if r.URL != nil {
-		if matches := r.URL.MatchString(req.URL.String()); matches {
+	var rawURL string
+	if req.URL != nil {
+		rawURL = req.URL.String()
+	}
+
+	return r.matches(rawURL, req.Header, body)
+}
+
+// matches reports whether the rule matches the given request fields, ignoring
+// its Exclude flag (the caller applies exclusion semantics).
+func (r Rule) matches(rawURL string, header http.Header, body []byte) bool {
+	if r.URL != nil && rawURL != "" {
+		if r.URL.MatchString(rawURL) {
 			return true
 		}
 	}
 
-	for key, values := range req.Header {
+	for key, values := range header {
 		var keyMatches, valueMatches bool
 
 		if r.Header.Key != nil {
-			if matches := r.Header.Key.MatchString(key); matches {
+			if r.Header.Key.MatchString(key) {
 				keyMatches = true
 			}
 		}
 
 		if r.Header.Value != nil {
 			for _, value := range values {
-				if matches := r.Header.Value.MatchString(value); matches {
+				if r.Header.Value.MatchString(value) {
 					valueMatches = true
 					break
 				}
@@ -88,7 +139,7 @@ func (r Rule) Match(req *http.Request, body []byte) bool {
 	}
 
 	if r.Body != nil {
-		if matches := r.Body.Match(body); matches {
+		if r.Body.Match(body) {
 			return true
 		}
 	}
@@ -118,13 +169,15 @@ type ruleDTO struct {
 		Key   string
 		Value string
 	}
-	Body string
+	Body    string
+	Exclude bool
 }
 
 func (r Rule) MarshalBinary() ([]byte, error) {
 	dto := ruleDTO{
-		URL:  regexpToString(r.URL),
-		Body: regexpToString(r.Body),
+		URL:     regexpToString(r.URL),
+		Body:    regexpToString(r.Body),
+		Exclude: r.Exclude,
 	}
 	dto.Header.Key = regexpToString(r.Header.Key)
 	dto.Header.Value = regexpToString(r.Header.Value)
@@ -173,7 +226,8 @@ func (r *Rule) UnmarshalBinary(data []byte) error {
 			Key:   headerKey,
 			Value: headerValue,
 		},
-		Body: body,
+		Body:    body,
+		Exclude: dto.Exclude,
 	}
 
 	return nil

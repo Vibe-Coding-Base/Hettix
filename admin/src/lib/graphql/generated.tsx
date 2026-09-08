@@ -417,12 +417,14 @@ export type ScopeHeaderInput = {
 export type ScopeRule = {
   __typename?: 'ScopeRule';
   body?: Maybe<Scalars['Regexp']>;
+  exclude: Scalars['Boolean'];
   header?: Maybe<ScopeHeader>;
   url?: Maybe<Scalars['Regexp']>;
 };
 
 export type ScopeRuleInput = {
   body?: InputMaybe<Scalars['Regexp']>;
+  exclude?: InputMaybe<Scalars['Boolean']>;
   header?: InputMaybe<ScopeHeaderInput>;
   url?: InputMaybe<Scalars['Regexp']>;
 };
@@ -613,14 +615,14 @@ export type SetHttpRequestLogFilterMutation = { __typename?: 'Mutation', setHttp
 export type ScopeQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type ScopeQuery = { __typename?: 'Query', scope: Array<{ __typename?: 'ScopeRule', url?: any | null }> };
+export type ScopeQuery = { __typename?: 'Query', scope: Array<{ __typename?: 'ScopeRule', url?: any | null, exclude: boolean }> };
 
 export type SetScopeMutationVariables = Exact<{
   scope: Array<ScopeRuleInput> | ScopeRuleInput;
 }>;
 
 
-export type SetScopeMutation = { __typename?: 'Mutation', setScope: Array<{ __typename?: 'ScopeRule', url?: any | null }> };
+export type SetScopeMutation = { __typename?: 'Mutation', setScope: Array<{ __typename?: 'ScopeRule', url?: any | null, exclude: boolean }> };
 
 export type CreateOrUpdateSenderRequestMutationVariables = Exact<{
   request: SenderRequestInput;
@@ -1407,6 +1409,7 @@ export const ScopeDocument = gql`
     query Scope {
   scope {
     url
+    exclude
   }
 }
     `;
@@ -1441,6 +1444,7 @@ export const SetScopeDocument = gql`
     mutation SetScope($scope: [ScopeRuleInput!]!) {
   setScope(scope: $scope) {
     url
+    exclude
   }
 }
     `;

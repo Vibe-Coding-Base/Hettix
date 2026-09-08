@@ -38,7 +38,7 @@ function RuleListItem({ scope, rule, index }: RuleListItemProps): JSX.Element {
     clone.splice(index, 1);
     setScope({
       variables: {
-        scope: clone.map(({ url }) => ({ url })),
+        scope: clone.map(({ url, exclude }) => ({ url, exclude })),
       },
     });
   };
@@ -52,6 +52,12 @@ function RuleListItem({ scope, rule, index }: RuleListItemProps): JSX.Element {
       </ListItemAvatar>
       <RuleListItemText rule={rule} />
       <ListItemSecondaryAction>
+        <Chip
+          label={rule.exclude ? "Exclude" : "Include"}
+          color={rule.exclude ? "error" : "success"}
+          variant="outlined"
+          sx={{ mr: 1 }}
+        />
         <RuleTypeChip rule={rule} />
         <Tooltip title="Delete rule">
           <span style={{ marginLeft: 8 }}>
