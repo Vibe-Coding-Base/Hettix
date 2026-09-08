@@ -226,9 +226,9 @@ type Query {
   interceptedRequests: [HttpRequest!]!
   interceptedRequest(id: ID!): HttpRequest
   matchReplaceRules: [MatchReplaceRule!]!
-  webSocketConnections: [WebSocketConnection!]!
+  webSocketConnections(searchExpression: String): [WebSocketConnection!]!
   webSocketConnection(id: ID!): WebSocketConnection
-  webSocketMessages(connectionId: ID!): [WebSocketMessage!]!
+  webSocketMessages(connectionId: ID!, searchExpression: String): [WebSocketMessage!]!
 }
 
 enum MatchReplacePhase {

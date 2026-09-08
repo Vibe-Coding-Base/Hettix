@@ -204,8 +204,8 @@ type ComplexityRoot struct {
 		SenderRequest        func(childComplexity int, id ulid.ULID) int
 		SenderRequests       func(childComplexity int, offset *int, limit *int) int
 		WebSocketConnection  func(childComplexity int, id ulid.ULID) int
-		WebSocketConnections func(childComplexity int) int
-		WebSocketMessages    func(childComplexity int, connectionID ulid.ULID) int
+		WebSocketConnections func(childComplexity int, searchExpression *string) int
+		WebSocketMessages    func(childComplexity int, connectionID ulid.ULID, searchExpression *string) int
 	}
 
 	ScopeHeader struct {
@@ -287,9 +287,9 @@ type QueryResolver interface {
 	InterceptedRequests(ctx context.Context) ([]HTTPRequest, error)
 	InterceptedRequest(ctx context.Context, id ulid.ULID) (*HTTPRequest, error)
 	MatchReplaceRules(ctx context.Context) ([]MatchReplaceRule, error)
-	WebSocketConnections(ctx context.Context) ([]WebSocketConnection, error)
+	WebSocketConnections(ctx context.Context, searchExpression *string) ([]WebSocketConnection, error)
 	WebSocketConnection(ctx context.Context, id ulid.ULID) (*WebSocketConnection, error)
-	WebSocketMessages(ctx context.Context, connectionID ulid.ULID) ([]WebSocketMessage, error)
+	WebSocketMessages(ctx context.Context, connectionID ulid.ULID, searchExpression *string) ([]WebSocketMessage, error)
 }
 
 type executableSchema struct {
@@ -1087,7 +1087,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.WebSocketConnections(childComplexity), true
+		args, err := ec.field_Query_webSocketConnections_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.WebSocketConnections(childComplexity, args["searchExpression"].(*string)), true
 
 	case "Query.webSocketMessages":
 		if e.complexity.Query.WebSocketMessages == nil {
@@ -1099,7 +1104,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.WebSocketMessages(childComplexity, args["connectionId"].(ulid.ULID)), true
+		return e.complexity.Query.WebSocketMessages(childComplexity, args["connectionId"].(ulid.ULID), args["searchExpression"].(*string)), true
 
 	case "ScopeHeader.key":
 		if e.complexity.ScopeHeader.Key == nil {
@@ -1582,9 +1587,9 @@ type Query {
   interceptedRequests: [HttpRequest!]!
   interceptedRequest(id: ID!): HttpRequest
   matchReplaceRules: [MatchReplaceRule!]!
-  webSocketConnections: [WebSocketConnection!]!
+  webSocketConnections(searchExpression: String): [WebSocketConnection!]!
   webSocketConnection(id: ID!): WebSocketConnection
-  webSocketMessages(connectionId: ID!): [WebSocketMessage!]!
+  webSocketMessages(connectionId: ID!, searchExpression: String): [WebSocketMessage!]!
 }
 
 enum MatchReplacePhase {
@@ -2058,6 +2063,21 @@ func (ec *executionContext) field_Query_webSocketConnection_args(ctx context.Con
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_webSocketConnections_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["searchExpression"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("searchExpression"))
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["searchExpression"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_webSocketMessages_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -2070,6 +2090,15 @@ func (ec *executionContext) field_Query_webSocketMessages_args(ctx context.Conte
 		}
 	}
 	args["connectionId"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["searchExpression"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("searchExpression"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["searchExpression"] = arg1
 	return args, nil
 }
 
@@ -5495,9 +5524,16 @@ func (ec *executionContext) _Query_webSocketConnections(ctx context.Context, fie
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_webSocketConnections_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().WebSocketConnections(rctx)
+		return ec.resolvers.Query().WebSocketConnections(rctx, args["searchExpression"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5578,7 +5614,7 @@ func (ec *executionContext) _Query_webSocketMessages(ctx context.Context, field 
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().WebSocketMessages(rctx, args["connectionId"].(ulid.ULID))
+		return ec.resolvers.Query().WebSocketMessages(rctx, args["connectionId"].(ulid.ULID), args["searchExpression"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

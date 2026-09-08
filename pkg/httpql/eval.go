@@ -12,9 +12,22 @@ import (
 
 // Record is the data an HTTPQL query is evaluated against: a request and its
 // optional response, with fields already extracted into query-addressable form.
+// WebSocket is set instead of Request/Response when evaluating ws.* queries.
 type Record struct {
-	Request  RequestData
-	Response *ResponseData
+	Request   RequestData
+	Response  *ResponseData
+	WebSocket *WebSocketData
+}
+
+// WebSocketData holds the ws.* fields: connection-level host/path/url combined
+// with a single message's direction/opcode/payload.
+type WebSocketData struct {
+	Host      string
+	Path      string
+	URL       string
+	Direction string
+	Opcode    int
+	Payload   string
 }
 
 // RequestData holds the req.* fields.
@@ -134,6 +147,13 @@ func resolveKind(f Field) fieldKind {
 		case "proto", "reason", "body":
 			return kindString
 		}
+	case "ws":
+		switch f.Name {
+		case "opcode":
+			return kindInt
+		case "host", "path", "url", "direction", "payload":
+			return kindString
+		}
 	}
 
 	return kindUnknown
@@ -174,6 +194,21 @@ func resolveString(f Field, rec Record) string {
 		}
 	}
 
+	if f.Namespace == "ws" && rec.WebSocket != nil {
+		switch f.Name {
+		case "host":
+			return rec.WebSocket.Host
+		case "path":
+			return rec.WebSocket.Path
+		case "url":
+			return rec.WebSocket.URL
+		case "direction":
+			return rec.WebSocket.Direction
+		case "payload":
+			return rec.WebSocket.Payload
+		}
+	}
+
 	return ""
 }
 
@@ -196,6 +231,10 @@ func resolveInt(f Field, rec Record) int64 {
 		case "roundtrip":
 			return int64(rec.Response.RoundTrip)
 		}
+	}
+
+	if f.Namespace == "ws" && rec.WebSocket != nil && f.Name == "opcode" {
+		return int64(rec.WebSocket.Opcode)
 	}
 
 	return 0

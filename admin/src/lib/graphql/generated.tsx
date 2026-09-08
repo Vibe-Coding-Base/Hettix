@@ -388,8 +388,14 @@ export type QueryWebSocketConnectionArgs = {
 };
 
 
+export type QueryWebSocketConnectionsArgs = {
+  searchExpression?: InputMaybe<Scalars['String']>;
+};
+
+
 export type QueryWebSocketMessagesArgs = {
   connectionId: Scalars['ID'];
+  searchExpression?: InputMaybe<Scalars['String']>;
 };
 
 export type RunAgentInput = {
@@ -656,13 +662,16 @@ export type UpdateInterceptSettingsMutationVariables = Exact<{
 
 export type UpdateInterceptSettingsMutation = { __typename?: 'Mutation', updateInterceptSettings: { __typename?: 'InterceptSettings', requestsEnabled: boolean, responsesEnabled: boolean, requestFilter?: string | null, responseFilter?: string | null } };
 
-export type WebSocketConnectionsQueryVariables = Exact<{ [key: string]: never; }>;
+export type WebSocketConnectionsQueryVariables = Exact<{
+  searchExpression?: InputMaybe<Scalars['String']>;
+}>;
 
 
 export type WebSocketConnectionsQuery = { __typename?: 'Query', webSocketConnections: Array<{ __typename?: 'WebSocketConnection', id: string, url: string, host: string, path: string, timestamp: any, closedAt?: any | null, messageCount: number }> };
 
 export type WebSocketMessagesQueryVariables = Exact<{
   connectionId: Scalars['ID'];
+  searchExpression?: InputMaybe<Scalars['String']>;
 }>;
 
 
@@ -1694,8 +1703,8 @@ export type UpdateInterceptSettingsMutationHookResult = ReturnType<typeof useUpd
 export type UpdateInterceptSettingsMutationResult = Apollo.MutationResult<UpdateInterceptSettingsMutation>;
 export type UpdateInterceptSettingsMutationOptions = Apollo.BaseMutationOptions<UpdateInterceptSettingsMutation, UpdateInterceptSettingsMutationVariables>;
 export const WebSocketConnectionsDocument = gql`
-    query WebSocketConnections {
-  webSocketConnections {
+    query WebSocketConnections($searchExpression: String) {
+  webSocketConnections(searchExpression: $searchExpression) {
     id
     url
     host
@@ -1719,6 +1728,7 @@ export const WebSocketConnectionsDocument = gql`
  * @example
  * const { data, loading, error } = useWebSocketConnectionsQuery({
  *   variables: {
+ *      searchExpression: // value for 'searchExpression'
  *   },
  * });
  */
@@ -1734,8 +1744,11 @@ export type WebSocketConnectionsQueryHookResult = ReturnType<typeof useWebSocket
 export type WebSocketConnectionsLazyQueryHookResult = ReturnType<typeof useWebSocketConnectionsLazyQuery>;
 export type WebSocketConnectionsQueryResult = Apollo.QueryResult<WebSocketConnectionsQuery, WebSocketConnectionsQueryVariables>;
 export const WebSocketMessagesDocument = gql`
-    query WebSocketMessages($connectionId: ID!) {
-  webSocketMessages(connectionId: $connectionId) {
+    query WebSocketMessages($connectionId: ID!, $searchExpression: String) {
+  webSocketMessages(
+    connectionId: $connectionId
+    searchExpression: $searchExpression
+  ) {
     direction
     opcode
     payload
@@ -1757,6 +1770,7 @@ export const WebSocketMessagesDocument = gql`
  * const { data, loading, error } = useWebSocketMessagesQuery({
  *   variables: {
  *      connectionId: // value for 'connectionId'
+ *      searchExpression: // value for 'searchExpression'
  *   },
  * });
  */

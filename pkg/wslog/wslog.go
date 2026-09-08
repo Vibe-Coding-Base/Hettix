@@ -11,6 +11,7 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/log"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/wsproxy"
 )
@@ -164,12 +165,75 @@ func (svc *Service) onClose(connID string) {
 	}
 }
 
-func (svc *Service) Connections(ctx context.Context) ([]Connection, error) {
+func (svc *Service) Connections(ctx context.Context, expr httpql.Expression) ([]Connection, error) {
 	if svc.activeProjectID.Compare(ulid.ULID{}) == 0 {
 		return nil, ErrProjectIDMustBeSet
 	}
 
-	return svc.repo.FindWebSocketConnections(ctx, svc.activeProjectID)
+	conns, err := svc.repo.FindWebSocketConnections(ctx, svc.activeProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	if expr == nil {
+		return conns, nil
+	}
+
+	// Message-level fields (ws.payload/opcode/direction) require evaluating the
+	// query against each of a connection's messages; connection-level fields
+	// (ws.host/path/url) can be matched without loading them.
+	needMessages := referencesMessageFields(expr)
+
+	var filtered []Connection
+
+	for _, conn := range conns {
+		match, err := svc.connectionMatches(ctx, conn, expr, needMessages)
+		if err != nil {
+			return nil, err
+		}
+
+		if match {
+			filtered = append(filtered, conn)
+		}
+	}
+
+	return filtered, nil
+}
+
+func (svc *Service) connectionMatches(
+	ctx context.Context,
+	conn Connection,
+	expr httpql.Expression,
+	needMessages bool,
+) (bool, error) {
+	base := httpql.WebSocketData{Host: conn.Host, Path: conn.Path, URL: conn.URL}
+
+	if !needMessages {
+		return httpql.Eval(expr, httpql.Record{WebSocket: &base})
+	}
+
+	msgs, err := svc.repo.FindWebSocketMessages(ctx, svc.activeProjectID, conn.ID)
+	if err != nil {
+		return false, err
+	}
+
+	if len(msgs) == 0 {
+		return httpql.Eval(expr, httpql.Record{WebSocket: &base})
+	}
+
+	// A connection matches when any of its messages satisfies the query.
+	for _, msg := range msgs {
+		match, err := httpql.Eval(expr, httpql.Record{WebSocket: messageData(base, msg)})
+		if err != nil {
+			return false, err
+		}
+
+		if match {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func (svc *Service) ConnectionByID(ctx context.Context, id ulid.ULID) (Connection, error) {
@@ -180,10 +244,71 @@ func (svc *Service) ConnectionByID(ctx context.Context, id ulid.ULID) (Connectio
 	return svc.repo.FindWebSocketConnectionByID(ctx, svc.activeProjectID, id)
 }
 
-func (svc *Service) Messages(ctx context.Context, connectionID ulid.ULID) ([]Message, error) {
+func (svc *Service) Messages(
+	ctx context.Context,
+	connectionID ulid.ULID,
+	expr httpql.Expression,
+) ([]Message, error) {
 	if svc.activeProjectID.Compare(ulid.ULID{}) == 0 {
 		return nil, ErrProjectIDMustBeSet
 	}
 
-	return svc.repo.FindWebSocketMessages(ctx, svc.activeProjectID, connectionID)
+	msgs, err := svc.repo.FindWebSocketMessages(ctx, svc.activeProjectID, connectionID)
+	if err != nil {
+		return nil, err
+	}
+
+	if expr == nil {
+		return msgs, nil
+	}
+
+	conn, err := svc.repo.FindWebSocketConnectionByID(ctx, svc.activeProjectID, connectionID)
+	if err != nil {
+		return nil, err
+	}
+
+	base := httpql.WebSocketData{Host: conn.Host, Path: conn.Path, URL: conn.URL}
+
+	var filtered []Message
+
+	for _, msg := range msgs {
+		match, err := httpql.Eval(expr, httpql.Record{WebSocket: messageData(base, msg)})
+		if err != nil {
+			return nil, err
+		}
+
+		if match {
+			filtered = append(filtered, msg)
+		}
+	}
+
+	return filtered, nil
+}
+
+// messageData combines a connection's fields with a single message so the query
+// can correlate connection-level and message-level fields.
+func messageData(base httpql.WebSocketData, msg Message) *httpql.WebSocketData {
+	data := base
+	data.Direction = msg.Direction.String()
+	data.Opcode = msg.Opcode
+	data.Payload = string(msg.Payload)
+
+	return &data
+}
+
+func referencesMessageFields(expr httpql.Expression) bool {
+	found := false
+
+	httpql.WalkFields(expr, func(f httpql.Field) {
+		if f.Namespace != "ws" {
+			return
+		}
+
+		switch f.Name {
+		case "payload", "opcode", "direction":
+			found = true
+		}
+	})
+
+	return found
 }

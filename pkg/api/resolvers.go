@@ -755,8 +755,16 @@ func (r *queryResolver) MatchReplaceRules(ctx context.Context) ([]MatchReplaceRu
 	return matchReplaceRulesToGraphQL(rules), nil
 }
 
-func (r *queryResolver) WebSocketConnections(ctx context.Context) ([]WebSocketConnection, error) {
-	conns, err := r.WebSocketService.Connections(ctx)
+func (r *queryResolver) WebSocketConnections(
+	ctx context.Context,
+	searchExpression *string,
+) ([]WebSocketConnection, error) {
+	expr, err := parseSearchExpression(searchExpression)
+	if err != nil {
+		return nil, err
+	}
+
+	conns, err := r.WebSocketService.Connections(ctx, expr)
 	if errors.Is(err, wslog.ErrProjectIDMustBeSet) {
 		return nil, noActiveProjectErr(ctx)
 	} else if err != nil {
@@ -787,8 +795,17 @@ func (r *queryResolver) WebSocketConnection(ctx context.Context, id ulid.ULID) (
 	return &out, nil
 }
 
-func (r *queryResolver) WebSocketMessages(ctx context.Context, connectionID ulid.ULID) ([]WebSocketMessage, error) {
-	msgs, err := r.WebSocketService.Messages(ctx, connectionID)
+func (r *queryResolver) WebSocketMessages(
+	ctx context.Context,
+	connectionID ulid.ULID,
+	searchExpression *string,
+) ([]WebSocketMessage, error) {
+	expr, err := parseSearchExpression(searchExpression)
+	if err != nil {
+		return nil, err
+	}
+
+	msgs, err := r.WebSocketService.Messages(ctx, connectionID, expr)
 	switch {
 	case errors.Is(err, wslog.ErrConnectionNotFound):
 		return nil, nil
@@ -821,6 +838,19 @@ func webSocketConnectionToGraphQL(conn wslog.Connection) WebSocketConnection {
 		ClosedAt:     conn.ClosedAt,
 		MessageCount: conn.MessageCount,
 	}
+}
+
+func parseSearchExpression(s *string) (httpql.Expression, error) {
+	if s == nil || *s == "" {
+		return nil, nil
+	}
+
+	expr, err := httpql.Parse(*s)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse search expression: %w", err)
+	}
+
+	return expr, nil
 }
 
 func webSocketDirectionToGraphQL(d wsproxy.Direction) WebSocketDirection {

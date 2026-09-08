@@ -1,5 +1,5 @@
-query WebSocketConnections {
-  webSocketConnections {
+query WebSocketConnections($searchExpression: String) {
+  webSocketConnections(searchExpression: $searchExpression) {
     id
     url
     host
@@ -10,8 +10,8 @@ query WebSocketConnections {
   }
 }
 
-query WebSocketMessages($connectionId: ID!) {
-  webSocketMessages(connectionId: $connectionId) {
+query WebSocketMessages($connectionId: ID!, $searchExpression: String) {
+  webSocketMessages(connectionId: $connectionId, searchExpression: $searchExpression) {
     direction
     opcode
     payload

@@ -111,9 +111,22 @@ func operatorString(t TokenType) string {
 
 func isNamespace(s string) bool {
 	switch strings.ToLower(s) {
-	case "req", "resp", "res":
+	case "req", "resp", "res", "ws":
 		return true
 	default:
 		return false
+	}
+}
+
+// WalkFields calls fn for every field referenced by a clause in expr.
+func WalkFields(expr Expression, fn func(Field)) {
+	switch e := expr.(type) {
+	case BinaryExpr:
+		WalkFields(e.Left, fn)
+		WalkFields(e.Right, fn)
+	case NotExpr:
+		WalkFields(e.Expr, fn)
+	case Clause:
+		fn(e.Field)
 	}
 }

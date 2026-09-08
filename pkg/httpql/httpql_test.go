@@ -156,6 +156,55 @@ func TestEval(t *testing.T) {
 	}
 }
 
+func TestEvalWebSocket(t *testing.T) {
+	t.Parallel()
+
+	rec := httpql.Record{WebSocket: &httpql.WebSocketData{
+		Host:      "chat.example.com",
+		Path:      "/ws",
+		URL:       "wss://chat.example.com/ws",
+		Direction: "client->server",
+		Opcode:    1,
+		Payload:   `{"action":"subscribe","token":"secret"}`,
+	}}
+
+	tests := []struct {
+		query string
+		want  bool
+	}{
+		{`ws.host eq "chat.example.com"`, true},
+		{`ws.host cont "example"`, true},
+		{`ws.path eq "/ws"`, true},
+		{`ws.url cont "wss://"`, true},
+		{`ws.direction eq "client->server"`, true},
+		{`ws.direction eq "server->client"`, false},
+		{`ws.opcode eq 1`, true},
+		{`ws.opcode gte 8`, false},
+		{`ws.payload cont "token"`, true},
+		{`ws.payload cont "TOKEN"`, true},
+		{`ws.payload regex "subscribe"`, true},
+		{`ws.host eq "chat.example.com" AND ws.payload cont "secret"`, true},
+	}
+
+	for _, tt := range tests {
+		expr, err := httpql.Parse(tt.query)
+		if err != nil {
+			t.Errorf("Parse(%q) error: %v", tt.query, err)
+			continue
+		}
+
+		got, err := httpql.Eval(expr, rec)
+		if err != nil {
+			t.Errorf("Eval(%q) error: %v", tt.query, err)
+			continue
+		}
+
+		if got != tt.want {
+			t.Errorf("Eval(%q) = %v, want %v", tt.query, got, tt.want)
+		}
+	}
+}
+
 func TestEvalResponseAbsent(t *testing.T) {
 	t.Parallel()
 
