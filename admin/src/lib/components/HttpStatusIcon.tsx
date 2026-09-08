@@ -6,12 +6,16 @@ interface Props {
 }
 
 export default function HttpStatusIcon({ status }: Props): JSX.Element {
+  // Status colors are semantic and must not follow the (red) brand primary:
+  // 2xx success/green, 3xx info/blue, 4xx warning/orange, 5xx error/red.
   let color: SvgIconTypeMap["props"]["color"] = "inherit";
 
   switch (Math.floor(status / 100)) {
     case 2:
+      color = "success";
+      break;
     case 3:
-      color = "primary";
+      color = "info";
       break;
     case 4:
       color = "warning";

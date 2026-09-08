@@ -13,6 +13,10 @@ const iconsEsm = fileURLToPath(new URL("./node_modules/@mui/icons-material/esm/"
 // it proxies the GraphQL API to a locally running Hettix instance on :8080.
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // Keep in sync with `version` in cmd/hettix/hetty.go.
+    "import.meta.env.VITE_VERSION": JSON.stringify("0.1.0"),
+  },
   resolve: {
     alias: [
       { find: /^@mui\/icons-material\/([^/]+)$/, replacement: `${iconsEsm}$1` },

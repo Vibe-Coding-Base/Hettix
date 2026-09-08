@@ -59,7 +59,24 @@ export enum Page {
   Workflows,
 }
 
+interface NavItem {
+  page: Page;
+  to: string;
+  label: string;
+  icon: JSX.Element;
+  // project is true for pages that need an active project (disabled otherwise).
+  project?: boolean;
+}
+
 const drawerWidth = 240;
+
+// hideScrollbar keeps the nav scrollable without painting a scrollbar, which
+// looked out of place on the dark drawer.
+const hideScrollbar: CSSObject = {
+  overflowY: "auto",
+  scrollbarWidth: "none",
+  "&::-webkit-scrollbar": { display: "none" },
+};
 
 const openedMixin = (theme: Theme): CSSObject => ({
   width: drawerWidth,
@@ -68,6 +85,7 @@ const openedMixin = (theme: Theme): CSSObject => ({
     duration: theme.transitions.duration.enteringScreen,
   }),
   overflowX: "hidden",
+  ...hideScrollbar,
 });
 
 const closedMixin = (theme: Theme): CSSObject => ({
@@ -77,6 +95,7 @@ const closedMixin = (theme: Theme): CSSObject => ({
   }),
   overflowX: "hidden",
   width: 56,
+  ...hideScrollbar,
 });
 
 const DrawerHeader = styled("div")(({ theme }) => ({
@@ -166,7 +185,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
   const activeProject = useActiveProject();
   const interceptedRequests = useInterceptedRequests();
   const theme = useTheme();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -175,6 +194,43 @@ export function Layout({ title, page, children }: Props): JSX.Element {
   const handleDrawerClose = () => {
     setOpen(false);
   };
+
+  // Grouped by pentest workflow: observe traffic, then attack, then analyze,
+  // then manage. Groups are separated by dividers in the drawer.
+  const navGroups: NavItem[][] = [
+    [{ page: Page.Home, to: "/", label: "Home", icon: <HomeIcon /> }],
+    [
+      { page: Page.ProxyLogs, to: "/proxy/logs", label: "Proxy logs", icon: <FormatListBulletedIcon />, project: true },
+      {
+        page: Page.Intercept,
+        to: "/proxy/intercept",
+        label: "Intercept",
+        icon: (
+          <Badge color="error" badgeContent={interceptedRequests?.length || 0}>
+            <AltRouteIcon />
+          </Badge>
+        ),
+        project: true,
+      },
+      { page: Page.WebSocket, to: "/websocket", label: "WebSocket", icon: <SwapHorizIcon />, project: true },
+      { page: Page.Sitemap, to: "/sitemap", label: "Sitemap", icon: <AccountTreeIcon />, project: true },
+      { page: Page.Scope, to: "/scope", label: "Scope", icon: <LocationSearchingIcon />, project: true },
+    ],
+    [
+      { page: Page.Sender, to: "/sender", label: "Sender", icon: <SendIcon />, project: true },
+      { page: Page.Intruder, to: "/intruder", label: "Intruder", icon: <GpsFixedIcon />, project: true },
+      { page: Page.MatchReplace, to: "/match-replace", label: "Match & Replace", icon: <FindReplaceIcon />, project: true },
+      { page: Page.Workflows, to: "/workflows", label: "Workflows", icon: <HubIcon />, project: true },
+    ],
+    [
+      { page: Page.Findings, to: "/findings", label: "Findings", icon: <BugReportIcon />, project: true },
+      { page: Page.Assistant, to: "/assistant", label: "Assistant", icon: <AutoAwesomeIcon />, project: true },
+    ],
+    [
+      { page: Page.Projects, to: "/projects", label: "Projects", icon: <FolderIcon /> },
+      { page: Page.Settings, to: "/settings", label: "Settings", icon: <SettingsIcon /> },
+    ],
+  ];
 
   const SiteTitle = styled("span")({
     ...(title !== "" && {
@@ -221,188 +277,29 @@ export function Layout({ title, page, children }: Props): JSX.Element {
           </IconButton>
         </DrawerHeader>
         <Divider />
-        <List sx={{ p: 0 }}>
-          <ListItemButton component={RouterLink} to="/" key="home" selected={page === Page.Home}>
-            <Tooltip title="Home">
-              <ListItemIcon>
-                <HomeIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Home" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/proxy/logs"
-            key="proxyLogs"
-            disabled={!activeProject}
-            selected={page === Page.ProxyLogs}
-          >
-            <Tooltip title="Proxy logs">
-              <ListItemIcon>
-                <FormatListBulletedIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Logs" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/proxy/intercept"
-            key="proxyIntercept"
-            disabled={!activeProject}
-            selected={page === Page.Intercept}
-          >
-            <Tooltip title="Proxy intercept">
-              <ListItemIcon>
-                <Badge color="error" badgeContent={interceptedRequests?.length || 0}>
-                  <AltRouteIcon />
-                </Badge>
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Intercept" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/sender"
-            key="sender"
-            disabled={!activeProject}
-            selected={page === Page.Sender}
-          >
-            <Tooltip title="Sender">
-              <ListItemIcon>
-                <SendIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Sender" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/scope"
-            key="scope"
-            disabled={!activeProject}
-            selected={page === Page.Scope}
-          >
-            <Tooltip title="Scope">
-              <ListItemIcon>
-                <LocationSearchingIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Scope" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/match-replace"
-            key="matchReplace"
-            disabled={!activeProject}
-            selected={page === Page.MatchReplace}
-          >
-            <Tooltip title="Match & Replace">
-              <ListItemIcon>
-                <FindReplaceIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Match & Replace" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/websocket"
-            key="websocket"
-            disabled={!activeProject}
-            selected={page === Page.WebSocket}
-          >
-            <Tooltip title="WebSocket">
-              <ListItemIcon>
-                <SwapHorizIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="WebSocket" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/intruder"
-            key="intruder"
-            disabled={!activeProject}
-            selected={page === Page.Intruder}
-          >
-            <Tooltip title="Intruder">
-              <ListItemIcon>
-                <GpsFixedIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Intruder" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/sitemap"
-            key="sitemap"
-            disabled={!activeProject}
-            selected={page === Page.Sitemap}
-          >
-            <Tooltip title="Sitemap">
-              <ListItemIcon>
-                <AccountTreeIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Sitemap" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/findings"
-            key="findings"
-            disabled={!activeProject}
-            selected={page === Page.Findings}
-          >
-            <Tooltip title="Findings">
-              <ListItemIcon>
-                <BugReportIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Findings" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/workflows"
-            key="workflows"
-            disabled={!activeProject}
-            selected={page === Page.Workflows}
-          >
-            <Tooltip title="Workflows">
-              <ListItemIcon>
-                <HubIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Workflows" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/assistant"
-            key="assistant"
-            disabled={!activeProject}
-            selected={page === Page.Assistant}
-          >
-            <Tooltip title="Assistant">
-              <ListItemIcon>
-                <AutoAwesomeIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Assistant" />
-          </ListItemButton>
-          <ListItemButton component={RouterLink} to="/projects" key="projects" selected={page === Page.Projects}>
-            <Tooltip title="Projects">
-              <ListItemIcon>
-                <FolderIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Projects" />
-          </ListItemButton>
-          <ListItemButton component={RouterLink} to="/settings" key="settings" selected={page === Page.Settings}>
-            <Tooltip title="Settings">
-              <ListItemIcon>
-                <SettingsIcon />
-              </ListItemIcon>
-            </Tooltip>
-            <ListItemText primary="Settings" />
-          </ListItemButton>
-        </List>
+        {navGroups.map((group, groupIndex) => (
+          <List sx={{ p: 0 }} key={groupIndex}>
+            {groupIndex > 0 && <Divider />}
+            {group.map((item) => {
+              const disabled = item.project === true && !activeProject;
+
+              return (
+                <ListItemButton
+                  component={RouterLink}
+                  to={item.to}
+                  key={item.to}
+                  disabled={disabled}
+                  selected={page === item.page}
+                >
+                  <Tooltip title={item.label} placement="right">
+                    <ListItemIcon>{item.icon}</ListItemIcon>
+                  </Tooltip>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              );
+            })}
+          </List>
+        ))}
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, mx: 3, mt: 11 }}>
         {children}

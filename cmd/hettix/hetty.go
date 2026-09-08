@@ -38,7 +38,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/wslog"
 )
 
-var version = "0.0.0"
+var version = "0.1.0"
 
 // The `all:` prefix embeds every file, including any whose name starts with
 // "." or "_" that a plain embed would skip.
