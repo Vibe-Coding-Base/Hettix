@@ -258,6 +258,8 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		FindingService:            findingService,
 		LLMProvider:               llmProviderFromEnv(),
 	}, gqlEndpoint))
+	adminMux.Handle("/api/export/har", exportHandler(reqLogService, "har"))
+	adminMux.Handle("/api/export/csv", exportHandler(reqLogService, "csv"))
 	adminMux.Handle("/", adminHandler)
 
 	hostname, _ := os.Hostname()

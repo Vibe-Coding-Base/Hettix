@@ -1,6 +1,8 @@
 import AltRouteIcon from "@mui/icons-material/AltRoute";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { Alert, Badge, Button, IconButton, Tooltip } from "@mui/material";
+import DownloadIcon from "@mui/icons-material/Download";
+import { Alert, Badge, Button, IconButton, Menu, MenuItem, Tooltip } from "@mui/material";
+import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
 import { useActiveProject } from "lib/ActiveProjectContext";
@@ -15,6 +17,12 @@ function Actions(): JSX.Element {
     refetchQueries: [{ query: HttpRequestLogsDocument }],
   });
   const clearHTTPConfirmationDialog = useConfirmationDialog();
+  const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
+
+  const download = (format: "har" | "csv") => {
+    window.open(`/api/export/${format}`, "_blank");
+    setExportAnchor(null);
+  };
 
   return (
     <div>
@@ -48,6 +56,18 @@ function Actions(): JSX.Element {
           Review Intercepted…
         </Button>
       )}
+
+      <Tooltip title="Export">
+        <span>
+          <IconButton disabled={!activeProject} onClick={(e) => setExportAnchor(e.currentTarget)}>
+            <DownloadIcon />
+          </IconButton>
+        </span>
+      </Tooltip>
+      <Menu anchorEl={exportAnchor} open={Boolean(exportAnchor)} onClose={() => setExportAnchor(null)}>
+        <MenuItem onClick={() => download("har")}>Export as HAR</MenuItem>
+        <MenuItem onClick={() => download("csv")}>Export as CSV</MenuItem>
+      </Menu>
 
       <Tooltip title="Clear all">
         <IconButton onClick={clearHTTPConfirmationDialog.open}>
