@@ -40,6 +40,17 @@ type CloseProjectResult struct {
 	Success bool `json:"success"`
 }
 
+type CreateFindingInput struct {
+	Title        string          `json:"title"`
+	Description  *string         `json:"description"`
+	Severity     FindingSeverity `json:"severity"`
+	RequestLogID *ulid.ULID      `json:"requestLogID"`
+}
+
+type DeleteFindingResult struct {
+	Success bool `json:"success"`
+}
+
 type DeleteProjectResult struct {
 	Success bool `json:"success"`
 }
@@ -50,6 +61,15 @@ type DeleteSenderRequestsResult struct {
 
 type DropWebSocketMessageResult struct {
 	Success bool `json:"success"`
+}
+
+type Finding struct {
+	ID           ulid.ULID       `json:"id"`
+	Title        string          `json:"title"`
+	Description  string          `json:"description"`
+	Severity     FindingSeverity `json:"severity"`
+	RequestLogID *ulid.ULID      `json:"requestLogID"`
+	Timestamp    time.Time       `json:"timestamp"`
 }
 
 type HTTPHeader struct {
@@ -374,6 +394,53 @@ func (e *AgentMode) UnmarshalGQL(v interface{}) error {
 }
 
 func (e AgentMode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type FindingSeverity string
+
+const (
+	FindingSeverityInfo     FindingSeverity = "INFO"
+	FindingSeverityLow      FindingSeverity = "LOW"
+	FindingSeverityMedium   FindingSeverity = "MEDIUM"
+	FindingSeverityHigh     FindingSeverity = "HIGH"
+	FindingSeverityCritical FindingSeverity = "CRITICAL"
+)
+
+var AllFindingSeverity = []FindingSeverity{
+	FindingSeverityInfo,
+	FindingSeverityLow,
+	FindingSeverityMedium,
+	FindingSeverityHigh,
+	FindingSeverityCritical,
+}
+
+func (e FindingSeverity) IsValid() bool {
+	switch e {
+	case FindingSeverityInfo, FindingSeverityLow, FindingSeverityMedium, FindingSeverityHigh, FindingSeverityCritical:
+		return true
+	}
+	return false
+}
+
+func (e FindingSeverity) String() string {
+	return string(e)
+}
+
+func (e *FindingSeverity) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = FindingSeverity(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid FindingSeverity", str)
+	}
+	return nil
+}
+
+func (e FindingSeverity) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

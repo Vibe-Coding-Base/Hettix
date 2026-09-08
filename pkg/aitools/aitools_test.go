@@ -9,6 +9,7 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/Vibe-Coding-Base/Hettix/pkg/finding"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
@@ -92,5 +93,44 @@ func TestRunFuzzerEnforcesScope(t *testing.T) {
 	}
 	if !intr.started || len(intr.payloads) != 2 {
 		t.Fatalf("expected the attack to start with 2 payloads, got started=%v payloads=%v", intr.started, intr.payloads)
+	}
+}
+
+type fakeFindingService struct {
+	title    string
+	severity finding.Severity
+	linked   bool
+}
+
+func (f *fakeFindingService) CreateFinding(
+	_ context.Context,
+	title, _ string,
+	severity finding.Severity,
+	requestLogID *ulid.ULID,
+) (finding.Finding, error) {
+	f.title = title
+	f.severity = severity
+	f.linked = requestLogID != nil
+
+	return finding.Finding{ID: ulid.MustNew(ulid.Now(), nil), Title: title, Severity: severity}, nil
+}
+
+func TestCreateFinding(t *testing.T) {
+	svc := &fakeFindingService{}
+	handler := createFinding(svc)
+
+	reqID := ulid.MustNew(ulid.Now(), nil).String()
+	args, _ := json.Marshal(map[string]any{
+		"title":          "Reflected XSS",
+		"description":    "q is reflected",
+		"severity":       "high",
+		"request_log_id": reqID,
+	})
+
+	if _, err := handler(context.Background(), args); err != nil {
+		t.Fatalf("create_finding: %v", err)
+	}
+	if svc.title != "Reflected XSS" || svc.severity != finding.SeverityHigh || !svc.linked {
+		t.Fatalf("finding not recorded correctly: %+v", svc)
 	}
 }

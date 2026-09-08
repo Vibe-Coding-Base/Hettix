@@ -118,6 +118,17 @@ CREATE TABLE IF NOT EXISTS intruder_results (
 	FOREIGN KEY (attack_id) REFERENCES intruder_attacks (id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_intruder_results_attack ON intruder_results (attack_id, idx);
+
+CREATE TABLE IF NOT EXISTS findings (
+	id             TEXT PRIMARY KEY,
+	project_id     TEXT NOT NULL,
+	title          TEXT NOT NULL,
+	description    TEXT NOT NULL,
+	severity       TEXT NOT NULL,
+	request_log_id TEXT,
+	created_at     INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_findings_project ON findings (project_id, id);
 `
 
 // OpenDatabase opens (creating if needed) a SQLite database at path and ensures

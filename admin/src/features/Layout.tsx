@@ -1,6 +1,7 @@
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import AltRouteIcon from "@mui/icons-material/AltRoute";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import BugReportIcon from "@mui/icons-material/BugReport";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import FindReplaceIcon from "@mui/icons-material/FindReplace";
@@ -52,6 +53,7 @@ export enum Page {
   WebSocket,
   Intruder,
   Sitemap,
+  Findings,
 }
 
 const drawerWidth = 240;
@@ -338,6 +340,20 @@ export function Layout({ title, page, children }: Props): JSX.Element {
               </ListItemIcon>
             </Tooltip>
             <ListItemText primary="Sitemap" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/findings"
+            key="findings"
+            disabled={!activeProject}
+            selected={page === Page.Findings}
+          >
+            <Tooltip title="Findings">
+              <ListItemIcon>
+                <BugReportIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Findings" />
           </ListItemButton>
           <ListItemButton
             component={RouterLink}

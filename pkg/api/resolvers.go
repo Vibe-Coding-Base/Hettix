@@ -20,6 +20,7 @@ import (
 
 	"github.com/Vibe-Coding-Base/Hettix/pkg/agent"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/aitools"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/finding"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/llm"
@@ -55,6 +56,7 @@ type Resolver struct {
 	WebSocketService          *wslog.Service
 	WebSocketInterceptService *wsintercept.Service
 	IntruderService           *intruder.Service
+	FindingService            *finding.Service
 	LLMProvider               llm.Provider
 }
 
@@ -714,8 +716,10 @@ func (r *mutationResolver) RunAgent(ctx context.Context, input RunAgentInput) (*
 	var actions []AgentAction
 
 	ag := agent.New(agent.Config{
-		Provider:     r.LLMProvider,
-		Registry:     aitools.NewRegistry(r.RequestLogService, r.SenderService, r.ProjectService, r.IntruderService),
+		Provider: r.LLMProvider,
+		Registry: aitools.NewRegistry(
+			r.RequestLogService, r.SenderService, r.ProjectService, r.IntruderService, r.FindingService,
+		),
 		Mode:         mode,
 		SystemPrompt: aitools.SystemPrompt,
 		OnEvent: func(e agent.Event) {
@@ -842,6 +846,98 @@ func webSocketConnectionToGraphQL(conn wslog.Connection) WebSocketConnection {
 		Timestamp:    conn.CreatedAt,
 		ClosedAt:     conn.ClosedAt,
 		MessageCount: conn.MessageCount,
+	}
+}
+
+func (r *queryResolver) Findings(ctx context.Context) ([]Finding, error) {
+	findings, err := r.FindingService.Findings(ctx)
+	if errors.Is(err, finding.ErrProjectIDMustBeSet) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get findings: %w", err)
+	}
+
+	out := make([]Finding, len(findings))
+	for i, f := range findings {
+		out[i] = findingToGraphQL(f)
+	}
+
+	return out, nil
+}
+
+func (r *mutationResolver) CreateFinding(ctx context.Context, input CreateFindingInput) (*Finding, error) {
+	var description string
+	if input.Description != nil {
+		description = *input.Description
+	}
+
+	f, err := r.FindingService.CreateFinding(
+		ctx, input.Title, description, findingSeverityFromGraphQL(input.Severity), input.RequestLogID,
+	)
+	switch {
+	case errors.Is(err, finding.ErrProjectIDMustBeSet):
+		return nil, noActiveProjectErr(ctx)
+	case errors.Is(err, finding.ErrTitleRequired):
+		return nil, gqlerror.Errorf("A finding title is required.")
+	case err != nil:
+		return nil, fmt.Errorf("could not create finding: %w", err)
+	}
+
+	out := findingToGraphQL(f)
+
+	return &out, nil
+}
+
+func (r *mutationResolver) DeleteFinding(ctx context.Context, id ulid.ULID) (*DeleteFindingResult, error) {
+	err := r.FindingService.DeleteFinding(ctx, id)
+	switch {
+	case errors.Is(err, finding.ErrFindingNotFound):
+		return &DeleteFindingResult{Success: false}, nil
+	case errors.Is(err, finding.ErrProjectIDMustBeSet):
+		return nil, noActiveProjectErr(ctx)
+	case err != nil:
+		return nil, fmt.Errorf("could not delete finding: %w", err)
+	}
+
+	return &DeleteFindingResult{Success: true}, nil
+}
+
+var findingSeverityMap = map[finding.Severity]FindingSeverity{
+	finding.SeverityInfo:     FindingSeverityInfo,
+	finding.SeverityLow:      FindingSeverityLow,
+	finding.SeverityMedium:   FindingSeverityMedium,
+	finding.SeverityHigh:     FindingSeverityHigh,
+	finding.SeverityCritical: FindingSeverityCritical,
+}
+
+func findingToGraphQL(f finding.Finding) Finding {
+	severity, ok := findingSeverityMap[f.Severity]
+	if !ok {
+		severity = FindingSeverityInfo
+	}
+
+	return Finding{
+		ID:           f.ID,
+		Title:        f.Title,
+		Description:  f.Description,
+		Severity:     severity,
+		RequestLogID: f.RequestLogID,
+		Timestamp:    f.CreatedAt,
+	}
+}
+
+func findingSeverityFromGraphQL(s FindingSeverity) finding.Severity {
+	switch s {
+	case FindingSeverityLow:
+		return finding.SeverityLow
+	case FindingSeverityMedium:
+		return finding.SeverityMedium
+	case FindingSeverityHigh:
+		return finding.SeverityHigh
+	case FindingSeverityCritical:
+		return finding.SeverityCritical
+	default:
+		return finding.SeverityInfo
 	}
 }
 

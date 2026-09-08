@@ -23,6 +23,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/api"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/chrome"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/db/sqlite"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/finding"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
@@ -196,6 +197,11 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		Logger:     cmd.config.logger.Named("intruder").Sugar(),
 	})
 
+	findingService := finding.NewService(finding.Config{
+		Repository: db,
+		Logger:     cmd.config.logger.Named("finding").Sugar(),
+	})
+
 	projService, err := proj.NewService(proj.Config{
 		Repository:                db,
 		InterceptService:          interceptService,
@@ -204,6 +210,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		WebSocketService:          wsLogService,
 		WebSocketInterceptService: wsInterceptService,
 		IntruderService:           intruderService,
+		FindingService:            findingService,
 		Scope:                     scope,
 		MatchReplaceEngine:        matchReplaceEngine,
 	})
@@ -248,6 +255,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		WebSocketService:          wsLogService,
 		WebSocketInterceptService: wsInterceptService,
 		IntruderService:           intruderService,
+		FindingService:            findingService,
 		LLMProvider:               llmProviderFromEnv(),
 	}, gqlEndpoint))
 	adminMux.Handle("/", adminHandler)

@@ -15,6 +15,7 @@ import (
 	"github.com/oklog/ulid"
 
 	"github.com/Vibe-Coding-Base/Hettix/pkg/agent"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/finding"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
@@ -45,7 +46,8 @@ starts a fuzzing attack that resends a request once per payload (mark the
 insertion point in the URL or body with the § character), whose outcomes you
 read back with get_fuzz_results. These change state or send traffic, so they are
 only available in assist or auto mode and are refused for out-of-scope targets.
-Investigate first, then act deliberately.
+Investigate first, then act deliberately. Record what you confirm with
+create_finding, linking the request log id that evidences it.
 
 Be concise. When you reference a request, include its id so the operator can
 open it.`
@@ -77,6 +79,16 @@ type IntruderService interface {
 	Results(ctx context.Context, attackID ulid.ULID) ([]intruder.Result, error)
 }
 
+// FindingService is the subset of the finding service the tools use.
+type FindingService interface {
+	CreateFinding(
+		ctx context.Context,
+		title, description string,
+		severity finding.Severity,
+		requestLogID *ulid.ULID,
+	) (finding.Finding, error)
+}
+
 // NewRegistry builds the agent tool registry backed by the given services. The
 // sender and project services power the mutating tools; pass nil to omit them.
 // The intruder service adds the fuzzing tools; pass nil to omit them.
@@ -85,6 +97,7 @@ func NewRegistry(
 	senderSvc SenderService,
 	projSvc ProjectService,
 	intruderSvc IntruderService,
+	findingSvc FindingService,
 ) *agent.Registry {
 	reg := agent.NewRegistry()
 
@@ -195,6 +208,26 @@ func NewRegistry(
 				"required": ["id"]
 			}`),
 			Handler: getFuzzResults(intruderSvc),
+		})
+	}
+
+	if findingSvc != nil {
+		reg.Register(agent.Tool{
+			Name: "create_finding",
+			Description: "Record a security finding: a titled, severity-rated note, optionally linked to the " +
+				"request log id that evidences it.",
+			Mutating: true,
+			Schema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"title": {"type": "string"},
+					"description": {"type": "string"},
+					"severity": {"type": "string", "enum": ["info", "low", "medium", "high", "critical"]},
+					"request_log_id": {"type": "string", "description": "Optional request log id (ULID) that evidences the finding"}
+				},
+				"required": ["title", "severity"]
+			}`),
+			Handler: createFinding(findingSvc),
 		})
 	}
 
@@ -436,6 +469,37 @@ func getFuzzResults(intruderSvc IntruderService) agent.Handler {
 		}
 
 		return b.String(), nil
+	}
+}
+
+func createFinding(findingSvc FindingService) agent.Handler {
+	return func(ctx context.Context, args json.RawMessage) (string, error) {
+		var in struct {
+			Title        string `json:"title"`
+			Description  string `json:"description"`
+			Severity     string `json:"severity"`
+			RequestLogID string `json:"request_log_id"`
+		}
+		if err := json.Unmarshal(args, &in); err != nil {
+			return "", fmt.Errorf("invalid arguments: %w", err)
+		}
+
+		var requestLogID *ulid.ULID
+		if in.RequestLogID != "" {
+			id, err := ulid.Parse(in.RequestLogID)
+			if err != nil {
+				return "", fmt.Errorf("invalid request log id %q", in.RequestLogID)
+			}
+
+			requestLogID = &id
+		}
+
+		f, err := findingSvc.CreateFinding(ctx, in.Title, in.Description, finding.ParseSeverity(in.Severity), requestLogID)
+		if err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("Recorded %s finding %s: %q.", f.Severity, f.ID, f.Title), nil
 	}
 }
 

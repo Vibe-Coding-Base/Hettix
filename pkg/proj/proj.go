@@ -11,6 +11,7 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/Vibe-Coding-Base/Hettix/pkg/finding"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
@@ -33,6 +34,7 @@ type Service struct {
 	wsLogSvc        *wslog.Service
 	wsInterceptSvc  *wsintercept.Service
 	intruderSvc     *intruder.Service
+	findingSvc      *finding.Service
 	scope           *scope.Scope
 	matchReplace    *matchreplace.Engine
 	activeProjectID ulid.ULID
@@ -91,6 +93,7 @@ type Config struct {
 	WebSocketService          *wslog.Service
 	WebSocketInterceptService *wsintercept.Service
 	IntruderService           *intruder.Service
+	FindingService            *finding.Service
 	Scope                     *scope.Scope
 	MatchReplaceEngine        *matchreplace.Engine
 }
@@ -105,6 +108,7 @@ func NewService(cfg Config) (*Service, error) {
 		wsLogSvc:       cfg.WebSocketService,
 		wsInterceptSvc: cfg.WebSocketInterceptService,
 		intruderSvc:    cfg.IntruderService,
+		findingSvc:     cfg.FindingService,
 		scope:          cfg.Scope,
 		matchReplace:   cfg.MatchReplaceEngine,
 	}, nil
@@ -160,6 +164,10 @@ func (svc *Service) CloseProject() error {
 
 	if svc.intruderSvc != nil {
 		svc.intruderSvc.SetActiveProjectID(ulid.ULID{})
+	}
+
+	if svc.findingSvc != nil {
+		svc.findingSvc.SetActiveProjectID(ulid.ULID{})
 	}
 
 	svc.scope.SetRules(nil)
@@ -237,6 +245,11 @@ func (svc *Service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 	// Fuzzer/intruder.
 	if svc.intruderSvc != nil {
 		svc.intruderSvc.SetActiveProjectID(project.ID)
+	}
+
+	// Findings.
+	if svc.findingSvc != nil {
+		svc.findingSvc.SetActiveProjectID(project.ID)
 	}
 
 	// Scope settings.

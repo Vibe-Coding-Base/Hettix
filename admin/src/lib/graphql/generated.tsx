@@ -58,6 +58,18 @@ export type CloseProjectResult = {
   success: Scalars['Boolean'];
 };
 
+export type CreateFindingInput = {
+  description?: InputMaybe<Scalars['String']>;
+  requestLogID?: InputMaybe<Scalars['ID']>;
+  severity: FindingSeverity;
+  title: Scalars['String'];
+};
+
+export type DeleteFindingResult = {
+  __typename?: 'DeleteFindingResult';
+  success: Scalars['Boolean'];
+};
+
 export type DeleteProjectResult = {
   __typename?: 'DeleteProjectResult';
   success: Scalars['Boolean'];
@@ -72,6 +84,24 @@ export type DropWebSocketMessageResult = {
   __typename?: 'DropWebSocketMessageResult';
   success: Scalars['Boolean'];
 };
+
+export type Finding = {
+  __typename?: 'Finding';
+  description: Scalars['String'];
+  id: Scalars['ID'];
+  requestLogID?: Maybe<Scalars['ID']>;
+  severity: FindingSeverity;
+  timestamp: Scalars['Time'];
+  title: Scalars['String'];
+};
+
+export enum FindingSeverity {
+  Critical = 'CRITICAL',
+  High = 'HIGH',
+  Info = 'INFO',
+  Low = 'LOW',
+  Medium = 'MEDIUM'
+}
 
 export type HttpHeader = {
   __typename?: 'HttpHeader';
@@ -281,9 +311,11 @@ export type Mutation = {
   cancelResponse: CancelResponseResult;
   clearHTTPRequestLog: ClearHttpRequestLogResult;
   closeProject: CloseProjectResult;
+  createFinding: Finding;
   createOrUpdateSenderRequest: SenderRequest;
   createProject?: Maybe<Project>;
   createSenderRequestFromHttpRequestLog: SenderRequest;
+  deleteFinding: DeleteFindingResult;
   deleteProject: DeleteProjectResult;
   deleteSenderRequests: DeleteSenderRequestsResult;
   dropWebSocketMessage: DropWebSocketMessageResult;
@@ -314,6 +346,11 @@ export type MutationCancelResponseArgs = {
 };
 
 
+export type MutationCreateFindingArgs = {
+  input: CreateFindingInput;
+};
+
+
 export type MutationCreateOrUpdateSenderRequestArgs = {
   request: SenderRequestInput;
 };
@@ -325,6 +362,11 @@ export type MutationCreateProjectArgs = {
 
 
 export type MutationCreateSenderRequestFromHttpRequestLogArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type MutationDeleteFindingArgs = {
   id: Scalars['ID'];
 };
 
@@ -424,6 +466,7 @@ export type ProjectSettings = {
 export type Query = {
   __typename?: 'Query';
   activeProject?: Maybe<Project>;
+  findings: Array<Finding>;
   httpRequestLog?: Maybe<HttpRequestLog>;
   httpRequestLogFilter?: Maybe<HttpRequestLogFilter>;
   httpRequestLogs: Array<HttpRequestLog>;
@@ -628,6 +671,25 @@ export type RunAgentMutationVariables = Exact<{
 
 
 export type RunAgentMutation = { __typename?: 'Mutation', runAgent: { __typename?: 'AgentReply', reply: string, actions: Array<{ __typename?: 'AgentAction', tool: string, input: string, output: string, denied: boolean }> } };
+
+export type FindingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type FindingsQuery = { __typename?: 'Query', findings: Array<{ __typename?: 'Finding', id: string, title: string, description: string, severity: FindingSeverity, requestLogID?: string | null, timestamp: any }> };
+
+export type CreateFindingMutationVariables = Exact<{
+  input: CreateFindingInput;
+}>;
+
+
+export type CreateFindingMutation = { __typename?: 'Mutation', createFinding: { __typename?: 'Finding', id: string } };
+
+export type DeleteFindingMutationVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type DeleteFindingMutation = { __typename?: 'Mutation', deleteFinding: { __typename?: 'DeleteFindingResult', success: boolean } };
 
 export type CancelRequestMutationVariables = Exact<{
   id: Scalars['ID'];
@@ -915,6 +977,111 @@ export function useRunAgentMutation(baseOptions?: Apollo.MutationHookOptions<Run
 export type RunAgentMutationHookResult = ReturnType<typeof useRunAgentMutation>;
 export type RunAgentMutationResult = Apollo.MutationResult<RunAgentMutation>;
 export type RunAgentMutationOptions = Apollo.BaseMutationOptions<RunAgentMutation, RunAgentMutationVariables>;
+export const FindingsDocument = gql`
+    query Findings {
+  findings {
+    id
+    title
+    description
+    severity
+    requestLogID
+    timestamp
+  }
+}
+    `;
+
+/**
+ * __useFindingsQuery__
+ *
+ * To run a query within a React component, call `useFindingsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useFindingsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useFindingsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useFindingsQuery(baseOptions?: Apollo.QueryHookOptions<FindingsQuery, FindingsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<FindingsQuery, FindingsQueryVariables>(FindingsDocument, options);
+      }
+export function useFindingsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<FindingsQuery, FindingsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<FindingsQuery, FindingsQueryVariables>(FindingsDocument, options);
+        }
+export type FindingsQueryHookResult = ReturnType<typeof useFindingsQuery>;
+export type FindingsLazyQueryHookResult = ReturnType<typeof useFindingsLazyQuery>;
+export type FindingsQueryResult = Apollo.QueryResult<FindingsQuery, FindingsQueryVariables>;
+export const CreateFindingDocument = gql`
+    mutation CreateFinding($input: CreateFindingInput!) {
+  createFinding(input: $input) {
+    id
+  }
+}
+    `;
+export type CreateFindingMutationFn = Apollo.MutationFunction<CreateFindingMutation, CreateFindingMutationVariables>;
+
+/**
+ * __useCreateFindingMutation__
+ *
+ * To run a mutation, you first call `useCreateFindingMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useCreateFindingMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [createFindingMutation, { data, loading, error }] = useCreateFindingMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useCreateFindingMutation(baseOptions?: Apollo.MutationHookOptions<CreateFindingMutation, CreateFindingMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<CreateFindingMutation, CreateFindingMutationVariables>(CreateFindingDocument, options);
+      }
+export type CreateFindingMutationHookResult = ReturnType<typeof useCreateFindingMutation>;
+export type CreateFindingMutationResult = Apollo.MutationResult<CreateFindingMutation>;
+export type CreateFindingMutationOptions = Apollo.BaseMutationOptions<CreateFindingMutation, CreateFindingMutationVariables>;
+export const DeleteFindingDocument = gql`
+    mutation DeleteFinding($id: ID!) {
+  deleteFinding(id: $id) {
+    success
+  }
+}
+    `;
+export type DeleteFindingMutationFn = Apollo.MutationFunction<DeleteFindingMutation, DeleteFindingMutationVariables>;
+
+/**
+ * __useDeleteFindingMutation__
+ *
+ * To run a mutation, you first call `useDeleteFindingMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useDeleteFindingMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [deleteFindingMutation, { data, loading, error }] = useDeleteFindingMutation({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function useDeleteFindingMutation(baseOptions?: Apollo.MutationHookOptions<DeleteFindingMutation, DeleteFindingMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DeleteFindingMutation, DeleteFindingMutationVariables>(DeleteFindingDocument, options);
+      }
+export type DeleteFindingMutationHookResult = ReturnType<typeof useDeleteFindingMutation>;
+export type DeleteFindingMutationResult = Apollo.MutationResult<DeleteFindingMutation>;
+export type DeleteFindingMutationOptions = Apollo.BaseMutationOptions<DeleteFindingMutation, DeleteFindingMutationVariables>;
 export const CancelRequestDocument = gql`
     mutation CancelRequest($id: ID!) {
   cancelRequest(id: $id) {

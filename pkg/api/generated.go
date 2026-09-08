@@ -73,6 +73,10 @@ type ComplexityRoot struct {
 		Success func(childComplexity int) int
 	}
 
+	DeleteFindingResult struct {
+		Success func(childComplexity int) int
+	}
+
 	DeleteProjectResult struct {
 		Success func(childComplexity int) int
 	}
@@ -83,6 +87,15 @@ type ComplexityRoot struct {
 
 	DropWebSocketMessageResult struct {
 		Success func(childComplexity int) int
+	}
+
+	Finding struct {
+		Description  func(childComplexity int) int
+		ID           func(childComplexity int) int
+		RequestLogID func(childComplexity int) int
+		Severity     func(childComplexity int) int
+		Timestamp    func(childComplexity int) int
+		Title        func(childComplexity int) int
 	}
 
 	HTTPHeader struct {
@@ -197,9 +210,11 @@ type ComplexityRoot struct {
 		CancelResponse                        func(childComplexity int, requestID ulid.ULID) int
 		ClearHTTPRequestLog                   func(childComplexity int) int
 		CloseProject                          func(childComplexity int) int
+		CreateFinding                         func(childComplexity int, input CreateFindingInput) int
 		CreateOrUpdateSenderRequest           func(childComplexity int, request SenderRequestInput) int
 		CreateProject                         func(childComplexity int, name string) int
 		CreateSenderRequestFromHTTPRequestLog func(childComplexity int, id ulid.ULID) int
+		DeleteFinding                         func(childComplexity int, id ulid.ULID) int
 		DeleteProject                         func(childComplexity int, id ulid.ULID) int
 		DeleteSenderRequests                  func(childComplexity int) int
 		DropWebSocketMessage                  func(childComplexity int, id ulid.ULID) int
@@ -232,6 +247,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		ActiveProject                func(childComplexity int) int
+		Findings                     func(childComplexity int) int
 		HTTPRequestLog               func(childComplexity int, id ulid.ULID) int
 		HTTPRequestLogFilter         func(childComplexity int) int
 		HTTPRequestLogs              func(childComplexity int, offset *int, limit *int) int
@@ -338,6 +354,8 @@ type MutationResolver interface {
 	ForwardWebSocketMessage(ctx context.Context, id ulid.ULID) (*ModifyWebSocketMessageResult, error)
 	DropWebSocketMessage(ctx context.Context, id ulid.ULID) (*DropWebSocketMessageResult, error)
 	StartIntruderAttack(ctx context.Context, input StartIntruderAttackInput) (*IntruderAttack, error)
+	CreateFinding(ctx context.Context, input CreateFindingInput) (*Finding, error)
+	DeleteFinding(ctx context.Context, id ulid.ULID) (*DeleteFindingResult, error)
 }
 type QueryResolver interface {
 	HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error)
@@ -360,6 +378,7 @@ type QueryResolver interface {
 	IntruderAttack(ctx context.Context, id ulid.ULID) (*IntruderAttack, error)
 	IntruderResults(ctx context.Context, attackID ulid.ULID) ([]IntruderResult, error)
 	Sitemap(ctx context.Context) ([]SitemapEntry, error)
+	Findings(ctx context.Context) ([]Finding, error)
 }
 
 type executableSchema struct {
@@ -447,6 +466,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.CloseProjectResult.Success(childComplexity), true
 
+	case "DeleteFindingResult.success":
+		if e.complexity.DeleteFindingResult.Success == nil {
+			break
+		}
+
+		return e.complexity.DeleteFindingResult.Success(childComplexity), true
+
 	case "DeleteProjectResult.success":
 		if e.complexity.DeleteProjectResult.Success == nil {
 			break
@@ -467,6 +493,48 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DropWebSocketMessageResult.Success(childComplexity), true
+
+	case "Finding.description":
+		if e.complexity.Finding.Description == nil {
+			break
+		}
+
+		return e.complexity.Finding.Description(childComplexity), true
+
+	case "Finding.id":
+		if e.complexity.Finding.ID == nil {
+			break
+		}
+
+		return e.complexity.Finding.ID(childComplexity), true
+
+	case "Finding.requestLogID":
+		if e.complexity.Finding.RequestLogID == nil {
+			break
+		}
+
+		return e.complexity.Finding.RequestLogID(childComplexity), true
+
+	case "Finding.severity":
+		if e.complexity.Finding.Severity == nil {
+			break
+		}
+
+		return e.complexity.Finding.Severity(childComplexity), true
+
+	case "Finding.timestamp":
+		if e.complexity.Finding.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.Finding.Timestamp(childComplexity), true
+
+	case "Finding.title":
+		if e.complexity.Finding.Title == nil {
+			break
+		}
+
+		return e.complexity.Finding.Title(childComplexity), true
 
 	case "HttpHeader.key":
 		if e.complexity.HTTPHeader.Key == nil {
@@ -961,6 +1029,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CloseProject(childComplexity), true
 
+	case "Mutation.createFinding":
+		if e.complexity.Mutation.CreateFinding == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createFinding_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateFinding(childComplexity, args["input"].(CreateFindingInput)), true
+
 	case "Mutation.createOrUpdateSenderRequest":
 		if e.complexity.Mutation.CreateOrUpdateSenderRequest == nil {
 			break
@@ -996,6 +1076,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.CreateSenderRequestFromHTTPRequestLog(childComplexity, args["id"].(ulid.ULID)), true
+
+	case "Mutation.deleteFinding":
+		if e.complexity.Mutation.DeleteFinding == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteFinding_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteFinding(childComplexity, args["id"].(ulid.ULID)), true
 
 	case "Mutation.deleteProject":
 		if e.complexity.Mutation.DeleteProject == nil {
@@ -1237,6 +1329,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.ActiveProject(childComplexity), true
+
+	case "Query.findings":
+		if e.complexity.Query.Findings == nil {
+			break
+		}
+
+		return e.complexity.Query.Findings(childComplexity), true
 
 	case "Query.httpRequestLog":
 		if e.complexity.Query.HTTPRequestLog == nil {
@@ -2024,6 +2123,34 @@ type SitemapEntry {
   count: Int!
 }
 
+enum FindingSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+type Finding {
+  id: ID!
+  title: String!
+  description: String!
+  severity: FindingSeverity!
+  requestLogID: ID
+  timestamp: Time!
+}
+
+input CreateFindingInput {
+  title: String!
+  description: String
+  severity: FindingSeverity!
+  requestLogID: ID
+}
+
+type DeleteFindingResult {
+  success: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -2045,6 +2172,7 @@ type Query {
   intruderAttack(id: ID!): IntruderAttack
   intruderResults(attackId: ID!): [IntruderResult!]!
   sitemap: [SitemapEntry!]!
+  findings: [Finding!]!
 }
 
 enum MatchReplacePhase {
@@ -2108,6 +2236,8 @@ type Mutation {
   forwardWebSocketMessage(id: ID!): ModifyWebSocketMessageResult!
   dropWebSocketMessage(id: ID!): DropWebSocketMessageResult!
   startIntruderAttack(input: StartIntruderAttackInput!): IntruderAttack!
+  createFinding(input: CreateFindingInput!): Finding!
+  deleteFinding(id: ID!): DeleteFindingResult!
 }
 
 enum AgentMode {
@@ -2192,6 +2322,21 @@ func (ec *executionContext) field_Mutation_cancelResponse_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createFinding_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 CreateFindingInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNCreateFindingInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐCreateFindingInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createOrUpdateSenderRequest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -2223,6 +2368,21 @@ func (ec *executionContext) field_Mutation_createProject_args(ctx context.Contex
 }
 
 func (ec *executionContext) field_Mutation_createSenderRequestFromHttpRequestLog_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteFinding_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 ulid.ULID
@@ -3057,6 +3217,41 @@ func (ec *executionContext) _CloseProjectResult_success(ctx context.Context, fie
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _DeleteFindingResult_success(ctx context.Context, field graphql.CollectedField, obj *DeleteFindingResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "DeleteFindingResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Success, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _DeleteProjectResult_success(ctx context.Context, field graphql.CollectedField, obj *DeleteProjectResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -3160,6 +3355,213 @@ func (ec *executionContext) _DropWebSocketMessageResult_success(ctx context.Cont
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Finding_id(ctx context.Context, field graphql.CollectedField, obj *Finding) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Finding",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(ulid.ULID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Finding_title(ctx context.Context, field graphql.CollectedField, obj *Finding) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Finding",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Title, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Finding_description(ctx context.Context, field graphql.CollectedField, obj *Finding) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Finding",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Finding_severity(ctx context.Context, field graphql.CollectedField, obj *Finding) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Finding",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Severity, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(FindingSeverity)
+	fc.Result = res
+	return ec.marshalNFindingSeverity2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐFindingSeverity(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Finding_requestLogID(ctx context.Context, field graphql.CollectedField, obj *Finding) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Finding",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequestLogID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ulid.ULID)
+	fc.Result = res
+	return ec.marshalOID2ᚖgithubᚗcomᚋoklogᚋulidᚐULID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Finding_timestamp(ctx context.Context, field graphql.CollectedField, obj *Finding) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Finding",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HttpHeader_key(ctx context.Context, field graphql.CollectedField, obj *HTTPHeader) (ret graphql.Marshaler) {
@@ -6367,6 +6769,90 @@ func (ec *executionContext) _Mutation_startIntruderAttack(ctx context.Context, f
 	return ec.marshalNIntruderAttack2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐIntruderAttack(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_createFinding(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_createFinding_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateFinding(rctx, args["input"].(CreateFindingInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Finding)
+	fc.Result = res
+	return ec.marshalNFinding2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐFinding(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_deleteFinding(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_deleteFinding_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteFinding(rctx, args["id"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*DeleteFindingResult)
+	fc.Result = res
+	return ec.marshalNDeleteFindingResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteFindingResult(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -7289,6 +7775,41 @@ func (ec *executionContext) _Query_sitemap(ctx context.Context, field graphql.Co
 	res := resTmp.([]SitemapEntry)
 	fc.Result = res
 	return ec.marshalNSitemapEntry2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSitemapEntryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_findings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Findings(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]Finding)
+	fc.Result = res
+	return ec.marshalNFinding2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐFindingᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -9673,6 +10194,53 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputCreateFindingInput(ctx context.Context, obj interface{}) (CreateFindingInput, error) {
+	var it CreateFindingInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "title":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			it.Title, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "description":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			it.Description, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "severity":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("severity"))
+			it.Severity, err = ec.unmarshalNFindingSeverity2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐFindingSeverity(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "requestLogID":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestLogID"))
+			it.RequestLogID, err = ec.unmarshalOID2ᚖgithubᚗcomᚋoklogᚋulidᚐULID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputHttpHeaderInput(ctx context.Context, obj interface{}) (HTTPHeaderInput, error) {
 	var it HTTPHeaderInput
 	asMap := map[string]interface{}{}
@@ -10552,6 +11120,33 @@ func (ec *executionContext) _CloseProjectResult(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var deleteFindingResultImplementors = []string{"DeleteFindingResult"}
+
+func (ec *executionContext) _DeleteFindingResult(ctx context.Context, sel ast.SelectionSet, obj *DeleteFindingResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, deleteFindingResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DeleteFindingResult")
+		case "success":
+			out.Values[i] = ec._DeleteFindingResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var deleteProjectResultImplementors = []string{"DeleteProjectResult"}
 
 func (ec *executionContext) _DeleteProjectResult(ctx context.Context, sel ast.SelectionSet, obj *DeleteProjectResult) graphql.Marshaler {
@@ -10619,6 +11214,55 @@ func (ec *executionContext) _DropWebSocketMessageResult(ctx context.Context, sel
 			out.Values[i] = graphql.MarshalString("DropWebSocketMessageResult")
 		case "success":
 			out.Values[i] = ec._DropWebSocketMessageResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var findingImplementors = []string{"Finding"}
+
+func (ec *executionContext) _Finding(ctx context.Context, sel ast.SelectionSet, obj *Finding) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, findingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Finding")
+		case "id":
+			out.Values[i] = ec._Finding_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "title":
+			out.Values[i] = ec._Finding_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "description":
+			out.Values[i] = ec._Finding_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "severity":
+			out.Values[i] = ec._Finding_severity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "requestLogID":
+			out.Values[i] = ec._Finding_requestLogID(ctx, field, obj)
+		case "timestamp":
+			out.Values[i] = ec._Finding_timestamp(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -11344,6 +11988,16 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "createFinding":
+			out.Values[i] = ec._Mutation_createFinding(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "deleteFinding":
+			out.Values[i] = ec._Mutation_deleteFinding(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11693,6 +12347,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_sitemap(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "findings":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_findings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -12411,6 +13079,25 @@ func (ec *executionContext) marshalNCloseProjectResult2ᚖgithubᚗcomᚋVibeᚑ
 	return ec._CloseProjectResult(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNCreateFindingInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐCreateFindingInput(ctx context.Context, v interface{}) (CreateFindingInput, error) {
+	res, err := ec.unmarshalInputCreateFindingInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDeleteFindingResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteFindingResult(ctx context.Context, sel ast.SelectionSet, v DeleteFindingResult) graphql.Marshaler {
+	return ec._DeleteFindingResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDeleteFindingResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteFindingResult(ctx context.Context, sel ast.SelectionSet, v *DeleteFindingResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._DeleteFindingResult(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNDeleteProjectResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteProjectResult(ctx context.Context, sel ast.SelectionSet, v DeleteProjectResult) graphql.Marshaler {
 	return ec._DeleteProjectResult(ctx, sel, &v)
 }
@@ -12451,6 +13138,74 @@ func (ec *executionContext) marshalNDropWebSocketMessageResult2ᚖgithubᚗcom�
 		return graphql.Null
 	}
 	return ec._DropWebSocketMessageResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFinding2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐFinding(ctx context.Context, sel ast.SelectionSet, v Finding) graphql.Marshaler {
+	return ec._Finding(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNFinding2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐFindingᚄ(ctx context.Context, sel ast.SelectionSet, v []Finding) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFinding2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐFinding(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFinding2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐFinding(ctx context.Context, sel ast.SelectionSet, v *Finding) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Finding(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNFindingSeverity2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐFindingSeverity(ctx context.Context, v interface{}) (FindingSeverity, error) {
+	var res FindingSeverity
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFindingSeverity2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐFindingSeverity(ctx context.Context, sel ast.SelectionSet, v FindingSeverity) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNHttpHeader2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeader(ctx context.Context, sel ast.SelectionSet, v HTTPHeader) graphql.Marshaler {

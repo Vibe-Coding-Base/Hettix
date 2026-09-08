@@ -1,6 +1,7 @@
 import { RouteObject } from "react-router-dom";
 
 import Assistant from "pages/assistant/index";
+import Findings from "pages/findings/index";
 import Home from "pages/index";
 import Intruder from "pages/intruder/index";
 import MatchReplace from "pages/matchreplace/index";
@@ -28,4 +29,5 @@ export const routes: RouteObject[] = [
   { path: "/websocket", element: <WebSocket /> },
   { path: "/intruder", element: <Intruder /> },
   { path: "/sitemap", element: <Sitemap /> },
+  { path: "/findings", element: <Findings /> },
 ];

@@ -1,0 +1,22 @@
+query Findings {
+  findings {
+    id
+    title
+    description
+    severity
+    requestLogID
+    timestamp
+  }
+}
+
+mutation CreateFinding($input: CreateFindingInput!) {
+  createFinding(input: $input) {
+    id
+  }
+}
+
+mutation DeleteFinding($id: ID!) {
+  deleteFinding(id: $id) {
+    success
+  }
+}
