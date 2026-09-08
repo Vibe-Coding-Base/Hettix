@@ -7,6 +7,8 @@ import { RouterProvider, createBrowserRouter } from "react-router-dom";
 
 import { routes } from "./routes";
 
+import "lib/monaco";
+
 import { ActiveProjectProvider } from "lib/ActiveProjectContext";
 import { InterceptedRequestsProvider } from "lib/InterceptedRequestsContext";
 import { useApollo } from "lib/graphql/useApollo";

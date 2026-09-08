@@ -17,7 +17,16 @@ interface ResponseTabsProps {
 
 enum TabValue {
   Body = "body",
+  Render = "render",
   Headers = "headers",
+}
+
+function isHTML(contentType?: string, body?: string | null): boolean {
+  if (contentType?.toLowerCase().includes("html")) {
+    return true;
+  }
+  const trimmed = body?.trimStart() ?? "";
+  return /^<!doctype html|^<html[\s>]/i.test(trimmed);
 }
 
 const reqNotSent = (
@@ -31,6 +40,7 @@ function ResponseTabs(props: ResponseTabsProps): JSX.Element {
   const [tabValue, setTabValue] = useState(TabValue.Body);
 
   const contentType = headers.find((header) => header.key.toLowerCase() === "content-type")?.value;
+  const canRender = isHTML(contentType, body);
 
   const tabSx = {
     textTransform: "none",
@@ -48,6 +58,7 @@ function ResponseTabs(props: ResponseTabsProps): JSX.Element {
               label={"Body" + (body?.length ? ` (${body.length} byte` + (body.length > 1 ? "s" : "") + ")" : "")}
               sx={tabSx}
             />
+            {canRender && <Tab value={TabValue.Render} label="Render" sx={tabSx} />}
             <Tab value={TabValue.Headers} label={"Headers" + (headersLength ? ` (${headersLength})` : "")} sx={tabSx} />
           </TabList>
         </Box>
@@ -65,6 +76,18 @@ function ResponseTabs(props: ResponseTabsProps): JSX.Element {
             )}
             {!hasResponse && reqNotSent}
           </TabPanel>
+          {canRender && (
+            <TabPanel value={TabValue.Render} sx={{ p: 0, height: "100%" }}>
+              {/* Sandboxed with no allow-* tokens: the response's scripts never
+                  run, so rendering an attacker-controlled page is safe. */}
+              <iframe
+                title="Rendered response"
+                srcDoc={body || ""}
+                sandbox=""
+                style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}
+              />
+            </TabPanel>
+          )}
           <TabPanel value={TabValue.Headers} sx={{ p: 0, height: "100%", overflow: "scroll" }}>
             {hasResponse && <KeyValuePairTable items={headers} onChange={onHeaderChange} onDelete={onHeaderDelete} />}
             {!hasResponse && reqNotSent}
