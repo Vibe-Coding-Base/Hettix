@@ -30,5 +30,12 @@ func NewExecAllocator(ctx context.Context, cfg Config) (context.Context, context
 		chromedp.Flag("proxy-bypass-list", proxyBypass),
 	)
 
+	// chromedp only searches for Chrome/Chromium by default; fall back to a
+	// bundled Chromium or another installed Chromium-based browser (e.g. Edge)
+	// so the launcher works when Chrome itself isn't installed.
+	if path := FindBrowser(); path != "" {
+		opts = append(opts, chromedp.ExecPath(path))
+	}
+
 	return chromedp.NewExecAllocator(ctx, opts...)
 }
