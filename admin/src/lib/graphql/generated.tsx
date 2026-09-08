@@ -161,6 +161,37 @@ export type InterceptSettings = {
   responsesEnabled: Scalars['Boolean'];
 };
 
+export enum MatchReplacePhase {
+  Request = 'REQUEST',
+  Response = 'RESPONSE'
+}
+
+export type MatchReplaceRule = {
+  __typename?: 'MatchReplaceRule';
+  bodyMatcher?: Maybe<Scalars['String']>;
+  bodyReplacement?: Maybe<Scalars['String']>;
+  condition?: Maybe<Scalars['String']>;
+  enabled: Scalars['Boolean'];
+  headerName?: Maybe<Scalars['String']>;
+  headerValue?: Maybe<Scalars['String']>;
+  id: Scalars['ID'];
+  name: Scalars['String'];
+  phase: MatchReplacePhase;
+  removeHeader: Scalars['Boolean'];
+};
+
+export type MatchReplaceRuleInput = {
+  bodyMatcher?: InputMaybe<Scalars['String']>;
+  bodyReplacement?: InputMaybe<Scalars['String']>;
+  condition?: InputMaybe<Scalars['String']>;
+  enabled: Scalars['Boolean'];
+  headerName?: InputMaybe<Scalars['String']>;
+  headerValue?: InputMaybe<Scalars['String']>;
+  name: Scalars['String'];
+  phase: MatchReplacePhase;
+  removeHeader?: InputMaybe<Scalars['Boolean']>;
+};
+
 export type ModifyRequestInput = {
   body?: InputMaybe<Scalars['String']>;
   headers?: InputMaybe<Array<HttpHeaderInput>>;
@@ -207,6 +238,7 @@ export type Mutation = {
   runAgent: AgentReply;
   sendRequest: SenderRequest;
   setHttpRequestLogFilter?: Maybe<HttpRequestLogFilter>;
+  setMatchReplaceRules: Array<MatchReplaceRule>;
   setScope: Array<ScopeRule>;
   setSenderRequestFilter?: Maybe<SenderRequestFilter>;
   updateInterceptSettings: InterceptSettings;
@@ -273,6 +305,11 @@ export type MutationSetHttpRequestLogFilterArgs = {
 };
 
 
+export type MutationSetMatchReplaceRulesArgs = {
+  rules: Array<MatchReplaceRuleInput>;
+};
+
+
 export type MutationSetScopeArgs = {
   scope: Array<ScopeRuleInput>;
 };
@@ -308,6 +345,7 @@ export type Query = {
   httpRequestLogs: Array<HttpRequestLog>;
   interceptedRequest?: Maybe<HttpRequest>;
   interceptedRequests: Array<HttpRequest>;
+  matchReplaceRules: Array<MatchReplaceRule>;
   projects: Array<Project>;
   scope: Array<ScopeRule>;
   senderRequest?: Maybe<SenderRequest>;
@@ -451,6 +489,18 @@ export type ModifyResponseMutationVariables = Exact<{
 
 
 export type ModifyResponseMutation = { __typename?: 'Mutation', modifyResponse: { __typename?: 'ModifyResponseResult', success: boolean } };
+
+export type MatchReplaceRulesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type MatchReplaceRulesQuery = { __typename?: 'Query', matchReplaceRules: Array<{ __typename?: 'MatchReplaceRule', id: string, name: string, enabled: boolean, phase: MatchReplacePhase, condition?: string | null, headerName?: string | null, headerValue?: string | null, removeHeader: boolean, bodyMatcher?: string | null, bodyReplacement?: string | null }> };
+
+export type SetMatchReplaceRulesMutationVariables = Exact<{
+  rules: Array<MatchReplaceRuleInput> | MatchReplaceRuleInput;
+}>;
+
+
+export type SetMatchReplaceRulesMutation = { __typename?: 'Mutation', setMatchReplaceRules: Array<{ __typename?: 'MatchReplaceRule', id: string, name: string, enabled: boolean, phase: MatchReplacePhase, condition?: string | null, headerName?: string | null, headerValue?: string | null, removeHeader: boolean, bodyMatcher?: string | null, bodyReplacement?: string | null }> };
 
 export type ActiveProjectQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -800,6 +850,91 @@ export function useModifyResponseMutation(baseOptions?: Apollo.MutationHookOptio
 export type ModifyResponseMutationHookResult = ReturnType<typeof useModifyResponseMutation>;
 export type ModifyResponseMutationResult = Apollo.MutationResult<ModifyResponseMutation>;
 export type ModifyResponseMutationOptions = Apollo.BaseMutationOptions<ModifyResponseMutation, ModifyResponseMutationVariables>;
+export const MatchReplaceRulesDocument = gql`
+    query MatchReplaceRules {
+  matchReplaceRules {
+    id
+    name
+    enabled
+    phase
+    condition
+    headerName
+    headerValue
+    removeHeader
+    bodyMatcher
+    bodyReplacement
+  }
+}
+    `;
+
+/**
+ * __useMatchReplaceRulesQuery__
+ *
+ * To run a query within a React component, call `useMatchReplaceRulesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useMatchReplaceRulesQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useMatchReplaceRulesQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useMatchReplaceRulesQuery(baseOptions?: Apollo.QueryHookOptions<MatchReplaceRulesQuery, MatchReplaceRulesQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<MatchReplaceRulesQuery, MatchReplaceRulesQueryVariables>(MatchReplaceRulesDocument, options);
+      }
+export function useMatchReplaceRulesLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<MatchReplaceRulesQuery, MatchReplaceRulesQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<MatchReplaceRulesQuery, MatchReplaceRulesQueryVariables>(MatchReplaceRulesDocument, options);
+        }
+export type MatchReplaceRulesQueryHookResult = ReturnType<typeof useMatchReplaceRulesQuery>;
+export type MatchReplaceRulesLazyQueryHookResult = ReturnType<typeof useMatchReplaceRulesLazyQuery>;
+export type MatchReplaceRulesQueryResult = Apollo.QueryResult<MatchReplaceRulesQuery, MatchReplaceRulesQueryVariables>;
+export const SetMatchReplaceRulesDocument = gql`
+    mutation SetMatchReplaceRules($rules: [MatchReplaceRuleInput!]!) {
+  setMatchReplaceRules(rules: $rules) {
+    id
+    name
+    enabled
+    phase
+    condition
+    headerName
+    headerValue
+    removeHeader
+    bodyMatcher
+    bodyReplacement
+  }
+}
+    `;
+export type SetMatchReplaceRulesMutationFn = Apollo.MutationFunction<SetMatchReplaceRulesMutation, SetMatchReplaceRulesMutationVariables>;
+
+/**
+ * __useSetMatchReplaceRulesMutation__
+ *
+ * To run a mutation, you first call `useSetMatchReplaceRulesMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useSetMatchReplaceRulesMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [setMatchReplaceRulesMutation, { data, loading, error }] = useSetMatchReplaceRulesMutation({
+ *   variables: {
+ *      rules: // value for 'rules'
+ *   },
+ * });
+ */
+export function useSetMatchReplaceRulesMutation(baseOptions?: Apollo.MutationHookOptions<SetMatchReplaceRulesMutation, SetMatchReplaceRulesMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<SetMatchReplaceRulesMutation, SetMatchReplaceRulesMutationVariables>(SetMatchReplaceRulesDocument, options);
+      }
+export type SetMatchReplaceRulesMutationHookResult = ReturnType<typeof useSetMatchReplaceRulesMutation>;
+export type SetMatchReplaceRulesMutationResult = Apollo.MutationResult<SetMatchReplaceRulesMutation>;
+export type SetMatchReplaceRulesMutationOptions = Apollo.BaseMutationOptions<SetMatchReplaceRulesMutation, SetMatchReplaceRulesMutationVariables>;
 export const ActiveProjectDocument = gql`
     query ActiveProject {
   activeProject {

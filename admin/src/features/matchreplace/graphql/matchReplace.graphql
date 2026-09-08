@@ -1,0 +1,29 @@
+query MatchReplaceRules {
+  matchReplaceRules {
+    id
+    name
+    enabled
+    phase
+    condition
+    headerName
+    headerValue
+    removeHeader
+    bodyMatcher
+    bodyReplacement
+  }
+}
+
+mutation SetMatchReplaceRules($rules: [MatchReplaceRuleInput!]!) {
+  setMatchReplaceRules(rules: $rules) {
+    id
+    name
+    enabled
+    phase
+    condition
+    headerName
+    headerValue
+    removeHeader
+    bodyMatcher
+    bodyReplacement
+  }
+}

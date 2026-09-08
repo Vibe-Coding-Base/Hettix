@@ -5,7 +5,9 @@ package aitools
 
 import (
 	"context"
+	crand "crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/Vibe-Coding-Base/Hettix/pkg/agent"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
@@ -60,6 +63,8 @@ type SenderService interface {
 type ProjectService interface {
 	SetScopeRules(ctx context.Context, rules []scope.Rule) error
 	Scope() *scope.Scope
+	MatchReplaceRules(ctx context.Context) ([]matchreplace.Rule, error)
+	SetMatchReplaceRules(ctx context.Context, rules []matchreplace.Rule) error
 }
 
 // NewRegistry builds the agent tool registry backed by the given services. The
@@ -121,6 +126,27 @@ func NewRegistry(reqLog RequestLogService, senderSvc SenderService, projSvc Proj
 				"required": ["url_patterns"]
 			}`),
 			Handler: setScope(projSvc),
+		})
+
+		reg.Register(agent.Tool{
+			Name:        "add_match_replace_rule",
+			Description: "Add a rule that rewrites proxied traffic: set or remove a header, or regexp-replace the body, of matching requests or responses.",
+			Mutating:    true,
+			Schema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"name": {"type": "string"},
+					"phase": {"type": "string", "enum": ["request", "response"], "description": "Whether the rule runs on requests or responses"},
+					"condition": {"type": "string", "description": "Optional HTTPQL condition; when omitted the rule always applies"},
+					"header_name": {"type": "string", "description": "Header to set or remove"},
+					"header_value": {"type": "string"},
+					"remove_header": {"type": "boolean"},
+					"body_matcher": {"type": "string", "description": "Regexp matched against the body"},
+					"body_replacement": {"type": "string"}
+				},
+				"required": ["name", "phase"]
+			}`),
+			Handler: addMatchReplaceRule(projSvc),
 		})
 	}
 
@@ -276,6 +302,68 @@ func setScope(projSvc ProjectService) agent.Handler {
 		}
 
 		return fmt.Sprintf("Scope set to %d rule(s).", len(rules)), nil
+	}
+}
+
+func addMatchReplaceRule(projSvc ProjectService) agent.Handler {
+	return func(ctx context.Context, args json.RawMessage) (string, error) {
+		var in struct {
+			Name            string `json:"name"`
+			Phase           string `json:"phase"`
+			Condition       string `json:"condition"`
+			HeaderName      string `json:"header_name"`
+			HeaderValue     string `json:"header_value"`
+			RemoveHeader    bool   `json:"remove_header"`
+			BodyMatcher     string `json:"body_matcher"`
+			BodyReplacement string `json:"body_replacement"`
+		}
+		if err := json.Unmarshal(args, &in); err != nil {
+			return "", fmt.Errorf("invalid arguments: %w", err)
+		}
+
+		if in.HeaderName == "" && in.BodyMatcher == "" {
+			return "", errors.New("a rule must set/remove a header or provide a body matcher")
+		}
+
+		id, err := ulid.New(ulid.Now(), crand.Reader)
+		if err != nil {
+			return "", err
+		}
+
+		rule := matchreplace.Rule{
+			ID:              id,
+			Name:            in.Name,
+			Enabled:         true,
+			Phase:           matchreplace.PhaseRequest,
+			HeaderName:      in.HeaderName,
+			HeaderValue:     in.HeaderValue,
+			RemoveHeader:    in.RemoveHeader,
+			BodyMatcher:     in.BodyMatcher,
+			BodyReplacement: in.BodyReplacement,
+		}
+
+		if strings.EqualFold(in.Phase, "response") {
+			rule.Phase = matchreplace.PhaseResponse
+		}
+
+		if in.Condition != "" {
+			expr, err := httpql.Parse(in.Condition)
+			if err != nil {
+				return "", fmt.Errorf("invalid condition: %w", err)
+			}
+			rule.Condition = expr
+		}
+
+		existing, err := projSvc.MatchReplaceRules(ctx)
+		if err != nil {
+			return "", err
+		}
+
+		if err := projSvc.SetMatchReplaceRules(ctx, append(existing, rule)); err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("Added match & replace rule %q.", rule.Name), nil
 	}
 }
 

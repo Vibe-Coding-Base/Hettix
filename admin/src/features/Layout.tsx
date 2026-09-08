@@ -2,6 +2,7 @@ import AltRouteIcon from "@mui/icons-material/AltRoute";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import FindReplaceIcon from "@mui/icons-material/FindReplace";
 import FolderIcon from "@mui/icons-material/Folder";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import HomeIcon from "@mui/icons-material/Home";
@@ -44,6 +45,7 @@ export enum Page {
   Scope,
   Settings,
   Assistant,
+  MatchReplace,
 }
 
 const drawerWidth = 240;
@@ -274,6 +276,20 @@ export function Layout({ title, page, children }: Props): JSX.Element {
               </ListItemIcon>
             </Tooltip>
             <ListItemText primary="Scope" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/match-replace"
+            key="matchReplace"
+            disabled={!activeProject}
+            selected={page === Page.MatchReplace}
+          >
+            <Tooltip title="Match & Replace">
+              <ListItemIcon>
+                <FindReplaceIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Match & Replace" />
           </ListItemButton>
           <ListItemButton
             component={RouterLink}

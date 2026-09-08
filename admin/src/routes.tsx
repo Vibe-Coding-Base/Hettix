@@ -2,6 +2,7 @@ import { RouteObject } from "react-router-dom";
 
 import Assistant from "pages/assistant/index";
 import Home from "pages/index";
+import MatchReplace from "pages/matchreplace/index";
 import Projects from "pages/projects/index";
 import Proxy from "pages/proxy/index";
 import Intercept from "pages/proxy/intercept/index";
@@ -20,4 +21,5 @@ export const routes: RouteObject[] = [
   { path: "/sender", element: <Sender /> },
   { path: "/settings", element: <Settings /> },
   { path: "/assistant", element: <Assistant /> },
+  { path: "/match-replace", element: <MatchReplace /> },
 ];
