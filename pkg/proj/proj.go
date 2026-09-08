@@ -12,6 +12,7 @@ import (
 	"github.com/oklog/ulid"
 
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
@@ -27,6 +28,7 @@ type Service struct {
 	reqLogSvc       *reqlog.Service
 	senderSvc       *sender.Service
 	scope           *scope.Scope
+	matchReplace    *matchreplace.Engine
 	activeProjectID ulid.ULID
 	mu              sync.RWMutex
 }
@@ -57,6 +59,9 @@ type Settings struct {
 
 	// Scope settings
 	ScopeRules []scope.Rule
+
+	// Match & Replace settings
+	MatchReplaceRules []matchreplace.Rule
 }
 
 var (
@@ -69,11 +74,12 @@ var (
 var nameRegexp = regexp.MustCompile(`^[\w\d\s]+$`)
 
 type Config struct {
-	Repository       Repository
-	InterceptService *intercept.Service
-	ReqLogService    *reqlog.Service
-	SenderService    *sender.Service
-	Scope            *scope.Scope
+	Repository         Repository
+	InterceptService   *intercept.Service
+	ReqLogService      *reqlog.Service
+	SenderService      *sender.Service
+	Scope              *scope.Scope
+	MatchReplaceEngine *matchreplace.Engine
 }
 
 // NewService returns a new Service.
@@ -84,6 +90,7 @@ func NewService(cfg Config) (*Service, error) {
 		reqLogSvc:    cfg.ReqLogService,
 		senderSvc:    cfg.SenderService,
 		scope:        cfg.Scope,
+		matchReplace: cfg.MatchReplaceEngine,
 	}, nil
 }
 
@@ -127,6 +134,10 @@ func (svc *Service) CloseProject() error {
 	svc.senderSvc.SetActiveProjectID(ulid.ULID{})
 	svc.senderSvc.SetFindReqsFilter(sender.FindRequestsFilter{})
 	svc.scope.SetRules(nil)
+
+	if svc.matchReplace != nil {
+		_ = svc.matchReplace.SetRules(nil)
+	}
 
 	return nil
 }
@@ -183,6 +194,12 @@ func (svc *Service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 
 	// Scope settings.
 	svc.scope.SetRules(project.Settings.ScopeRules)
+
+	// Match & Replace settings. Stored rules were validated when set; a failure
+	// to recompile shouldn't block opening the project.
+	if svc.matchReplace != nil {
+		_ = svc.matchReplace.SetRules(project.Settings.MatchReplaceRules)
+	}
 
 	return project, nil
 }
@@ -274,6 +291,37 @@ func (svc *Service) SetSenderRequestFindFilter(ctx context.Context, filter sende
 	svc.senderSvc.SetFindReqsFilter(filter)
 
 	return nil
+}
+
+func (svc *Service) SetMatchReplaceRules(ctx context.Context, rules []matchreplace.Rule) error {
+	project, err := svc.ActiveProject(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Validate (and activate) before persisting so a bad matcher is rejected.
+	if svc.matchReplace != nil {
+		if err := svc.matchReplace.SetRules(rules); err != nil {
+			return err
+		}
+	}
+
+	project.Settings.MatchReplaceRules = rules
+
+	if err := svc.repo.UpsertProject(ctx, project); err != nil {
+		return fmt.Errorf("proj: failed to update project: %w", err)
+	}
+
+	return nil
+}
+
+func (svc *Service) MatchReplaceRules(ctx context.Context) ([]matchreplace.Rule, error) {
+	project, err := svc.ActiveProject(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return project.Settings.MatchReplaceRules, nil
 }
 
 func (svc *Service) IsProjectActive(projectID ulid.ULID) bool {

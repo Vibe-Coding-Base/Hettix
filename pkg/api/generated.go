@@ -137,6 +137,19 @@ type ComplexityRoot struct {
 		ResponsesEnabled func(childComplexity int) int
 	}
 
+	MatchReplaceRule struct {
+		BodyMatcher     func(childComplexity int) int
+		BodyReplacement func(childComplexity int) int
+		Condition       func(childComplexity int) int
+		Enabled         func(childComplexity int) int
+		HeaderName      func(childComplexity int) int
+		HeaderValue     func(childComplexity int) int
+		ID              func(childComplexity int) int
+		Name            func(childComplexity int) int
+		Phase           func(childComplexity int) int
+		RemoveHeader    func(childComplexity int) int
+	}
+
 	ModifyRequestResult struct {
 		Success func(childComplexity int) int
 	}
@@ -161,6 +174,7 @@ type ComplexityRoot struct {
 		RunAgent                              func(childComplexity int, input RunAgentInput) int
 		SendRequest                           func(childComplexity int, id ulid.ULID) int
 		SetHTTPRequestLogFilter               func(childComplexity int, filter *HTTPRequestLogFilterInput) int
+		SetMatchReplaceRules                  func(childComplexity int, rules []MatchReplaceRuleInput) int
 		SetScope                              func(childComplexity int, scope []ScopeRuleInput) int
 		SetSenderRequestFilter                func(childComplexity int, filter *SenderRequestFilterInput) int
 		UpdateInterceptSettings               func(childComplexity int, input UpdateInterceptSettingsInput) int
@@ -184,6 +198,7 @@ type ComplexityRoot struct {
 		HTTPRequestLogs      func(childComplexity int, offset *int, limit *int) int
 		InterceptedRequest   func(childComplexity int, id ulid.ULID) int
 		InterceptedRequests  func(childComplexity int) int
+		MatchReplaceRules    func(childComplexity int) int
 		Projects             func(childComplexity int) int
 		Scope                func(childComplexity int) int
 		SenderRequest        func(childComplexity int, id ulid.ULID) int
@@ -238,6 +253,7 @@ type MutationResolver interface {
 	CancelResponse(ctx context.Context, requestID ulid.ULID) (*CancelResponseResult, error)
 	UpdateInterceptSettings(ctx context.Context, input UpdateInterceptSettingsInput) (*InterceptSettings, error)
 	RunAgent(ctx context.Context, input RunAgentInput) (*AgentReply, error)
+	SetMatchReplaceRules(ctx context.Context, rules []MatchReplaceRuleInput) ([]MatchReplaceRule, error)
 }
 type QueryResolver interface {
 	HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error)
@@ -250,6 +266,7 @@ type QueryResolver interface {
 	SenderRequests(ctx context.Context, offset *int, limit *int) ([]SenderRequest, error)
 	InterceptedRequests(ctx context.Context) ([]HTTPRequest, error)
 	InterceptedRequest(ctx context.Context, id ulid.ULID) (*HTTPRequest, error)
+	MatchReplaceRules(ctx context.Context) ([]MatchReplaceRule, error)
 }
 
 type executableSchema struct {
@@ -596,6 +613,76 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.InterceptSettings.ResponsesEnabled(childComplexity), true
 
+	case "MatchReplaceRule.bodyMatcher":
+		if e.complexity.MatchReplaceRule.BodyMatcher == nil {
+			break
+		}
+
+		return e.complexity.MatchReplaceRule.BodyMatcher(childComplexity), true
+
+	case "MatchReplaceRule.bodyReplacement":
+		if e.complexity.MatchReplaceRule.BodyReplacement == nil {
+			break
+		}
+
+		return e.complexity.MatchReplaceRule.BodyReplacement(childComplexity), true
+
+	case "MatchReplaceRule.condition":
+		if e.complexity.MatchReplaceRule.Condition == nil {
+			break
+		}
+
+		return e.complexity.MatchReplaceRule.Condition(childComplexity), true
+
+	case "MatchReplaceRule.enabled":
+		if e.complexity.MatchReplaceRule.Enabled == nil {
+			break
+		}
+
+		return e.complexity.MatchReplaceRule.Enabled(childComplexity), true
+
+	case "MatchReplaceRule.headerName":
+		if e.complexity.MatchReplaceRule.HeaderName == nil {
+			break
+		}
+
+		return e.complexity.MatchReplaceRule.HeaderName(childComplexity), true
+
+	case "MatchReplaceRule.headerValue":
+		if e.complexity.MatchReplaceRule.HeaderValue == nil {
+			break
+		}
+
+		return e.complexity.MatchReplaceRule.HeaderValue(childComplexity), true
+
+	case "MatchReplaceRule.id":
+		if e.complexity.MatchReplaceRule.ID == nil {
+			break
+		}
+
+		return e.complexity.MatchReplaceRule.ID(childComplexity), true
+
+	case "MatchReplaceRule.name":
+		if e.complexity.MatchReplaceRule.Name == nil {
+			break
+		}
+
+		return e.complexity.MatchReplaceRule.Name(childComplexity), true
+
+	case "MatchReplaceRule.phase":
+		if e.complexity.MatchReplaceRule.Phase == nil {
+			break
+		}
+
+		return e.complexity.MatchReplaceRule.Phase(childComplexity), true
+
+	case "MatchReplaceRule.removeHeader":
+		if e.complexity.MatchReplaceRule.RemoveHeader == nil {
+			break
+		}
+
+		return e.complexity.MatchReplaceRule.RemoveHeader(childComplexity), true
+
 	case "ModifyRequestResult.success":
 		if e.complexity.ModifyRequestResult.Success == nil {
 			break
@@ -775,6 +862,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.SetHTTPRequestLogFilter(childComplexity, args["filter"].(*HTTPRequestLogFilterInput)), true
 
+	case "Mutation.setMatchReplaceRules":
+		if e.complexity.Mutation.SetMatchReplaceRules == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setMatchReplaceRules_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetMatchReplaceRules(childComplexity, args["rules"].([]MatchReplaceRuleInput)), true
+
 	case "Mutation.setScope":
 		if e.complexity.Mutation.SetScope == nil {
 			break
@@ -902,6 +1001,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.InterceptedRequests(childComplexity), true
+
+	case "Query.matchReplaceRules":
+		if e.complexity.Query.MatchReplaceRules == nil {
+			break
+		}
+
+		return e.complexity.Query.MatchReplaceRules(childComplexity), true
 
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
@@ -1322,6 +1428,37 @@ type Query {
   senderRequests(offset: Int, limit: Int): [SenderRequest!]!
   interceptedRequests: [HttpRequest!]!
   interceptedRequest(id: ID!): HttpRequest
+  matchReplaceRules: [MatchReplaceRule!]!
+}
+
+enum MatchReplacePhase {
+  REQUEST
+  RESPONSE
+}
+
+type MatchReplaceRule {
+  id: ID!
+  name: String!
+  enabled: Boolean!
+  phase: MatchReplacePhase!
+  condition: String
+  headerName: String
+  headerValue: String
+  removeHeader: Boolean!
+  bodyMatcher: String
+  bodyReplacement: String
+}
+
+input MatchReplaceRuleInput {
+  name: String!
+  enabled: Boolean!
+  phase: MatchReplacePhase!
+  condition: String
+  headerName: String
+  headerValue: String
+  removeHeader: Boolean
+  bodyMatcher: String
+  bodyReplacement: String
 }
 
 type Mutation {
@@ -1347,6 +1484,7 @@ type Mutation {
     input: UpdateInterceptSettingsInput!
   ): InterceptSettings!
   runAgent(input: RunAgentInput!): AgentReply!
+  setMatchReplaceRules(rules: [MatchReplaceRuleInput!]!): [MatchReplaceRule!]!
 }
 
 enum AgentMode {
@@ -1578,6 +1716,21 @@ func (ec *executionContext) field_Mutation_setHttpRequestLogFilter_args(ctx cont
 		}
 	}
 	args["filter"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setMatchReplaceRules_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []MatchReplaceRuleInput
+	if tmp, ok := rawArgs["rules"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rules"))
+		arg0, err = ec.unmarshalNMatchReplaceRuleInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplaceRuleInputᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["rules"] = arg0
 	return args, nil
 }
 
@@ -3390,6 +3543,341 @@ func (ec *executionContext) _InterceptSettings_responseFilter(ctx context.Contex
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _MatchReplaceRule_id(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MatchReplaceRule",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(ulid.ULID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MatchReplaceRule_name(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MatchReplaceRule",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MatchReplaceRule_enabled(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MatchReplaceRule",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Enabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MatchReplaceRule_phase(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MatchReplaceRule",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Phase, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(MatchReplacePhase)
+	fc.Result = res
+	return ec.marshalNMatchReplacePhase2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplacePhase(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MatchReplaceRule_condition(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MatchReplaceRule",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Condition, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MatchReplaceRule_headerName(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MatchReplaceRule",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HeaderName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MatchReplaceRule_headerValue(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MatchReplaceRule",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HeaderValue, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MatchReplaceRule_removeHeader(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MatchReplaceRule",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RemoveHeader, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MatchReplaceRule_bodyMatcher(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MatchReplaceRule",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BodyMatcher, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MatchReplaceRule_bodyReplacement(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MatchReplaceRule",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BodyReplacement, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _ModifyRequestResult_success(ctx context.Context, field graphql.CollectedField, obj *ModifyRequestResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -4183,6 +4671,48 @@ func (ec *executionContext) _Mutation_runAgent(ctx context.Context, field graphq
 	return ec.marshalNAgentReply2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐAgentReply(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_setMatchReplaceRules(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_setMatchReplaceRules_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetMatchReplaceRules(rctx, args["rules"].([]MatchReplaceRuleInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]MatchReplaceRule)
+	fc.Result = res
+	return ec.marshalNMatchReplaceRule2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplaceRuleᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -4726,6 +5256,41 @@ func (ec *executionContext) _Query_interceptedRequest(ctx context.Context, field
 	res := resTmp.(*HTTPRequest)
 	fc.Result = res
 	return ec.marshalOHttpRequest2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPRequest(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_matchReplaceRules(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().MatchReplaceRules(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]MatchReplaceRule)
+	fc.Result = res
+	return ec.marshalNMatchReplaceRule2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplaceRuleᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -6513,6 +7078,93 @@ func (ec *executionContext) unmarshalInputHttpRequestLogFilterInput(ctx context.
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputMatchReplaceRuleInput(ctx context.Context, obj interface{}) (MatchReplaceRuleInput, error) {
+	var it MatchReplaceRuleInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			it.Name, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "enabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			it.Enabled, err = ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "phase":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("phase"))
+			it.Phase, err = ec.unmarshalNMatchReplacePhase2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplacePhase(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "condition":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("condition"))
+			it.Condition, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "headerName":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headerName"))
+			it.HeaderName, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "headerValue":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headerValue"))
+			it.HeaderValue, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "removeHeader":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("removeHeader"))
+			it.RemoveHeader, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "bodyMatcher":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bodyMatcher"))
+			it.BodyMatcher, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "bodyReplacement":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bodyReplacement"))
+			it.BodyReplacement, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputModifyRequestInput(ctx context.Context, obj interface{}) (ModifyRequestInput, error) {
 	var it ModifyRequestInput
 	asMap := map[string]interface{}{}
@@ -7435,6 +8087,63 @@ func (ec *executionContext) _InterceptSettings(ctx context.Context, sel ast.Sele
 	return out
 }
 
+var matchReplaceRuleImplementors = []string{"MatchReplaceRule"}
+
+func (ec *executionContext) _MatchReplaceRule(ctx context.Context, sel ast.SelectionSet, obj *MatchReplaceRule) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, matchReplaceRuleImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MatchReplaceRule")
+		case "id":
+			out.Values[i] = ec._MatchReplaceRule_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+			out.Values[i] = ec._MatchReplaceRule_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "enabled":
+			out.Values[i] = ec._MatchReplaceRule_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "phase":
+			out.Values[i] = ec._MatchReplaceRule_phase(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "condition":
+			out.Values[i] = ec._MatchReplaceRule_condition(ctx, field, obj)
+		case "headerName":
+			out.Values[i] = ec._MatchReplaceRule_headerName(ctx, field, obj)
+		case "headerValue":
+			out.Values[i] = ec._MatchReplaceRule_headerValue(ctx, field, obj)
+		case "removeHeader":
+			out.Values[i] = ec._MatchReplaceRule_removeHeader(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "bodyMatcher":
+			out.Values[i] = ec._MatchReplaceRule_bodyMatcher(ctx, field, obj)
+		case "bodyReplacement":
+			out.Values[i] = ec._MatchReplaceRule_bodyReplacement(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var modifyRequestResultImplementors = []string{"ModifyRequestResult"}
 
 func (ec *executionContext) _ModifyRequestResult(ctx context.Context, sel ast.SelectionSet, obj *ModifyRequestResult) graphql.Marshaler {
@@ -7579,6 +8288,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "runAgent":
 			out.Values[i] = ec._Mutation_runAgent(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "setMatchReplaceRules":
+			out.Values[i] = ec._Mutation_setMatchReplaceRules(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -7800,6 +8514,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_interceptedRequest(ctx, field)
+				return res
+			})
+		case "matchReplaceRules":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_matchReplaceRules(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "__type":
@@ -8577,6 +9305,90 @@ func (ec *executionContext) marshalNInterceptSettings2ᚖgithubᚗcomᚋVibeᚑC
 		return graphql.Null
 	}
 	return ec._InterceptSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNMatchReplacePhase2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplacePhase(ctx context.Context, v interface{}) (MatchReplacePhase, error) {
+	var res MatchReplacePhase
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNMatchReplacePhase2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplacePhase(ctx context.Context, sel ast.SelectionSet, v MatchReplacePhase) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNMatchReplaceRule2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplaceRule(ctx context.Context, sel ast.SelectionSet, v MatchReplaceRule) graphql.Marshaler {
+	return ec._MatchReplaceRule(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMatchReplaceRule2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplaceRuleᚄ(ctx context.Context, sel ast.SelectionSet, v []MatchReplaceRule) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNMatchReplaceRule2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplaceRule(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNMatchReplaceRuleInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplaceRuleInput(ctx context.Context, v interface{}) (MatchReplaceRuleInput, error) {
+	res, err := ec.unmarshalInputMatchReplaceRuleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNMatchReplaceRuleInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplaceRuleInputᚄ(ctx context.Context, v interface{}) ([]MatchReplaceRuleInput, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]MatchReplaceRuleInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNMatchReplaceRuleInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplaceRuleInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalNModifyRequestInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyRequestInput(ctx context.Context, v interface{}) (ModifyRequestInput, error) {

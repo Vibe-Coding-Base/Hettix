@@ -116,6 +116,31 @@ type InterceptSettings struct {
 	ResponseFilter   *string `json:"responseFilter"`
 }
 
+type MatchReplaceRule struct {
+	ID              ulid.ULID         `json:"id"`
+	Name            string            `json:"name"`
+	Enabled         bool              `json:"enabled"`
+	Phase           MatchReplacePhase `json:"phase"`
+	Condition       *string           `json:"condition"`
+	HeaderName      *string           `json:"headerName"`
+	HeaderValue     *string           `json:"headerValue"`
+	RemoveHeader    bool              `json:"removeHeader"`
+	BodyMatcher     *string           `json:"bodyMatcher"`
+	BodyReplacement *string           `json:"bodyReplacement"`
+}
+
+type MatchReplaceRuleInput struct {
+	Name            string            `json:"name"`
+	Enabled         bool              `json:"enabled"`
+	Phase           MatchReplacePhase `json:"phase"`
+	Condition       *string           `json:"condition"`
+	HeaderName      *string           `json:"headerName"`
+	HeaderValue     *string           `json:"headerValue"`
+	RemoveHeader    *bool             `json:"removeHeader"`
+	BodyMatcher     *string           `json:"bodyMatcher"`
+	BodyReplacement *string           `json:"bodyReplacement"`
+}
+
 type ModifyRequestInput struct {
 	ID             ulid.ULID         `json:"id"`
 	URL            *url.URL          `json:"url"`
@@ -357,5 +382,46 @@ func (e *HTTPProtocol) UnmarshalGQL(v interface{}) error {
 }
 
 func (e HTTPProtocol) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type MatchReplacePhase string
+
+const (
+	MatchReplacePhaseRequest  MatchReplacePhase = "REQUEST"
+	MatchReplacePhaseResponse MatchReplacePhase = "RESPONSE"
+)
+
+var AllMatchReplacePhase = []MatchReplacePhase{
+	MatchReplacePhaseRequest,
+	MatchReplacePhaseResponse,
+}
+
+func (e MatchReplacePhase) IsValid() bool {
+	switch e {
+	case MatchReplacePhaseRequest, MatchReplacePhaseResponse:
+		return true
+	}
+	return false
+}
+
+func (e MatchReplacePhase) String() string {
+	return string(e)
+}
+
+func (e *MatchReplacePhase) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = MatchReplacePhase(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid MatchReplacePhase", str)
+	}
+	return nil
+}
+
+func (e MatchReplacePhase) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }

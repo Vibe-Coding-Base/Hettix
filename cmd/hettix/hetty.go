@@ -22,6 +22,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/api"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/chrome"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/db/sqlite"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
@@ -173,12 +174,15 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		ReqLogService: reqLogService,
 	})
 
+	matchReplaceEngine := matchreplace.NewEngine()
+
 	projService, err := proj.NewService(proj.Config{
-		Repository:       db,
-		InterceptService: interceptService,
-		ReqLogService:    reqLogService,
-		SenderService:    senderService,
-		Scope:            scope,
+		Repository:         db,
+		InterceptService:   interceptService,
+		ReqLogService:      reqLogService,
+		SenderService:      senderService,
+		Scope:              scope,
+		MatchReplaceEngine: matchReplaceEngine,
 	})
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to create new projects service.", zap.Error(err))
@@ -193,6 +197,8 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		cmd.config.logger.Fatal("Failed to create new proxy.", zap.Error(err))
 	}
 
+	proxy.UseRequestModifier(matchReplaceEngine.RequestModifier)
+	proxy.UseResponseModifier(matchReplaceEngine.ResponseModifier)
 	proxy.UseRequestModifier(reqLogService.RequestModifier)
 	proxy.UseResponseModifier(reqLogService.ResponseModifier)
 	proxy.UseRequestModifier(interceptService.RequestModifier)

@@ -203,6 +203,37 @@ type Query {
   senderRequests(offset: Int, limit: Int): [SenderRequest!]!
   interceptedRequests: [HttpRequest!]!
   interceptedRequest(id: ID!): HttpRequest
+  matchReplaceRules: [MatchReplaceRule!]!
+}
+
+enum MatchReplacePhase {
+  REQUEST
+  RESPONSE
+}
+
+type MatchReplaceRule {
+  id: ID!
+  name: String!
+  enabled: Boolean!
+  phase: MatchReplacePhase!
+  condition: String
+  headerName: String
+  headerValue: String
+  removeHeader: Boolean!
+  bodyMatcher: String
+  bodyReplacement: String
+}
+
+input MatchReplaceRuleInput {
+  name: String!
+  enabled: Boolean!
+  phase: MatchReplacePhase!
+  condition: String
+  headerName: String
+  headerValue: String
+  removeHeader: Boolean
+  bodyMatcher: String
+  bodyReplacement: String
 }
 
 type Mutation {
@@ -228,6 +259,7 @@ type Mutation {
     input: UpdateInterceptSettingsInput!
   ): InterceptSettings!
   runAgent(input: RunAgentInput!): AgentReply!
+  setMatchReplaceRules(rules: [MatchReplaceRuleInput!]!): [MatchReplaceRule!]!
 }
 
 enum AgentMode {

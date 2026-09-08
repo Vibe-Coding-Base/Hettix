@@ -5,6 +5,7 @@ package api
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/aitools"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/llm"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
@@ -737,6 +739,121 @@ func (r *mutationResolver) RunAgent(ctx context.Context, input RunAgentInput) (*
 	}
 
 	return &AgentReply{Reply: reply, Actions: actions}, nil
+}
+
+func (r *queryResolver) MatchReplaceRules(ctx context.Context) ([]MatchReplaceRule, error) {
+	rules, err := r.ProjectService.MatchReplaceRules(ctx)
+	if errors.Is(err, proj.ErrNoProject) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get match & replace rules: %w", err)
+	}
+
+	return matchReplaceRulesToGraphQL(rules), nil
+}
+
+func (r *mutationResolver) SetMatchReplaceRules(ctx context.Context, input []MatchReplaceRuleInput) ([]MatchReplaceRule, error) {
+	rules := make([]matchreplace.Rule, 0, len(input))
+
+	for _, in := range input {
+		id, err := ulid.New(ulid.Now(), crand.Reader)
+		if err != nil {
+			return nil, fmt.Errorf("could not generate rule id: %w", err)
+		}
+
+		rule := matchreplace.Rule{
+			ID:      id,
+			Name:    in.Name,
+			Enabled: in.Enabled,
+			Phase:   matchReplacePhaseFromGraphQL(in.Phase),
+		}
+
+		if in.Condition != nil && *in.Condition != "" {
+			expr, err := httpql.Parse(*in.Condition)
+			if err != nil {
+				return nil, fmt.Errorf("invalid condition %q: %w", *in.Condition, err)
+			}
+			rule.Condition = expr
+		}
+
+		rule.HeaderName = strPtrValue(in.HeaderName)
+		rule.HeaderValue = strPtrValue(in.HeaderValue)
+		rule.BodyMatcher = strPtrValue(in.BodyMatcher)
+		rule.BodyReplacement = strPtrValue(in.BodyReplacement)
+		if in.RemoveHeader != nil {
+			rule.RemoveHeader = *in.RemoveHeader
+		}
+
+		rules = append(rules, rule)
+	}
+
+	if err := r.ProjectService.SetMatchReplaceRules(ctx, rules); err != nil {
+		if errors.Is(err, proj.ErrNoProject) {
+			return nil, noActiveProjectErr(ctx)
+		}
+		return nil, fmt.Errorf("could not set match & replace rules: %w", err)
+	}
+
+	return matchReplaceRulesToGraphQL(rules), nil
+}
+
+func matchReplaceRulesToGraphQL(rules []matchreplace.Rule) []MatchReplaceRule {
+	out := make([]MatchReplaceRule, len(rules))
+
+	for i, rule := range rules {
+		m := MatchReplaceRule{
+			ID:           rule.ID,
+			Name:         rule.Name,
+			Enabled:      rule.Enabled,
+			Phase:        matchReplacePhaseToGraphQL(rule.Phase),
+			RemoveHeader: rule.RemoveHeader,
+		}
+
+		if rule.Condition != nil {
+			s := rule.Condition.String()
+			m.Condition = &s
+		}
+		m.HeaderName = nonEmptyPtr(rule.HeaderName)
+		m.HeaderValue = nonEmptyPtr(rule.HeaderValue)
+		m.BodyMatcher = nonEmptyPtr(rule.BodyMatcher)
+		m.BodyReplacement = nonEmptyPtr(rule.BodyReplacement)
+
+		out[i] = m
+	}
+
+	return out
+}
+
+func matchReplacePhaseFromGraphQL(p MatchReplacePhase) matchreplace.Phase {
+	if p == MatchReplacePhaseResponse {
+		return matchreplace.PhaseResponse
+	}
+
+	return matchreplace.PhaseRequest
+}
+
+func matchReplacePhaseToGraphQL(p matchreplace.Phase) MatchReplacePhase {
+	if p == matchreplace.PhaseResponse {
+		return MatchReplacePhaseResponse
+	}
+
+	return MatchReplacePhaseRequest
+}
+
+func strPtrValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+
+	return *s
+}
+
+func nonEmptyPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+
+	return &s
 }
 
 func parseSenderRequest(req sender.Request) (SenderRequest, error) {
