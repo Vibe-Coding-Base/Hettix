@@ -1,5 +1,7 @@
 import MonacoEditor, { EditorProps } from "@monaco-editor/react";
 
+import { useAppearance } from "lib/AppearanceContext";
+
 const defaultMonacoOptions: EditorProps["options"] = {
   readOnly: true,
   wordWrap: "on",
@@ -7,7 +9,6 @@ const defaultMonacoOptions: EditorProps["options"] = {
     enabled: false,
   },
   scrollBeyondLastLine: false,
-  fontSize: 13,
 };
 
 // languageForContentType maps a Content-Type to a Monaco language id.
@@ -75,12 +76,13 @@ interface Props {
 
 function Editor({ content, contentType, language, monacoOptions, onChange }: Props): JSX.Element {
   const resolved = language ?? languageForContentType(contentType) ?? sniffLanguage(content);
+  const { fontFamily, fontSize } = useAppearance();
 
   return (
     <MonacoEditor
       language={resolved}
       theme="vs-dark"
-      options={{ ...defaultMonacoOptions, ...monacoOptions }}
+      options={{ fontFamily, fontSize, ...defaultMonacoOptions, ...monacoOptions }}
       value={content}
       onChange={onChange}
     />

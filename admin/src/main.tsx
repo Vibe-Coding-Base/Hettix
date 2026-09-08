@@ -10,6 +10,7 @@ import { routes } from "./routes";
 import "lib/monaco";
 
 import { ActiveProjectProvider } from "lib/ActiveProjectContext";
+import { AppearanceProvider } from "lib/AppearanceContext";
 import { InterceptedRequestsProvider } from "lib/InterceptedRequestsContext";
 import { useApollo } from "lib/graphql/useApollo";
 import theme from "lib/mui/theme";
@@ -27,7 +28,9 @@ function Root(): JSX.Element {
         <InterceptedRequestsProvider>
           <ThemeProvider theme={theme}>
             <CssBaseline />
-            <RouterProvider router={router} />
+            <AppearanceProvider>
+              <RouterProvider router={router} />
+            </AppearanceProvider>
           </ThemeProvider>
         </InterceptedRequestsProvider>
       </ActiveProjectProvider>

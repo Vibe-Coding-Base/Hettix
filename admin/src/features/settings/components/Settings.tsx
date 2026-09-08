@@ -20,6 +20,7 @@ import MaterialLink from "@mui/material/Link";
 import { SwitchBaseProps } from "@mui/material/internal/SwitchBase";
 import { useEffect, useState } from "react";
 
+import AppearanceSettings from "./AppearanceSettings";
 import LLMSettings from "./LLMSettings";
 
 import { useActiveProject } from "lib/ActiveProjectContext";
@@ -177,6 +178,10 @@ export default function Settings(): JSX.Element {
 
       <Box sx={{ mb: 5 }}>
         <LLMSettings />
+      </Box>
+
+      <Box sx={{ mb: 5 }}>
+        <AppearanceSettings />
       </Box>
 
       <Typography variant="h5" sx={{ mb: 2 }}>

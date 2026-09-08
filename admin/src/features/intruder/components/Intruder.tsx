@@ -1,3 +1,4 @@
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import {
   Alert,
   Box,
@@ -65,6 +66,15 @@ function AttackForm({ onStarted }: { onStarted: (id: string) => void }): JSX.Ele
     .split("\n")
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
+
+  const loadFromFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === "string" ? reader.result : "";
+      setPayloadText((prev) => (prev.trim() ? prev.replace(/\s*$/, "") + "\n" : "") + text);
+    };
+    reader.readAsText(file);
+  };
 
   const canStart = url.includes("§") || body.includes("§");
 
@@ -141,14 +151,31 @@ function AttackForm({ onStarted }: { onStarted: (id: string) => void }): JSX.Ele
         sx={{ mt: 1 }}
         InputProps={{ sx: { fontFamily: "monospace", fontSize: 13 } }}
       />
-      <Button
-        variant="contained"
-        sx={{ mt: 1 }}
-        disabled={loading || !canStart || payloads.length === 0}
-        onClick={onStart}
-      >
-        Start attack ({payloads.length})
-      </Button>
+      <Box sx={{ display: "flex", gap: 1, mt: 1, alignItems: "center" }}>
+        <Button variant="contained" disabled={loading || !canStart || payloads.length === 0} onClick={onStart}>
+          Start attack ({payloads.length})
+        </Button>
+        <Button component="label" size="small" startIcon={<UploadFileIcon />}>
+          Load wordlist
+          <input
+            type="file"
+            hidden
+            accept=".txt,.lst,.list,text/plain"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                loadFromFile(file);
+              }
+              e.target.value = "";
+            }}
+          />
+        </Button>
+        {payloadText && (
+          <Button size="small" color="inherit" onClick={() => setPayloadText("")}>
+            Clear
+          </Button>
+        )}
+      </Box>
       {!canStart && (url || body) && (
         <Alert severity="info" sx={{ mt: 1 }}>
           Add a § marker to the URL or body to set an insertion point.
