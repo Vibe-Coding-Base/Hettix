@@ -17,6 +17,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/wsintercept"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/wslog"
 )
 
@@ -29,6 +30,7 @@ type Service struct {
 	reqLogSvc       *reqlog.Service
 	senderSvc       *sender.Service
 	wsLogSvc        *wslog.Service
+	wsInterceptSvc  *wsintercept.Service
 	scope           *scope.Scope
 	matchReplace    *matchreplace.Engine
 	activeProjectID ulid.ULID
@@ -64,6 +66,10 @@ type Settings struct {
 
 	// Match & Replace settings
 	MatchReplaceRules []matchreplace.Rule
+
+	// WebSocket intercept settings
+	WebSocketInterceptEnabled bool
+	WebSocketInterceptFilter  httpql.Expression
 }
 
 var (
@@ -76,25 +82,27 @@ var (
 var nameRegexp = regexp.MustCompile(`^[\w\d\s]+$`)
 
 type Config struct {
-	Repository         Repository
-	InterceptService   *intercept.Service
-	ReqLogService      *reqlog.Service
-	SenderService      *sender.Service
-	WebSocketService   *wslog.Service
-	Scope              *scope.Scope
-	MatchReplaceEngine *matchreplace.Engine
+	Repository                Repository
+	InterceptService          *intercept.Service
+	ReqLogService             *reqlog.Service
+	SenderService             *sender.Service
+	WebSocketService          *wslog.Service
+	WebSocketInterceptService *wsintercept.Service
+	Scope                     *scope.Scope
+	MatchReplaceEngine        *matchreplace.Engine
 }
 
 // NewService returns a new Service.
 func NewService(cfg Config) (*Service, error) {
 	return &Service{
-		repo:         cfg.Repository,
-		interceptSvc: cfg.InterceptService,
-		reqLogSvc:    cfg.ReqLogService,
-		senderSvc:    cfg.SenderService,
-		wsLogSvc:     cfg.WebSocketService,
-		scope:        cfg.Scope,
-		matchReplace: cfg.MatchReplaceEngine,
+		repo:           cfg.Repository,
+		interceptSvc:   cfg.InterceptService,
+		reqLogSvc:      cfg.ReqLogService,
+		senderSvc:      cfg.SenderService,
+		wsLogSvc:       cfg.WebSocketService,
+		wsInterceptSvc: cfg.WebSocketInterceptService,
+		scope:          cfg.Scope,
+		matchReplace:   cfg.MatchReplaceEngine,
 	}, nil
 }
 
@@ -140,6 +148,10 @@ func (svc *Service) CloseProject() error {
 
 	if svc.wsLogSvc != nil {
 		svc.wsLogSvc.SetActiveProjectID(ulid.ULID{})
+	}
+
+	if svc.wsInterceptSvc != nil {
+		svc.wsInterceptSvc.UpdateSettings(wsintercept.Settings{})
 	}
 
 	svc.scope.SetRules(nil)
@@ -204,6 +216,14 @@ func (svc *Service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 	// WebSocket capture.
 	if svc.wsLogSvc != nil {
 		svc.wsLogSvc.SetActiveProjectID(project.ID)
+	}
+
+	// WebSocket intercept settings.
+	if svc.wsInterceptSvc != nil {
+		svc.wsInterceptSvc.UpdateSettings(wsintercept.Settings{
+			Enabled: project.Settings.WebSocketInterceptEnabled,
+			Filter:  project.Settings.WebSocketInterceptFilter,
+		})
 	}
 
 	// Scope settings.
@@ -336,6 +356,38 @@ func (svc *Service) MatchReplaceRules(ctx context.Context) ([]matchreplace.Rule,
 	}
 
 	return project.Settings.MatchReplaceRules, nil
+}
+
+func (svc *Service) UpdateWebSocketInterceptSettings(ctx context.Context, settings wsintercept.Settings) error {
+	project, err := svc.ActiveProject(ctx)
+	if err != nil {
+		return err
+	}
+
+	project.Settings.WebSocketInterceptEnabled = settings.Enabled
+	project.Settings.WebSocketInterceptFilter = settings.Filter
+
+	if err := svc.repo.UpsertProject(ctx, project); err != nil {
+		return fmt.Errorf("proj: failed to update project: %w", err)
+	}
+
+	if svc.wsInterceptSvc != nil {
+		svc.wsInterceptSvc.UpdateSettings(settings)
+	}
+
+	return nil
+}
+
+func (svc *Service) WebSocketInterceptSettings(ctx context.Context) (wsintercept.Settings, error) {
+	project, err := svc.ActiveProject(ctx)
+	if err != nil {
+		return wsintercept.Settings{}, err
+	}
+
+	return wsintercept.Settings{
+		Enabled: project.Settings.WebSocketInterceptEnabled,
+		Filter:  project.Settings.WebSocketInterceptFilter,
+	}, nil
 }
 
 func (svc *Service) IsProjectActive(projectID ulid.ULID) bool {

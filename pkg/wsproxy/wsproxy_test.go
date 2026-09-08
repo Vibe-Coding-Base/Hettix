@@ -1,6 +1,7 @@
 package wsproxy_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -155,5 +156,74 @@ func TestProxyRelaysAndCaptures(t *testing.T) {
 	mu.Unlock()
 	if gotClose != openID {
 		t.Errorf("OnClose ID %q does not match connection ID %q", gotClose, openID)
+	}
+}
+
+func TestProxyInterceptModifiesAndDrops(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	echo := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		for {
+			mt, msg, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			if err := conn.WriteMessage(mt, msg); err != nil {
+				return
+			}
+		}
+	}))
+	defer echo.Close()
+
+	echoHost := strings.TrimPrefix(echo.URL, "http://")
+
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.URL.Host = echoHost
+		r.URL.Scheme = "ws"
+		_ = wsproxy.Handler(w, r, wsproxy.Handlers{
+			Intercept: func(_ context.Context, m wsproxy.Message) ([]byte, bool) {
+				// Only rewrite client->server frames so the echoed value reflects it.
+				if m.Direction != wsproxy.ClientToServer {
+					return m.Payload, false
+				}
+				if string(m.Payload) == "drop-me" {
+					return nil, true
+				}
+				return []byte(strings.ToUpper(string(m.Payload))), false
+			},
+		})
+	}))
+	defer proxy.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(proxy.URL, "http") + "/chat"
+	client, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("client dial through proxy failed: %v", err)
+	}
+	defer client.Close()
+
+	// A modified frame comes back uppercased by the echo server.
+	if err := client.WriteMessage(websocket.TextMessage, []byte("hello")); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	_, msg, err := client.ReadMessage()
+	if err != nil {
+		t.Fatalf("read echo: %v", err)
+	}
+	if string(msg) != "HELLO" {
+		t.Fatalf("expected intercepted echo %q, got %q", "HELLO", msg)
+	}
+
+	// A dropped frame never reaches the upstream, so no echo arrives.
+	if err := client.WriteMessage(websocket.TextMessage, []byte("drop-me")); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	_ = client.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
+	if _, _, err := client.ReadMessage(); err == nil {
+		t.Fatal("expected no echo for a dropped frame, but got one")
 	}
 }

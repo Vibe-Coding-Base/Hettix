@@ -1,10 +1,10 @@
 import { Layout, Page } from "features/Layout";
-import WebSocketLogs from "features/websocket/components/WebSocketLogs";
+import WebSocketView from "features/websocket/components/WebSocketView";
 
 function WebSocketPage(): JSX.Element {
   return (
     <Layout page={Page.WebSocket} title="WebSocket">
-      <WebSocketLogs />
+      <WebSocketView />
     </Layout>
   );
 }

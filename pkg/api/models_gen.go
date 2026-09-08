@@ -48,6 +48,10 @@ type DeleteSenderRequestsResult struct {
 	Success bool `json:"success"`
 }
 
+type DropWebSocketMessageResult struct {
+	Success bool `json:"success"`
+}
+
 type HTTPHeader struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
@@ -116,6 +120,14 @@ type InterceptSettings struct {
 	ResponseFilter   *string `json:"responseFilter"`
 }
 
+type InterceptedWebSocketMessage struct {
+	ID           ulid.ULID          `json:"id"`
+	ConnectionID ulid.ULID          `json:"connectionId"`
+	Direction    WebSocketDirection `json:"direction"`
+	Opcode       int                `json:"opcode"`
+	Payload      string             `json:"payload"`
+}
+
 type MatchReplaceRule struct {
 	ID              ulid.ULID         `json:"id"`
 	Name            string            `json:"name"`
@@ -165,6 +177,15 @@ type ModifyResponseInput struct {
 }
 
 type ModifyResponseResult struct {
+	Success bool `json:"success"`
+}
+
+type ModifyWebSocketMessageInput struct {
+	ID      ulid.ULID `json:"id"`
+	Payload string    `json:"payload"`
+}
+
+type ModifyWebSocketMessageResult struct {
 	Success bool `json:"success"`
 }
 
@@ -246,6 +267,11 @@ type UpdateInterceptSettingsInput struct {
 	ResponseFilter   *string `json:"responseFilter"`
 }
 
+type UpdateWebSocketInterceptSettingsInput struct {
+	Enabled bool    `json:"enabled"`
+	Filter  *string `json:"filter"`
+}
+
 type WebSocketConnection struct {
 	ID           ulid.ULID  `json:"id"`
 	URL          string     `json:"url"`
@@ -254,6 +280,11 @@ type WebSocketConnection struct {
 	Timestamp    time.Time  `json:"timestamp"`
 	ClosedAt     *time.Time `json:"closedAt"`
 	MessageCount int        `json:"messageCount"`
+}
+
+type WebSocketInterceptSettings struct {
+	Enabled bool    `json:"enabled"`
+	Filter  *string `json:"filter"`
 }
 
 type WebSocketMessage struct {

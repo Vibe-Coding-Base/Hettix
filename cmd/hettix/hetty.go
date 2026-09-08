@@ -29,6 +29,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/wsintercept"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/wslog"
 )
 
@@ -182,24 +183,32 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		Logger:     cmd.config.logger.Named("websocket").Sugar(),
 	})
 
+	wsInterceptService := wsintercept.NewService(wsintercept.Config{
+		Logger: cmd.config.logger.Named("wsintercept").Sugar(),
+	})
+
 	projService, err := proj.NewService(proj.Config{
-		Repository:         db,
-		InterceptService:   interceptService,
-		ReqLogService:      reqLogService,
-		SenderService:      senderService,
-		WebSocketService:   wsLogService,
-		Scope:              scope,
-		MatchReplaceEngine: matchReplaceEngine,
+		Repository:                db,
+		InterceptService:          interceptService,
+		ReqLogService:             reqLogService,
+		SenderService:             senderService,
+		WebSocketService:          wsLogService,
+		WebSocketInterceptService: wsInterceptService,
+		Scope:                     scope,
+		MatchReplaceEngine:        matchReplaceEngine,
 	})
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to create new projects service.", zap.Error(err))
 	}
 
+	wsHandlers := wsLogService.Handlers()
+	wsHandlers.Intercept = wsInterceptService.Intercept
+
 	proxy, err := proxy.NewProxy(proxy.Config{
 		CACert:            caCert,
 		CAKey:             caKey,
 		Logger:            cmd.config.logger.Named("proxy").Sugar(),
-		WebSocketHandlers: wsLogService.Handlers(),
+		WebSocketHandlers: wsHandlers,
 	})
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to create new proxy.", zap.Error(err))
@@ -222,12 +231,13 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 	gqlEndpoint := "/api/graphql/"
 	adminMux := http.NewServeMux()
 	adminMux.Handle(gqlEndpoint, api.HTTPHandler(&api.Resolver{
-		ProjectService:    projService,
-		RequestLogService: reqLogService,
-		InterceptService:  interceptService,
-		SenderService:     senderService,
-		WebSocketService:  wsLogService,
-		LLMProvider:       llmProviderFromEnv(),
+		ProjectService:            projService,
+		RequestLogService:         reqLogService,
+		InterceptService:          interceptService,
+		SenderService:             senderService,
+		WebSocketService:          wsLogService,
+		WebSocketInterceptService: wsInterceptService,
+		LLMProvider:               llmProviderFromEnv(),
 	}, gqlEndpoint))
 	adminMux.Handle("/", adminHandler)
 

@@ -70,9 +70,12 @@ func TestRequestModifier(t *testing.T) {
 		modReq := req.Clone(req.Context())
 		modReq.Header.Set("X-Foo", "bar")
 
+		// Once the context is cancelled the request is torn down: it is either
+		// marked done or already removed from the queue, both of which mean it can
+		// no longer be modified.
 		err := svc.ModifyRequest(reqID, modReq, nil)
-		if !errors.Is(err, intercept.ErrRequestDone) {
-			t.Fatalf("expected `intercept.ErrRequestDone`, got: %v", err)
+		if !errors.Is(err, intercept.ErrRequestDone) && !errors.Is(err, intercept.ErrRequestNotFound) {
+			t.Fatalf("expected `intercept.ErrRequestDone` or `intercept.ErrRequestNotFound`, got: %v", err)
 		}
 	})
 

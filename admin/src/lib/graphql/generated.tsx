@@ -68,6 +68,11 @@ export type DeleteSenderRequestsResult = {
   success: Scalars['Boolean'];
 };
 
+export type DropWebSocketMessageResult = {
+  __typename?: 'DropWebSocketMessageResult';
+  success: Scalars['Boolean'];
+};
+
 export type HttpHeader = {
   __typename?: 'HttpHeader';
   key: Scalars['String'];
@@ -161,6 +166,15 @@ export type InterceptSettings = {
   responsesEnabled: Scalars['Boolean'];
 };
 
+export type InterceptedWebSocketMessage = {
+  __typename?: 'InterceptedWebSocketMessage';
+  connectionId: Scalars['ID'];
+  direction: WebSocketDirection;
+  id: Scalars['ID'];
+  opcode: Scalars['Int'];
+  payload: Scalars['String'];
+};
+
 export enum MatchReplacePhase {
   Request = 'REQUEST',
   Response = 'RESPONSE'
@@ -221,6 +235,16 @@ export type ModifyResponseResult = {
   success: Scalars['Boolean'];
 };
 
+export type ModifyWebSocketMessageInput = {
+  id: Scalars['ID'];
+  payload: Scalars['String'];
+};
+
+export type ModifyWebSocketMessageResult = {
+  __typename?: 'ModifyWebSocketMessageResult';
+  success: Scalars['Boolean'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   cancelRequest: CancelRequestResult;
@@ -232,8 +256,11 @@ export type Mutation = {
   createSenderRequestFromHttpRequestLog: SenderRequest;
   deleteProject: DeleteProjectResult;
   deleteSenderRequests: DeleteSenderRequestsResult;
+  dropWebSocketMessage: DropWebSocketMessageResult;
+  forwardWebSocketMessage: ModifyWebSocketMessageResult;
   modifyRequest: ModifyRequestResult;
   modifyResponse: ModifyResponseResult;
+  modifyWebSocketMessage: ModifyWebSocketMessageResult;
   openProject?: Maybe<Project>;
   runAgent: AgentReply;
   sendRequest: SenderRequest;
@@ -242,6 +269,7 @@ export type Mutation = {
   setScope: Array<ScopeRule>;
   setSenderRequestFilter?: Maybe<SenderRequestFilter>;
   updateInterceptSettings: InterceptSettings;
+  updateWebSocketInterceptSettings: WebSocketInterceptSettings;
 };
 
 
@@ -275,6 +303,16 @@ export type MutationDeleteProjectArgs = {
 };
 
 
+export type MutationDropWebSocketMessageArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type MutationForwardWebSocketMessageArgs = {
+  id: Scalars['ID'];
+};
+
+
 export type MutationModifyRequestArgs = {
   request: ModifyRequestInput;
 };
@@ -282,6 +320,11 @@ export type MutationModifyRequestArgs = {
 
 export type MutationModifyResponseArgs = {
   response: ModifyResponseInput;
+};
+
+
+export type MutationModifyWebSocketMessageArgs = {
+  input: ModifyWebSocketMessageInput;
 };
 
 
@@ -324,6 +367,11 @@ export type MutationUpdateInterceptSettingsArgs = {
   input: UpdateInterceptSettingsInput;
 };
 
+
+export type MutationUpdateWebSocketInterceptSettingsArgs = {
+  input: UpdateWebSocketInterceptSettingsInput;
+};
+
 export type Project = {
   __typename?: 'Project';
   id: Scalars['ID'];
@@ -345,6 +393,7 @@ export type Query = {
   httpRequestLogs: Array<HttpRequestLog>;
   interceptedRequest?: Maybe<HttpRequest>;
   interceptedRequests: Array<HttpRequest>;
+  interceptedWebSocketMessages: Array<InterceptedWebSocketMessage>;
   matchReplaceRules: Array<MatchReplaceRule>;
   projects: Array<Project>;
   scope: Array<ScopeRule>;
@@ -352,6 +401,7 @@ export type Query = {
   senderRequests: Array<SenderRequest>;
   webSocketConnection?: Maybe<WebSocketConnection>;
   webSocketConnections: Array<WebSocketConnection>;
+  webSocketInterceptSettings: WebSocketInterceptSettings;
   webSocketMessages: Array<WebSocketMessage>;
 };
 
@@ -469,6 +519,11 @@ export type UpdateInterceptSettingsInput = {
   responsesEnabled: Scalars['Boolean'];
 };
 
+export type UpdateWebSocketInterceptSettingsInput = {
+  enabled: Scalars['Boolean'];
+  filter?: InputMaybe<Scalars['String']>;
+};
+
 export type WebSocketConnection = {
   __typename?: 'WebSocketConnection';
   closedAt?: Maybe<Scalars['Time']>;
@@ -484,6 +539,12 @@ export enum WebSocketDirection {
   ClientToServer = 'CLIENT_TO_SERVER',
   ServerToClient = 'SERVER_TO_CLIENT'
 }
+
+export type WebSocketInterceptSettings = {
+  __typename?: 'WebSocketInterceptSettings';
+  enabled: Scalars['Boolean'];
+  filter?: Maybe<Scalars['String']>;
+};
 
 export type WebSocketMessage = {
   __typename?: 'WebSocketMessage';
@@ -678,6 +739,44 @@ export type WebSocketMessagesQueryVariables = Exact<{
 
 
 export type WebSocketMessagesQuery = { __typename?: 'Query', webSocketMessages: Array<{ __typename?: 'WebSocketMessage', direction: WebSocketDirection, opcode: number, payload: string, timestamp: any }> };
+
+export type WebSocketInterceptSettingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type WebSocketInterceptSettingsQuery = { __typename?: 'Query', webSocketInterceptSettings: { __typename?: 'WebSocketInterceptSettings', enabled: boolean, filter?: string | null } };
+
+export type InterceptedWebSocketMessagesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type InterceptedWebSocketMessagesQuery = { __typename?: 'Query', interceptedWebSocketMessages: Array<{ __typename?: 'InterceptedWebSocketMessage', id: string, connectionId: string, direction: WebSocketDirection, opcode: number, payload: string }> };
+
+export type UpdateWebSocketInterceptSettingsMutationVariables = Exact<{
+  input: UpdateWebSocketInterceptSettingsInput;
+}>;
+
+
+export type UpdateWebSocketInterceptSettingsMutation = { __typename?: 'Mutation', updateWebSocketInterceptSettings: { __typename?: 'WebSocketInterceptSettings', enabled: boolean, filter?: string | null } };
+
+export type ModifyWebSocketMessageMutationVariables = Exact<{
+  input: ModifyWebSocketMessageInput;
+}>;
+
+
+export type ModifyWebSocketMessageMutation = { __typename?: 'Mutation', modifyWebSocketMessage: { __typename?: 'ModifyWebSocketMessageResult', success: boolean } };
+
+export type ForwardWebSocketMessageMutationVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type ForwardWebSocketMessageMutation = { __typename?: 'Mutation', forwardWebSocketMessage: { __typename?: 'ModifyWebSocketMessageResult', success: boolean } };
+
+export type DropWebSocketMessageMutationVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type DropWebSocketMessageMutation = { __typename?: 'Mutation', dropWebSocketMessage: { __typename?: 'DropWebSocketMessageResult', success: boolean } };
 
 export type GetInterceptedRequestsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1789,6 +1888,212 @@ export function useWebSocketMessagesLazyQuery(baseOptions?: Apollo.LazyQueryHook
 export type WebSocketMessagesQueryHookResult = ReturnType<typeof useWebSocketMessagesQuery>;
 export type WebSocketMessagesLazyQueryHookResult = ReturnType<typeof useWebSocketMessagesLazyQuery>;
 export type WebSocketMessagesQueryResult = Apollo.QueryResult<WebSocketMessagesQuery, WebSocketMessagesQueryVariables>;
+export const WebSocketInterceptSettingsDocument = gql`
+    query WebSocketInterceptSettings {
+  webSocketInterceptSettings {
+    enabled
+    filter
+  }
+}
+    `;
+
+/**
+ * __useWebSocketInterceptSettingsQuery__
+ *
+ * To run a query within a React component, call `useWebSocketInterceptSettingsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useWebSocketInterceptSettingsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useWebSocketInterceptSettingsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useWebSocketInterceptSettingsQuery(baseOptions?: Apollo.QueryHookOptions<WebSocketInterceptSettingsQuery, WebSocketInterceptSettingsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<WebSocketInterceptSettingsQuery, WebSocketInterceptSettingsQueryVariables>(WebSocketInterceptSettingsDocument, options);
+      }
+export function useWebSocketInterceptSettingsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<WebSocketInterceptSettingsQuery, WebSocketInterceptSettingsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<WebSocketInterceptSettingsQuery, WebSocketInterceptSettingsQueryVariables>(WebSocketInterceptSettingsDocument, options);
+        }
+export type WebSocketInterceptSettingsQueryHookResult = ReturnType<typeof useWebSocketInterceptSettingsQuery>;
+export type WebSocketInterceptSettingsLazyQueryHookResult = ReturnType<typeof useWebSocketInterceptSettingsLazyQuery>;
+export type WebSocketInterceptSettingsQueryResult = Apollo.QueryResult<WebSocketInterceptSettingsQuery, WebSocketInterceptSettingsQueryVariables>;
+export const InterceptedWebSocketMessagesDocument = gql`
+    query InterceptedWebSocketMessages {
+  interceptedWebSocketMessages {
+    id
+    connectionId
+    direction
+    opcode
+    payload
+  }
+}
+    `;
+
+/**
+ * __useInterceptedWebSocketMessagesQuery__
+ *
+ * To run a query within a React component, call `useInterceptedWebSocketMessagesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useInterceptedWebSocketMessagesQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useInterceptedWebSocketMessagesQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useInterceptedWebSocketMessagesQuery(baseOptions?: Apollo.QueryHookOptions<InterceptedWebSocketMessagesQuery, InterceptedWebSocketMessagesQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<InterceptedWebSocketMessagesQuery, InterceptedWebSocketMessagesQueryVariables>(InterceptedWebSocketMessagesDocument, options);
+      }
+export function useInterceptedWebSocketMessagesLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<InterceptedWebSocketMessagesQuery, InterceptedWebSocketMessagesQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<InterceptedWebSocketMessagesQuery, InterceptedWebSocketMessagesQueryVariables>(InterceptedWebSocketMessagesDocument, options);
+        }
+export type InterceptedWebSocketMessagesQueryHookResult = ReturnType<typeof useInterceptedWebSocketMessagesQuery>;
+export type InterceptedWebSocketMessagesLazyQueryHookResult = ReturnType<typeof useInterceptedWebSocketMessagesLazyQuery>;
+export type InterceptedWebSocketMessagesQueryResult = Apollo.QueryResult<InterceptedWebSocketMessagesQuery, InterceptedWebSocketMessagesQueryVariables>;
+export const UpdateWebSocketInterceptSettingsDocument = gql`
+    mutation UpdateWebSocketInterceptSettings($input: UpdateWebSocketInterceptSettingsInput!) {
+  updateWebSocketInterceptSettings(input: $input) {
+    enabled
+    filter
+  }
+}
+    `;
+export type UpdateWebSocketInterceptSettingsMutationFn = Apollo.MutationFunction<UpdateWebSocketInterceptSettingsMutation, UpdateWebSocketInterceptSettingsMutationVariables>;
+
+/**
+ * __useUpdateWebSocketInterceptSettingsMutation__
+ *
+ * To run a mutation, you first call `useUpdateWebSocketInterceptSettingsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useUpdateWebSocketInterceptSettingsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [updateWebSocketInterceptSettingsMutation, { data, loading, error }] = useUpdateWebSocketInterceptSettingsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useUpdateWebSocketInterceptSettingsMutation(baseOptions?: Apollo.MutationHookOptions<UpdateWebSocketInterceptSettingsMutation, UpdateWebSocketInterceptSettingsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<UpdateWebSocketInterceptSettingsMutation, UpdateWebSocketInterceptSettingsMutationVariables>(UpdateWebSocketInterceptSettingsDocument, options);
+      }
+export type UpdateWebSocketInterceptSettingsMutationHookResult = ReturnType<typeof useUpdateWebSocketInterceptSettingsMutation>;
+export type UpdateWebSocketInterceptSettingsMutationResult = Apollo.MutationResult<UpdateWebSocketInterceptSettingsMutation>;
+export type UpdateWebSocketInterceptSettingsMutationOptions = Apollo.BaseMutationOptions<UpdateWebSocketInterceptSettingsMutation, UpdateWebSocketInterceptSettingsMutationVariables>;
+export const ModifyWebSocketMessageDocument = gql`
+    mutation ModifyWebSocketMessage($input: ModifyWebSocketMessageInput!) {
+  modifyWebSocketMessage(input: $input) {
+    success
+  }
+}
+    `;
+export type ModifyWebSocketMessageMutationFn = Apollo.MutationFunction<ModifyWebSocketMessageMutation, ModifyWebSocketMessageMutationVariables>;
+
+/**
+ * __useModifyWebSocketMessageMutation__
+ *
+ * To run a mutation, you first call `useModifyWebSocketMessageMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useModifyWebSocketMessageMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [modifyWebSocketMessageMutation, { data, loading, error }] = useModifyWebSocketMessageMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useModifyWebSocketMessageMutation(baseOptions?: Apollo.MutationHookOptions<ModifyWebSocketMessageMutation, ModifyWebSocketMessageMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<ModifyWebSocketMessageMutation, ModifyWebSocketMessageMutationVariables>(ModifyWebSocketMessageDocument, options);
+      }
+export type ModifyWebSocketMessageMutationHookResult = ReturnType<typeof useModifyWebSocketMessageMutation>;
+export type ModifyWebSocketMessageMutationResult = Apollo.MutationResult<ModifyWebSocketMessageMutation>;
+export type ModifyWebSocketMessageMutationOptions = Apollo.BaseMutationOptions<ModifyWebSocketMessageMutation, ModifyWebSocketMessageMutationVariables>;
+export const ForwardWebSocketMessageDocument = gql`
+    mutation ForwardWebSocketMessage($id: ID!) {
+  forwardWebSocketMessage(id: $id) {
+    success
+  }
+}
+    `;
+export type ForwardWebSocketMessageMutationFn = Apollo.MutationFunction<ForwardWebSocketMessageMutation, ForwardWebSocketMessageMutationVariables>;
+
+/**
+ * __useForwardWebSocketMessageMutation__
+ *
+ * To run a mutation, you first call `useForwardWebSocketMessageMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useForwardWebSocketMessageMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [forwardWebSocketMessageMutation, { data, loading, error }] = useForwardWebSocketMessageMutation({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function useForwardWebSocketMessageMutation(baseOptions?: Apollo.MutationHookOptions<ForwardWebSocketMessageMutation, ForwardWebSocketMessageMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<ForwardWebSocketMessageMutation, ForwardWebSocketMessageMutationVariables>(ForwardWebSocketMessageDocument, options);
+      }
+export type ForwardWebSocketMessageMutationHookResult = ReturnType<typeof useForwardWebSocketMessageMutation>;
+export type ForwardWebSocketMessageMutationResult = Apollo.MutationResult<ForwardWebSocketMessageMutation>;
+export type ForwardWebSocketMessageMutationOptions = Apollo.BaseMutationOptions<ForwardWebSocketMessageMutation, ForwardWebSocketMessageMutationVariables>;
+export const DropWebSocketMessageDocument = gql`
+    mutation DropWebSocketMessage($id: ID!) {
+  dropWebSocketMessage(id: $id) {
+    success
+  }
+}
+    `;
+export type DropWebSocketMessageMutationFn = Apollo.MutationFunction<DropWebSocketMessageMutation, DropWebSocketMessageMutationVariables>;
+
+/**
+ * __useDropWebSocketMessageMutation__
+ *
+ * To run a mutation, you first call `useDropWebSocketMessageMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useDropWebSocketMessageMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [dropWebSocketMessageMutation, { data, loading, error }] = useDropWebSocketMessageMutation({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function useDropWebSocketMessageMutation(baseOptions?: Apollo.MutationHookOptions<DropWebSocketMessageMutation, DropWebSocketMessageMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DropWebSocketMessageMutation, DropWebSocketMessageMutationVariables>(DropWebSocketMessageDocument, options);
+      }
+export type DropWebSocketMessageMutationHookResult = ReturnType<typeof useDropWebSocketMessageMutation>;
+export type DropWebSocketMessageMutationResult = Apollo.MutationResult<DropWebSocketMessageMutation>;
+export type DropWebSocketMessageMutationOptions = Apollo.BaseMutationOptions<DropWebSocketMessageMutation, DropWebSocketMessageMutationVariables>;
 export const GetInterceptedRequestsDocument = gql`
     query GetInterceptedRequests {
   interceptedRequests {

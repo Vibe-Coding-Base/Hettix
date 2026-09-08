@@ -29,6 +29,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/wsintercept"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/wslog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/wsproxy"
 )
@@ -46,12 +47,13 @@ var revHTTPProtocolMap = map[HTTPProtocol]string{
 }
 
 type Resolver struct {
-	ProjectService    *proj.Service
-	RequestLogService *reqlog.Service
-	InterceptService  *intercept.Service
-	SenderService     *sender.Service
-	WebSocketService  *wslog.Service
-	LLMProvider       llm.Provider
+	ProjectService            *proj.Service
+	RequestLogService         *reqlog.Service
+	InterceptService          *intercept.Service
+	SenderService             *sender.Service
+	WebSocketService          *wslog.Service
+	WebSocketInterceptService *wsintercept.Service
+	LLMProvider               llm.Provider
 }
 
 type (
@@ -860,6 +862,105 @@ func webSocketDirectionToGraphQL(d wsproxy.Direction) WebSocketDirection {
 	}
 
 	return WebSocketDirectionClientToServer
+}
+
+func (r *queryResolver) InterceptedWebSocketMessages(ctx context.Context) ([]InterceptedWebSocketMessage, error) {
+	frames := r.WebSocketInterceptService.Frames()
+
+	out := make([]InterceptedWebSocketMessage, len(frames))
+	for i, frame := range frames {
+		connID, err := ulid.Parse(frame.ConnID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid websocket connection id %q: %w", frame.ConnID, err)
+		}
+
+		out[i] = InterceptedWebSocketMessage{
+			ID:           frame.ID,
+			ConnectionID: connID,
+			Direction:    webSocketDirectionToGraphQL(frame.Direction),
+			Opcode:       frame.Opcode,
+			Payload:      string(frame.Payload),
+		}
+	}
+
+	return out, nil
+}
+
+func (r *queryResolver) WebSocketInterceptSettings(ctx context.Context) (*WebSocketInterceptSettings, error) {
+	settings, err := r.ProjectService.WebSocketInterceptSettings(ctx)
+	if errors.Is(err, proj.ErrNoProject) {
+		return &WebSocketInterceptSettings{}, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get websocket intercept settings: %w", err)
+	}
+
+	return webSocketInterceptSettingsToGraphQL(settings), nil
+}
+
+func (r *mutationResolver) UpdateWebSocketInterceptSettings(
+	ctx context.Context,
+	input UpdateWebSocketInterceptSettingsInput,
+) (*WebSocketInterceptSettings, error) {
+	filter, err := parseSearchExpression(input.Filter)
+	if err != nil {
+		return nil, err
+	}
+
+	settings := wsintercept.Settings{Enabled: input.Enabled, Filter: filter}
+
+	if err := r.ProjectService.UpdateWebSocketInterceptSettings(ctx, settings); err != nil {
+		if errors.Is(err, proj.ErrNoProject) {
+			return nil, noActiveProjectErr(ctx)
+		}
+
+		return nil, fmt.Errorf("could not update websocket intercept settings: %w", err)
+	}
+
+	return webSocketInterceptSettingsToGraphQL(settings), nil
+}
+
+func (r *mutationResolver) ModifyWebSocketMessage(
+	ctx context.Context,
+	input ModifyWebSocketMessageInput,
+) (*ModifyWebSocketMessageResult, error) {
+	if err := r.WebSocketInterceptService.ModifyFrame(input.ID, []byte(input.Payload)); err != nil {
+		return nil, fmt.Errorf("could not modify websocket message: %w", err)
+	}
+
+	return &ModifyWebSocketMessageResult{Success: true}, nil
+}
+
+func (r *mutationResolver) ForwardWebSocketMessage(
+	ctx context.Context,
+	id ulid.ULID,
+) (*ModifyWebSocketMessageResult, error) {
+	if err := r.WebSocketInterceptService.ForwardFrame(id); err != nil {
+		return nil, fmt.Errorf("could not forward websocket message: %w", err)
+	}
+
+	return &ModifyWebSocketMessageResult{Success: true}, nil
+}
+
+func (r *mutationResolver) DropWebSocketMessage(
+	ctx context.Context,
+	id ulid.ULID,
+) (*DropWebSocketMessageResult, error) {
+	if err := r.WebSocketInterceptService.DropFrame(id); err != nil {
+		return nil, fmt.Errorf("could not drop websocket message: %w", err)
+	}
+
+	return &DropWebSocketMessageResult{Success: true}, nil
+}
+
+func webSocketInterceptSettingsToGraphQL(settings wsintercept.Settings) *WebSocketInterceptSettings {
+	out := &WebSocketInterceptSettings{Enabled: settings.Enabled}
+
+	if settings.Filter != nil {
+		filter := settings.Filter.String()
+		out.Filter = &filter
+	}
+
+	return out
 }
 
 func (r *mutationResolver) SetMatchReplaceRules(ctx context.Context, input []MatchReplaceRuleInput) ([]MatchReplaceRule, error) {

@@ -216,6 +216,37 @@ type WebSocketMessage {
   timestamp: Time!
 }
 
+type InterceptedWebSocketMessage {
+  id: ID!
+  connectionId: ID!
+  direction: WebSocketDirection!
+  opcode: Int!
+  payload: String!
+}
+
+type WebSocketInterceptSettings {
+  enabled: Boolean!
+  filter: String
+}
+
+input UpdateWebSocketInterceptSettingsInput {
+  enabled: Boolean!
+  filter: String
+}
+
+input ModifyWebSocketMessageInput {
+  id: ID!
+  payload: String!
+}
+
+type ModifyWebSocketMessageResult {
+  success: Boolean!
+}
+
+type DropWebSocketMessageResult {
+  success: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -231,6 +262,8 @@ type Query {
   webSocketConnections(searchExpression: String): [WebSocketConnection!]!
   webSocketConnection(id: ID!): WebSocketConnection
   webSocketMessages(connectionId: ID!, searchExpression: String): [WebSocketMessage!]!
+  interceptedWebSocketMessages: [InterceptedWebSocketMessage!]!
+  webSocketInterceptSettings: WebSocketInterceptSettings!
 }
 
 enum MatchReplacePhase {
@@ -287,6 +320,12 @@ type Mutation {
   ): InterceptSettings!
   runAgent(input: RunAgentInput!): AgentReply!
   setMatchReplaceRules(rules: [MatchReplaceRuleInput!]!): [MatchReplaceRule!]!
+  updateWebSocketInterceptSettings(
+    input: UpdateWebSocketInterceptSettingsInput!
+  ): WebSocketInterceptSettings!
+  modifyWebSocketMessage(input: ModifyWebSocketMessageInput!): ModifyWebSocketMessageResult!
+  forwardWebSocketMessage(id: ID!): ModifyWebSocketMessageResult!
+  dropWebSocketMessage(id: ID!): DropWebSocketMessageResult!
 }
 
 enum AgentMode {

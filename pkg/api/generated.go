@@ -81,6 +81,10 @@ type ComplexityRoot struct {
 		Success func(childComplexity int) int
 	}
 
+	DropWebSocketMessageResult struct {
+		Success func(childComplexity int) int
+	}
+
 	HTTPHeader struct {
 		Key   func(childComplexity int) int
 		Value func(childComplexity int) int
@@ -137,6 +141,14 @@ type ComplexityRoot struct {
 		ResponsesEnabled func(childComplexity int) int
 	}
 
+	InterceptedWebSocketMessage struct {
+		ConnectionID func(childComplexity int) int
+		Direction    func(childComplexity int) int
+		ID           func(childComplexity int) int
+		Opcode       func(childComplexity int) int
+		Payload      func(childComplexity int) int
+	}
+
 	MatchReplaceRule struct {
 		BodyMatcher     func(childComplexity int) int
 		BodyReplacement func(childComplexity int) int
@@ -158,6 +170,10 @@ type ComplexityRoot struct {
 		Success func(childComplexity int) int
 	}
 
+	ModifyWebSocketMessageResult struct {
+		Success func(childComplexity int) int
+	}
+
 	Mutation struct {
 		CancelRequest                         func(childComplexity int, id ulid.ULID) int
 		CancelResponse                        func(childComplexity int, requestID ulid.ULID) int
@@ -168,8 +184,11 @@ type ComplexityRoot struct {
 		CreateSenderRequestFromHTTPRequestLog func(childComplexity int, id ulid.ULID) int
 		DeleteProject                         func(childComplexity int, id ulid.ULID) int
 		DeleteSenderRequests                  func(childComplexity int) int
+		DropWebSocketMessage                  func(childComplexity int, id ulid.ULID) int
+		ForwardWebSocketMessage               func(childComplexity int, id ulid.ULID) int
 		ModifyRequest                         func(childComplexity int, request ModifyRequestInput) int
 		ModifyResponse                        func(childComplexity int, response ModifyResponseInput) int
+		ModifyWebSocketMessage                func(childComplexity int, input ModifyWebSocketMessageInput) int
 		OpenProject                           func(childComplexity int, id ulid.ULID) int
 		RunAgent                              func(childComplexity int, input RunAgentInput) int
 		SendRequest                           func(childComplexity int, id ulid.ULID) int
@@ -178,6 +197,7 @@ type ComplexityRoot struct {
 		SetScope                              func(childComplexity int, scope []ScopeRuleInput) int
 		SetSenderRequestFilter                func(childComplexity int, filter *SenderRequestFilterInput) int
 		UpdateInterceptSettings               func(childComplexity int, input UpdateInterceptSettingsInput) int
+		UpdateWebSocketInterceptSettings      func(childComplexity int, input UpdateWebSocketInterceptSettingsInput) int
 	}
 
 	Project struct {
@@ -192,20 +212,22 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		ActiveProject        func(childComplexity int) int
-		HTTPRequestLog       func(childComplexity int, id ulid.ULID) int
-		HTTPRequestLogFilter func(childComplexity int) int
-		HTTPRequestLogs      func(childComplexity int, offset *int, limit *int) int
-		InterceptedRequest   func(childComplexity int, id ulid.ULID) int
-		InterceptedRequests  func(childComplexity int) int
-		MatchReplaceRules    func(childComplexity int) int
-		Projects             func(childComplexity int) int
-		Scope                func(childComplexity int) int
-		SenderRequest        func(childComplexity int, id ulid.ULID) int
-		SenderRequests       func(childComplexity int, offset *int, limit *int) int
-		WebSocketConnection  func(childComplexity int, id ulid.ULID) int
-		WebSocketConnections func(childComplexity int, searchExpression *string) int
-		WebSocketMessages    func(childComplexity int, connectionID ulid.ULID, searchExpression *string) int
+		ActiveProject                func(childComplexity int) int
+		HTTPRequestLog               func(childComplexity int, id ulid.ULID) int
+		HTTPRequestLogFilter         func(childComplexity int) int
+		HTTPRequestLogs              func(childComplexity int, offset *int, limit *int) int
+		InterceptedRequest           func(childComplexity int, id ulid.ULID) int
+		InterceptedRequests          func(childComplexity int) int
+		InterceptedWebSocketMessages func(childComplexity int) int
+		MatchReplaceRules            func(childComplexity int) int
+		Projects                     func(childComplexity int) int
+		Scope                        func(childComplexity int) int
+		SenderRequest                func(childComplexity int, id ulid.ULID) int
+		SenderRequests               func(childComplexity int, offset *int, limit *int) int
+		WebSocketConnection          func(childComplexity int, id ulid.ULID) int
+		WebSocketConnections         func(childComplexity int, searchExpression *string) int
+		WebSocketInterceptSettings   func(childComplexity int) int
+		WebSocketMessages            func(childComplexity int, connectionID ulid.ULID, searchExpression *string) int
 	}
 
 	ScopeHeader struct {
@@ -247,6 +269,11 @@ type ComplexityRoot struct {
 		URL          func(childComplexity int) int
 	}
 
+	WebSocketInterceptSettings struct {
+		Enabled func(childComplexity int) int
+		Filter  func(childComplexity int) int
+	}
+
 	WebSocketMessage struct {
 		Direction func(childComplexity int) int
 		Opcode    func(childComplexity int) int
@@ -275,6 +302,10 @@ type MutationResolver interface {
 	UpdateInterceptSettings(ctx context.Context, input UpdateInterceptSettingsInput) (*InterceptSettings, error)
 	RunAgent(ctx context.Context, input RunAgentInput) (*AgentReply, error)
 	SetMatchReplaceRules(ctx context.Context, rules []MatchReplaceRuleInput) ([]MatchReplaceRule, error)
+	UpdateWebSocketInterceptSettings(ctx context.Context, input UpdateWebSocketInterceptSettingsInput) (*WebSocketInterceptSettings, error)
+	ModifyWebSocketMessage(ctx context.Context, input ModifyWebSocketMessageInput) (*ModifyWebSocketMessageResult, error)
+	ForwardWebSocketMessage(ctx context.Context, id ulid.ULID) (*ModifyWebSocketMessageResult, error)
+	DropWebSocketMessage(ctx context.Context, id ulid.ULID) (*DropWebSocketMessageResult, error)
 }
 type QueryResolver interface {
 	HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error)
@@ -291,6 +322,8 @@ type QueryResolver interface {
 	WebSocketConnections(ctx context.Context, searchExpression *string) ([]WebSocketConnection, error)
 	WebSocketConnection(ctx context.Context, id ulid.ULID) (*WebSocketConnection, error)
 	WebSocketMessages(ctx context.Context, connectionID ulid.ULID, searchExpression *string) ([]WebSocketMessage, error)
+	InterceptedWebSocketMessages(ctx context.Context) ([]InterceptedWebSocketMessage, error)
+	WebSocketInterceptSettings(ctx context.Context) (*WebSocketInterceptSettings, error)
 }
 
 type executableSchema struct {
@@ -391,6 +424,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DeleteSenderRequestsResult.Success(childComplexity), true
+
+	case "DropWebSocketMessageResult.success":
+		if e.complexity.DropWebSocketMessageResult.Success == nil {
+			break
+		}
+
+		return e.complexity.DropWebSocketMessageResult.Success(childComplexity), true
 
 	case "HttpHeader.key":
 		if e.complexity.HTTPHeader.Key == nil {
@@ -637,6 +677,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.InterceptSettings.ResponsesEnabled(childComplexity), true
 
+	case "InterceptedWebSocketMessage.connectionId":
+		if e.complexity.InterceptedWebSocketMessage.ConnectionID == nil {
+			break
+		}
+
+		return e.complexity.InterceptedWebSocketMessage.ConnectionID(childComplexity), true
+
+	case "InterceptedWebSocketMessage.direction":
+		if e.complexity.InterceptedWebSocketMessage.Direction == nil {
+			break
+		}
+
+		return e.complexity.InterceptedWebSocketMessage.Direction(childComplexity), true
+
+	case "InterceptedWebSocketMessage.id":
+		if e.complexity.InterceptedWebSocketMessage.ID == nil {
+			break
+		}
+
+		return e.complexity.InterceptedWebSocketMessage.ID(childComplexity), true
+
+	case "InterceptedWebSocketMessage.opcode":
+		if e.complexity.InterceptedWebSocketMessage.Opcode == nil {
+			break
+		}
+
+		return e.complexity.InterceptedWebSocketMessage.Opcode(childComplexity), true
+
+	case "InterceptedWebSocketMessage.payload":
+		if e.complexity.InterceptedWebSocketMessage.Payload == nil {
+			break
+		}
+
+		return e.complexity.InterceptedWebSocketMessage.Payload(childComplexity), true
+
 	case "MatchReplaceRule.bodyMatcher":
 		if e.complexity.MatchReplaceRule.BodyMatcher == nil {
 			break
@@ -720,6 +795,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ModifyResponseResult.Success(childComplexity), true
+
+	case "ModifyWebSocketMessageResult.success":
+		if e.complexity.ModifyWebSocketMessageResult.Success == nil {
+			break
+		}
+
+		return e.complexity.ModifyWebSocketMessageResult.Success(childComplexity), true
 
 	case "Mutation.cancelRequest":
 		if e.complexity.Mutation.CancelRequest == nil {
@@ -814,6 +896,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DeleteSenderRequests(childComplexity), true
 
+	case "Mutation.dropWebSocketMessage":
+		if e.complexity.Mutation.DropWebSocketMessage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_dropWebSocketMessage_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DropWebSocketMessage(childComplexity, args["id"].(ulid.ULID)), true
+
+	case "Mutation.forwardWebSocketMessage":
+		if e.complexity.Mutation.ForwardWebSocketMessage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_forwardWebSocketMessage_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ForwardWebSocketMessage(childComplexity, args["id"].(ulid.ULID)), true
+
 	case "Mutation.modifyRequest":
 		if e.complexity.Mutation.ModifyRequest == nil {
 			break
@@ -837,6 +943,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.ModifyResponse(childComplexity, args["response"].(ModifyResponseInput)), true
+
+	case "Mutation.modifyWebSocketMessage":
+		if e.complexity.Mutation.ModifyWebSocketMessage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_modifyWebSocketMessage_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ModifyWebSocketMessage(childComplexity, args["input"].(ModifyWebSocketMessageInput)), true
 
 	case "Mutation.openProject":
 		if e.complexity.Mutation.OpenProject == nil {
@@ -934,6 +1052,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UpdateInterceptSettings(childComplexity, args["input"].(UpdateInterceptSettingsInput)), true
 
+	case "Mutation.updateWebSocketInterceptSettings":
+		if e.complexity.Mutation.UpdateWebSocketInterceptSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateWebSocketInterceptSettings_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateWebSocketInterceptSettings(childComplexity, args["input"].(UpdateWebSocketInterceptSettingsInput)), true
+
 	case "Project.id":
 		if e.complexity.Project.ID == nil {
 			break
@@ -1026,6 +1156,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.InterceptedRequests(childComplexity), true
 
+	case "Query.interceptedWebSocketMessages":
+		if e.complexity.Query.InterceptedWebSocketMessages == nil {
+			break
+		}
+
+		return e.complexity.Query.InterceptedWebSocketMessages(childComplexity), true
+
 	case "Query.matchReplaceRules":
 		if e.complexity.Query.MatchReplaceRules == nil {
 			break
@@ -1094,6 +1231,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.WebSocketConnections(childComplexity, args["searchExpression"].(*string)), true
+
+	case "Query.webSocketInterceptSettings":
+		if e.complexity.Query.WebSocketInterceptSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.WebSocketInterceptSettings(childComplexity), true
 
 	case "Query.webSocketMessages":
 		if e.complexity.Query.WebSocketMessages == nil {
@@ -1274,6 +1418,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.WebSocketConnection.URL(childComplexity), true
+
+	case "WebSocketInterceptSettings.enabled":
+		if e.complexity.WebSocketInterceptSettings.Enabled == nil {
+			break
+		}
+
+		return e.complexity.WebSocketInterceptSettings.Enabled(childComplexity), true
+
+	case "WebSocketInterceptSettings.filter":
+		if e.complexity.WebSocketInterceptSettings.Filter == nil {
+			break
+		}
+
+		return e.complexity.WebSocketInterceptSettings.Filter(childComplexity), true
 
 	case "WebSocketMessage.direction":
 		if e.complexity.WebSocketMessage.Direction == nil {
@@ -1585,6 +1743,37 @@ type WebSocketMessage {
   timestamp: Time!
 }
 
+type InterceptedWebSocketMessage {
+  id: ID!
+  connectionId: ID!
+  direction: WebSocketDirection!
+  opcode: Int!
+  payload: String!
+}
+
+type WebSocketInterceptSettings {
+  enabled: Boolean!
+  filter: String
+}
+
+input UpdateWebSocketInterceptSettingsInput {
+  enabled: Boolean!
+  filter: String
+}
+
+input ModifyWebSocketMessageInput {
+  id: ID!
+  payload: String!
+}
+
+type ModifyWebSocketMessageResult {
+  success: Boolean!
+}
+
+type DropWebSocketMessageResult {
+  success: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -1600,6 +1789,8 @@ type Query {
   webSocketConnections(searchExpression: String): [WebSocketConnection!]!
   webSocketConnection(id: ID!): WebSocketConnection
   webSocketMessages(connectionId: ID!, searchExpression: String): [WebSocketMessage!]!
+  interceptedWebSocketMessages: [InterceptedWebSocketMessage!]!
+  webSocketInterceptSettings: WebSocketInterceptSettings!
 }
 
 enum MatchReplacePhase {
@@ -1656,6 +1847,12 @@ type Mutation {
   ): InterceptSettings!
   runAgent(input: RunAgentInput!): AgentReply!
   setMatchReplaceRules(rules: [MatchReplaceRuleInput!]!): [MatchReplaceRule!]!
+  updateWebSocketInterceptSettings(
+    input: UpdateWebSocketInterceptSettingsInput!
+  ): WebSocketInterceptSettings!
+  modifyWebSocketMessage(input: ModifyWebSocketMessageInput!): ModifyWebSocketMessageResult!
+  forwardWebSocketMessage(id: ID!): ModifyWebSocketMessageResult!
+  dropWebSocketMessage(id: ID!): DropWebSocketMessageResult!
 }
 
 enum AgentMode {
@@ -1800,6 +1997,36 @@ func (ec *executionContext) field_Mutation_deleteProject_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_dropWebSocketMessage_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_forwardWebSocketMessage_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_modifyRequest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1827,6 +2054,21 @@ func (ec *executionContext) field_Mutation_modifyResponse_args(ctx context.Conte
 		}
 	}
 	args["response"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_modifyWebSocketMessage_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ModifyWebSocketMessageInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNModifyWebSocketMessageInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyWebSocketMessageInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -1942,6 +2184,21 @@ func (ec *executionContext) field_Mutation_updateInterceptSettings_args(ctx cont
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNUpdateInterceptSettingsInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐUpdateInterceptSettingsInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateWebSocketInterceptSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 UpdateWebSocketInterceptSettingsInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNUpdateWebSocketInterceptSettingsInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐUpdateWebSocketInterceptSettingsInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -2544,6 +2801,41 @@ func (ec *executionContext) _DeleteSenderRequestsResult_success(ctx context.Cont
 	}()
 	fc := &graphql.FieldContext{
 		Object:     "DeleteSenderRequestsResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Success, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _DropWebSocketMessageResult_success(ctx context.Context, field graphql.CollectedField, obj *DropWebSocketMessageResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "DropWebSocketMessageResult",
 		Field:      field,
 		Args:       nil,
 		IsMethod:   false,
@@ -3768,6 +4060,181 @@ func (ec *executionContext) _InterceptSettings_responseFilter(ctx context.Contex
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _InterceptedWebSocketMessage_id(ctx context.Context, field graphql.CollectedField, obj *InterceptedWebSocketMessage) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "InterceptedWebSocketMessage",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(ulid.ULID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _InterceptedWebSocketMessage_connectionId(ctx context.Context, field graphql.CollectedField, obj *InterceptedWebSocketMessage) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "InterceptedWebSocketMessage",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ConnectionID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(ulid.ULID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _InterceptedWebSocketMessage_direction(ctx context.Context, field graphql.CollectedField, obj *InterceptedWebSocketMessage) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "InterceptedWebSocketMessage",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Direction, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(WebSocketDirection)
+	fc.Result = res
+	return ec.marshalNWebSocketDirection2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketDirection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _InterceptedWebSocketMessage_opcode(ctx context.Context, field graphql.CollectedField, obj *InterceptedWebSocketMessage) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "InterceptedWebSocketMessage",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Opcode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _InterceptedWebSocketMessage_payload(ctx context.Context, field graphql.CollectedField, obj *InterceptedWebSocketMessage) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "InterceptedWebSocketMessage",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Payload, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _MatchReplaceRule_id(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -4147,6 +4614,41 @@ func (ec *executionContext) _ModifyResponseResult_success(ctx context.Context, f
 	}()
 	fc := &graphql.FieldContext{
 		Object:     "ModifyResponseResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Success, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ModifyWebSocketMessageResult_success(ctx context.Context, field graphql.CollectedField, obj *ModifyWebSocketMessageResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ModifyWebSocketMessageResult",
 		Field:      field,
 		Args:       nil,
 		IsMethod:   false,
@@ -4938,6 +5440,174 @@ func (ec *executionContext) _Mutation_setMatchReplaceRules(ctx context.Context, 
 	return ec.marshalNMatchReplaceRule2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplaceRuleᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_updateWebSocketInterceptSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateWebSocketInterceptSettings_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateWebSocketInterceptSettings(rctx, args["input"].(UpdateWebSocketInterceptSettingsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*WebSocketInterceptSettings)
+	fc.Result = res
+	return ec.marshalNWebSocketInterceptSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketInterceptSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_modifyWebSocketMessage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_modifyWebSocketMessage_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ModifyWebSocketMessage(rctx, args["input"].(ModifyWebSocketMessageInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ModifyWebSocketMessageResult)
+	fc.Result = res
+	return ec.marshalNModifyWebSocketMessageResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyWebSocketMessageResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_forwardWebSocketMessage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_forwardWebSocketMessage_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ForwardWebSocketMessage(rctx, args["id"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ModifyWebSocketMessageResult)
+	fc.Result = res
+	return ec.marshalNModifyWebSocketMessageResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyWebSocketMessageResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_dropWebSocketMessage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_dropWebSocketMessage_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DropWebSocketMessage(rctx, args["id"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*DropWebSocketMessageResult)
+	fc.Result = res
+	return ec.marshalNDropWebSocketMessageResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDropWebSocketMessageResult(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -5639,6 +6309,76 @@ func (ec *executionContext) _Query_webSocketMessages(ctx context.Context, field 
 	res := resTmp.([]WebSocketMessage)
 	fc.Result = res
 	return ec.marshalNWebSocketMessage2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketMessageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_interceptedWebSocketMessages(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().InterceptedWebSocketMessages(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]InterceptedWebSocketMessage)
+	fc.Result = res
+	return ec.marshalNInterceptedWebSocketMessage2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐInterceptedWebSocketMessageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_webSocketInterceptSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().WebSocketInterceptSettings(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*WebSocketInterceptSettings)
+	fc.Result = res
+	return ec.marshalNWebSocketInterceptSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketInterceptSettings(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -6517,6 +7257,73 @@ func (ec *executionContext) _WebSocketConnection_messageCount(ctx context.Contex
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketInterceptSettings_enabled(ctx context.Context, field graphql.CollectedField, obj *WebSocketInterceptSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketInterceptSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Enabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketInterceptSettings_filter(ctx context.Context, field graphql.CollectedField, obj *WebSocketInterceptSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketInterceptSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Filter, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _WebSocketMessage_direction(ctx context.Context, field graphql.CollectedField, obj *WebSocketMessage) (ret graphql.Marshaler) {
@@ -8064,6 +8871,37 @@ func (ec *executionContext) unmarshalInputModifyResponseInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputModifyWebSocketMessageInput(ctx context.Context, obj interface{}) (ModifyWebSocketMessageInput, error) {
+	var it ModifyWebSocketMessageInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "payload":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("payload"))
+			it.Payload, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRunAgentInput(ctx context.Context, obj interface{}) (RunAgentInput, error) {
 	var it RunAgentInput
 	asMap := map[string]interface{}{}
@@ -8314,6 +9152,37 @@ func (ec *executionContext) unmarshalInputUpdateInterceptSettingsInput(ctx conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateWebSocketInterceptSettingsInput(ctx context.Context, obj interface{}) (UpdateWebSocketInterceptSettingsInput, error) {
+	var it UpdateWebSocketInterceptSettingsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "enabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			it.Enabled, err = ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "filter":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filter"))
+			it.Filter, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -8544,6 +9413,33 @@ func (ec *executionContext) _DeleteSenderRequestsResult(ctx context.Context, sel
 			out.Values[i] = graphql.MarshalString("DeleteSenderRequestsResult")
 		case "success":
 			out.Values[i] = ec._DeleteSenderRequestsResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var dropWebSocketMessageResultImplementors = []string{"DropWebSocketMessageResult"}
+
+func (ec *executionContext) _DropWebSocketMessageResult(ctx context.Context, sel ast.SelectionSet, obj *DropWebSocketMessageResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, dropWebSocketMessageResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DropWebSocketMessageResult")
+		case "success":
+			out.Values[i] = ec._DropWebSocketMessageResult_success(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -8860,6 +9756,53 @@ func (ec *executionContext) _InterceptSettings(ctx context.Context, sel ast.Sele
 	return out
 }
 
+var interceptedWebSocketMessageImplementors = []string{"InterceptedWebSocketMessage"}
+
+func (ec *executionContext) _InterceptedWebSocketMessage(ctx context.Context, sel ast.SelectionSet, obj *InterceptedWebSocketMessage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, interceptedWebSocketMessageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InterceptedWebSocketMessage")
+		case "id":
+			out.Values[i] = ec._InterceptedWebSocketMessage_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "connectionId":
+			out.Values[i] = ec._InterceptedWebSocketMessage_connectionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "direction":
+			out.Values[i] = ec._InterceptedWebSocketMessage_direction(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "opcode":
+			out.Values[i] = ec._InterceptedWebSocketMessage_opcode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "payload":
+			out.Values[i] = ec._InterceptedWebSocketMessage_payload(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var matchReplaceRuleImplementors = []string{"MatchReplaceRule"}
 
 func (ec *executionContext) _MatchReplaceRule(ctx context.Context, sel ast.SelectionSet, obj *MatchReplaceRule) graphql.Marshaler {
@@ -8971,6 +9914,33 @@ func (ec *executionContext) _ModifyResponseResult(ctx context.Context, sel ast.S
 	return out
 }
 
+var modifyWebSocketMessageResultImplementors = []string{"ModifyWebSocketMessageResult"}
+
+func (ec *executionContext) _ModifyWebSocketMessageResult(ctx context.Context, sel ast.SelectionSet, obj *ModifyWebSocketMessageResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modifyWebSocketMessageResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModifyWebSocketMessageResult")
+		case "success":
+			out.Values[i] = ec._ModifyWebSocketMessageResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -9066,6 +10036,26 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "setMatchReplaceRules":
 			out.Values[i] = ec._Mutation_setMatchReplaceRules(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updateWebSocketInterceptSettings":
+			out.Values[i] = ec._Mutation_updateWebSocketInterceptSettings(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "modifyWebSocketMessage":
+			out.Values[i] = ec._Mutation_modifyWebSocketMessage(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "forwardWebSocketMessage":
+			out.Values[i] = ec._Mutation_forwardWebSocketMessage(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "dropWebSocketMessage":
+			out.Values[i] = ec._Mutation_dropWebSocketMessage(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -9342,6 +10332,34 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "interceptedWebSocketMessages":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_interceptedWebSocketMessages(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "webSocketInterceptSettings":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_webSocketInterceptSettings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -9543,6 +10561,35 @@ func (ec *executionContext) _WebSocketConnection(ctx context.Context, sel ast.Se
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var webSocketInterceptSettingsImplementors = []string{"WebSocketInterceptSettings"}
+
+func (ec *executionContext) _WebSocketInterceptSettings(ctx context.Context, sel ast.SelectionSet, obj *WebSocketInterceptSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, webSocketInterceptSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WebSocketInterceptSettings")
+		case "enabled":
+			out.Values[i] = ec._WebSocketInterceptSettings_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "filter":
+			out.Values[i] = ec._WebSocketInterceptSettings_filter(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -10007,6 +11054,20 @@ func (ec *executionContext) marshalNDeleteSenderRequestsResult2ᚖgithubᚗcom�
 	return ec._DeleteSenderRequestsResult(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNDropWebSocketMessageResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDropWebSocketMessageResult(ctx context.Context, sel ast.SelectionSet, v DropWebSocketMessageResult) graphql.Marshaler {
+	return ec._DropWebSocketMessageResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDropWebSocketMessageResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDropWebSocketMessageResult(ctx context.Context, sel ast.SelectionSet, v *DropWebSocketMessageResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._DropWebSocketMessageResult(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNHttpHeader2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐHTTPHeader(ctx context.Context, sel ast.SelectionSet, v HTTPHeader) graphql.Marshaler {
 	return ec._HttpHeader(ctx, sel, &v)
 }
@@ -10220,6 +11281,54 @@ func (ec *executionContext) marshalNInterceptSettings2ᚖgithubᚗcomᚋVibeᚑC
 	return ec._InterceptSettings(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNInterceptedWebSocketMessage2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐInterceptedWebSocketMessage(ctx context.Context, sel ast.SelectionSet, v InterceptedWebSocketMessage) graphql.Marshaler {
+	return ec._InterceptedWebSocketMessage(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNInterceptedWebSocketMessage2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐInterceptedWebSocketMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []InterceptedWebSocketMessage) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNInterceptedWebSocketMessage2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐInterceptedWebSocketMessage(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalNMatchReplacePhase2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplacePhase(ctx context.Context, v interface{}) (MatchReplacePhase, error) {
 	var res MatchReplacePhase
 	err := res.UnmarshalGQL(v)
@@ -10340,6 +11449,25 @@ func (ec *executionContext) marshalNModifyResponseResult2ᚖgithubᚗcomᚋVibe�
 		return graphql.Null
 	}
 	return ec._ModifyResponseResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNModifyWebSocketMessageInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyWebSocketMessageInput(ctx context.Context, v interface{}) (ModifyWebSocketMessageInput, error) {
+	res, err := ec.unmarshalInputModifyWebSocketMessageInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNModifyWebSocketMessageResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyWebSocketMessageResult(ctx context.Context, sel ast.SelectionSet, v ModifyWebSocketMessageResult) graphql.Marshaler {
+	return ec._ModifyWebSocketMessageResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNModifyWebSocketMessageResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐModifyWebSocketMessageResult(ctx context.Context, sel ast.SelectionSet, v *ModifyWebSocketMessageResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._ModifyWebSocketMessageResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNProject2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProject(ctx context.Context, sel ast.SelectionSet, v Project) graphql.Marshaler {
@@ -10598,6 +11726,11 @@ func (ec *executionContext) unmarshalNUpdateInterceptSettingsInput2githubᚗcom�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateWebSocketInterceptSettingsInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐUpdateWebSocketInterceptSettingsInput(ctx context.Context, v interface{}) (UpdateWebSocketInterceptSettingsInput, error) {
+	res, err := ec.unmarshalInputUpdateWebSocketInterceptSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNWebSocketConnection2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketConnection(ctx context.Context, sel ast.SelectionSet, v WebSocketConnection) graphql.Marshaler {
 	return ec._WebSocketConnection(ctx, sel, &v)
 }
@@ -10654,6 +11787,20 @@ func (ec *executionContext) unmarshalNWebSocketDirection2githubᚗcomᚋVibeᚑC
 
 func (ec *executionContext) marshalNWebSocketDirection2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketDirection(ctx context.Context, sel ast.SelectionSet, v WebSocketDirection) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNWebSocketInterceptSettings2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketInterceptSettings(ctx context.Context, sel ast.SelectionSet, v WebSocketInterceptSettings) graphql.Marshaler {
+	return ec._WebSocketInterceptSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWebSocketInterceptSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketInterceptSettings(ctx context.Context, sel ast.SelectionSet, v *WebSocketInterceptSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._WebSocketInterceptSettings(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNWebSocketMessage2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketMessage(ctx context.Context, sel ast.SelectionSet, v WebSocketMessage) graphql.Marshaler {

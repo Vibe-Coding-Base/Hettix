@@ -1,0 +1,41 @@
+query WebSocketInterceptSettings {
+  webSocketInterceptSettings {
+    enabled
+    filter
+  }
+}
+
+query InterceptedWebSocketMessages {
+  interceptedWebSocketMessages {
+    id
+    connectionId
+    direction
+    opcode
+    payload
+  }
+}
+
+mutation UpdateWebSocketInterceptSettings($input: UpdateWebSocketInterceptSettingsInput!) {
+  updateWebSocketInterceptSettings(input: $input) {
+    enabled
+    filter
+  }
+}
+
+mutation ModifyWebSocketMessage($input: ModifyWebSocketMessageInput!) {
+  modifyWebSocketMessage(input: $input) {
+    success
+  }
+}
+
+mutation ForwardWebSocketMessage($id: ID!) {
+  forwardWebSocketMessage(id: $id) {
+    success
+  }
+}
+
+mutation DropWebSocketMessage($id: ID!) {
+  dropWebSocketMessage(id: $id) {
+    success
+  }
+}

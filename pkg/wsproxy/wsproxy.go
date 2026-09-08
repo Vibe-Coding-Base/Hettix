@@ -60,13 +60,23 @@ type Message struct {
 	Time      time.Time
 }
 
+// InterceptFunc is called for each data message before it is forwarded. It may
+// block until an operator decision arrives and returns the payload to forward;
+// drop reports that the message should be dropped without forwarding. It must
+// return when ctx is done (the connection is closing).
+type InterceptFunc func(ctx context.Context, m Message) (payload []byte, drop bool)
+
 // Handlers receive the lifecycle events of a proxied connection. Every field is
 // optional.
 type Handlers struct {
 	// OnOpen is called once, after the upstream is dialed and the client
 	// handshake completes, before any message is relayed.
 	OnOpen func(ConnInfo)
-	// OnMessage is called for each relayed data message.
+	// Intercept, if set, may modify or drop each message before it is captured
+	// and forwarded.
+	Intercept InterceptFunc
+	// OnMessage is called for each relayed data message, with the payload that
+	// is actually forwarded (after any interception).
 	OnMessage func(Message)
 	// OnClose is called once when the connection is torn down.
 	OnClose func(connID string)
@@ -137,7 +147,12 @@ func Handler(w http.ResponseWriter, r *http.Request, h Handlers) error {
 		defer h.OnClose(connID)
 	}
 
-	return relay(connID, client, upstream, h.OnMessage)
+	// A connection-scoped context lets a blocked interceptor unblock when the
+	// connection is torn down.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	return relay(ctx, connID, client, upstream, h)
 }
 
 func targetURL(r *http.Request) url.URL {
@@ -169,24 +184,26 @@ func dialUpstream(r *http.Request, target url.URL) (net.Conn, error) {
 	return conn, nil
 }
 
-func relay(connID string, client, upstream net.Conn, onMessage func(Message)) error {
+func relay(ctx context.Context, connID string, client, upstream net.Conn, h Handlers) error {
 	errc := make(chan error, 2)
 
-	go pump(connID, client, upstream, true, ClientToServer, onMessage, errc)
-	go pump(connID, upstream, client, false, ServerToClient, onMessage, errc)
+	go pump(ctx, connID, client, upstream, true, ClientToServer, h, errc)
+	go pump(ctx, connID, upstream, client, false, ServerToClient, h, errc)
 
 	return <-errc
 }
 
 // pump reads data messages from src and writes them to dst. srcIsClient selects
 // the framing (client frames are masked); the write to dst uses the same role so
-// masking stays correct end to end.
+// masking stays correct end to end. Each message is optionally intercepted
+// (modified or dropped) before it is captured and forwarded.
 func pump(
+	ctx context.Context,
 	connID string,
 	src, dst net.Conn,
 	srcIsClient bool,
 	dir Direction,
-	onMessage func(Message),
+	h Handlers,
 	errc chan<- error,
 ) {
 	for {
@@ -206,14 +223,27 @@ func pump(
 			return
 		}
 
-		if onMessage != nil {
-			onMessage(Message{ConnID: connID, Direction: dir, Opcode: op, Payload: data, Time: time.Now()})
+		payload := data
+
+		if h.Intercept != nil {
+			var drop bool
+
+			payload, drop = h.Intercept(ctx, Message{
+				ConnID: connID, Direction: dir, Opcode: op, Payload: data, Time: time.Now(),
+			})
+			if drop {
+				continue
+			}
+		}
+
+		if h.OnMessage != nil {
+			h.OnMessage(Message{ConnID: connID, Direction: dir, Opcode: op, Payload: payload, Time: time.Now()})
 		}
 
 		if srcIsClient {
-			err = wsutil.WriteClientMessage(dst, op, data)
+			err = wsutil.WriteClientMessage(dst, op, payload)
 		} else {
-			err = wsutil.WriteServerMessage(dst, op, data)
+			err = wsutil.WriteServerMessage(dst, op, payload)
 		}
 		if err != nil {
 			errc <- err
