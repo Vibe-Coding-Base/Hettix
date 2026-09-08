@@ -31,20 +31,26 @@ func FindBrowser() string {
 	return ""
 }
 
-// BundledPath returns the path to a Chromium bundled under the Hettix data
-// directory (~/.hettix/browser), or "" when it is not installed there.
+// BundledPath returns the path to a Chromium bundled with Hettix: a "browser"
+// folder next to the executable (the installed layout) or under the data
+// directory (~/.hettix/browser). It returns "" when none is present.
 func BundledPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
+	var dirs []string
+
+	if exe, err := os.Executable(); err == nil {
+		dirs = append(dirs, filepath.Join(filepath.Dir(exe), "browser"))
 	}
 
-	dir := filepath.Join(home, ".hettix", "browser")
+	if home, err := os.UserHomeDir(); err == nil {
+		dirs = append(dirs, filepath.Join(home, ".hettix", "browser"))
+	}
 
-	for _, rel := range bundledRelPaths() {
-		p := filepath.Join(dir, rel)
-		if fileExists(p) {
-			return p
+	for _, dir := range dirs {
+		for _, rel := range bundledRelPaths() {
+			p := filepath.Join(dir, rel)
+			if fileExists(p) {
+				return p
+			}
 		}
 	}
 

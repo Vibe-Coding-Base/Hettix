@@ -20,6 +20,7 @@ import (
 
 	"github.com/Vibe-Coding-Base/Hettix/pkg/agent"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/aitools"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/chrome"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/finding"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
@@ -60,6 +61,9 @@ type Resolver struct {
 	FindingService            *finding.Service
 	WorkflowService           *workflow.Service
 	LLMManager                *llm.Manager
+
+	// ProxyURL is Hettix's own proxy address, used to wire the launched browser.
+	ProxyURL string
 }
 
 type (
@@ -696,6 +700,19 @@ func (r *mutationResolver) UpdateInterceptSettings(
 	}
 
 	return updated, nil
+}
+
+func (r *mutationResolver) LaunchBrowser(ctx context.Context) (*LaunchBrowserResult, error) {
+	err := chrome.Launch(chrome.LaunchConfig{ProxyServer: r.ProxyURL})
+	switch {
+	case errors.Is(err, chrome.ErrBrowserNotFound):
+		return nil, gqlerror.Errorf(
+			"No browser found. Install Hettix's bundled browser, or Chrome/Edge, then try again.")
+	case err != nil:
+		return nil, fmt.Errorf("could not launch browser: %w", err)
+	}
+
+	return &LaunchBrowserResult{Success: true}, nil
 }
 
 func (r *queryResolver) LlmSettings(ctx context.Context) (*LLMSettings, error) {

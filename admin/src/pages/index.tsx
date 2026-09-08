@@ -1,14 +1,29 @@
 import FolderIcon from "@mui/icons-material/Folder";
-import { Box, Button, Typography } from "@mui/material";
+import TravelExploreIcon from "@mui/icons-material/TravelExplore";
+import { Alert, Box, Button, Snackbar, Typography } from "@mui/material";
+import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
 import { Layout, Page } from "features/Layout";
+import { useLaunchBrowserMutation } from "lib/graphql/generated";
 
 function Index(): JSX.Element {
   const highlightSx = { color: "primary.main" };
+  const [launchBrowser, { loading }] = useLaunchBrowserMutation();
+  const [error, setError] = useState<string | null>(null);
+
+  const onLaunch = () => {
+    launchBrowser().catch((e) => setError(e.message));
+  };
 
   return (
     <Layout page={Page.Home} title="">
+      <Snackbar open={error !== null} autoHideDuration={6000} onClose={() => setError(null)}>
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      </Snackbar>
+
       <Box p={4}>
         <Box mb={4} width="60%">
           <Typography variant="h2">
@@ -46,6 +61,16 @@ function Index(): JSX.Element {
           startIcon={<FolderIcon />}
         >
           Manage projects
+        </Button>
+        <Button
+          variant="outlined"
+          color="primary"
+          size="large"
+          onClick={onLaunch}
+          disabled={loading}
+          startIcon={<TravelExploreIcon />}
+        >
+          Open browser
         </Button>
       </Box>
     </Layout>

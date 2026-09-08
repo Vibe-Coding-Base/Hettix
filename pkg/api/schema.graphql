@@ -375,6 +375,10 @@ type DeleteWorkflowResult {
   success: Boolean!
 }
 
+type LaunchBrowserResult {
+  success: Boolean!
+}
+
 type LLMSettings {
   provider: String!
   baseURL: String!
@@ -488,6 +492,7 @@ type Mutation {
   deleteWorkflow(id: ID!): DeleteWorkflowResult!
   runWorkflow(id: ID!): [WorkflowStepResult!]!
   updateLLMSettings(input: UpdateLLMSettingsInput!): LLMSettings!
+  launchBrowser: LaunchBrowserResult!
 }
 
 enum AgentMode {

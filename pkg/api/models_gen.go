@@ -183,6 +183,10 @@ type LLMSettings struct {
 	Enabled   bool   `json:"enabled"`
 }
 
+type LaunchBrowserResult struct {
+	Success bool `json:"success"`
+}
+
 type MatchReplaceRule struct {
 	ID              ulid.ULID         `json:"id"`
 	Name            string            `json:"name"`

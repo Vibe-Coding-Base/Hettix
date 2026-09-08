@@ -249,6 +249,11 @@ export type LlmSettings = {
   provider: Scalars['String'];
 };
 
+export type LaunchBrowserResult = {
+  __typename?: 'LaunchBrowserResult';
+  success: Scalars['Boolean'];
+};
+
 export enum MatchReplacePhase {
   Request = 'REQUEST',
   Response = 'RESPONSE'
@@ -335,6 +340,7 @@ export type Mutation = {
   deleteWorkflow: DeleteWorkflowResult;
   dropWebSocketMessage: DropWebSocketMessageResult;
   forwardWebSocketMessage: ModifyWebSocketMessageResult;
+  launchBrowser: LaunchBrowserResult;
   modifyRequest: ModifyRequestResult;
   modifyResponse: ModifyResponseResult;
   modifyWebSocketMessage: ModifyWebSocketMessageResult;
@@ -923,6 +929,11 @@ export type HttpRequestLogsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type HttpRequestLogsQuery = { __typename?: 'Query', httpRequestLogs: Array<{ __typename?: 'HttpRequestLog', id: string, method: HttpMethod, url: string, timestamp: any, response?: { __typename?: 'HttpResponseLog', statusCode: number, statusReason: string } | null }> };
+
+export type LaunchBrowserMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type LaunchBrowserMutation = { __typename?: 'Mutation', launchBrowser: { __typename?: 'LaunchBrowserResult', success: boolean } };
 
 export type SetHttpRequestLogFilterMutationVariables = Exact<{
   filter?: InputMaybe<HttpRequestLogFilterInput>;
@@ -1993,6 +2004,38 @@ export function useHttpRequestLogsLazyQuery(baseOptions?: Apollo.LazyQueryHookOp
 export type HttpRequestLogsQueryHookResult = ReturnType<typeof useHttpRequestLogsQuery>;
 export type HttpRequestLogsLazyQueryHookResult = ReturnType<typeof useHttpRequestLogsLazyQuery>;
 export type HttpRequestLogsQueryResult = Apollo.QueryResult<HttpRequestLogsQuery, HttpRequestLogsQueryVariables>;
+export const LaunchBrowserDocument = gql`
+    mutation LaunchBrowser {
+  launchBrowser {
+    success
+  }
+}
+    `;
+export type LaunchBrowserMutationFn = Apollo.MutationFunction<LaunchBrowserMutation, LaunchBrowserMutationVariables>;
+
+/**
+ * __useLaunchBrowserMutation__
+ *
+ * To run a mutation, you first call `useLaunchBrowserMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useLaunchBrowserMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [launchBrowserMutation, { data, loading, error }] = useLaunchBrowserMutation({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useLaunchBrowserMutation(baseOptions?: Apollo.MutationHookOptions<LaunchBrowserMutation, LaunchBrowserMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<LaunchBrowserMutation, LaunchBrowserMutationVariables>(LaunchBrowserDocument, options);
+      }
+export type LaunchBrowserMutationHookResult = ReturnType<typeof useLaunchBrowserMutation>;
+export type LaunchBrowserMutationResult = Apollo.MutationResult<LaunchBrowserMutation>;
+export type LaunchBrowserMutationOptions = Apollo.BaseMutationOptions<LaunchBrowserMutation, LaunchBrowserMutationVariables>;
 export const SetHttpRequestLogFilterDocument = gql`
     mutation SetHttpRequestLogFilter($filter: HttpRequestLogFilterInput) {
   setHttpRequestLogFilter(filter: $filter) {

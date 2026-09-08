@@ -192,6 +192,10 @@ type ComplexityRoot struct {
 		Provider  func(childComplexity int) int
 	}
 
+	LaunchBrowserResult struct {
+		Success func(childComplexity int) int
+	}
+
 	MatchReplaceRule struct {
 		BodyMatcher     func(childComplexity int) int
 		BodyReplacement func(childComplexity int) int
@@ -232,6 +236,7 @@ type ComplexityRoot struct {
 		DeleteWorkflow                        func(childComplexity int, id ulid.ULID) int
 		DropWebSocketMessage                  func(childComplexity int, id ulid.ULID) int
 		ForwardWebSocketMessage               func(childComplexity int, id ulid.ULID) int
+		LaunchBrowser                         func(childComplexity int) int
 		ModifyRequest                         func(childComplexity int, request ModifyRequestInput) int
 		ModifyResponse                        func(childComplexity int, response ModifyResponseInput) int
 		ModifyWebSocketMessage                func(childComplexity int, input ModifyWebSocketMessageInput) int
@@ -405,6 +410,7 @@ type MutationResolver interface {
 	DeleteWorkflow(ctx context.Context, id ulid.ULID) (*DeleteWorkflowResult, error)
 	RunWorkflow(ctx context.Context, id ulid.ULID) ([]WorkflowStepResult, error)
 	UpdateLLMSettings(ctx context.Context, input UpdateLLMSettingsInput) (*LLMSettings, error)
+	LaunchBrowser(ctx context.Context) (*LaunchBrowserResult, error)
 }
 type QueryResolver interface {
 	HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error)
@@ -994,6 +1000,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.LLMSettings.Provider(childComplexity), true
 
+	case "LaunchBrowserResult.success":
+		if e.complexity.LaunchBrowserResult.Success == nil {
+			break
+		}
+
+		return e.complexity.LaunchBrowserResult.Success(childComplexity), true
+
 	case "MatchReplaceRule.bodyMatcher":
 		if e.complexity.MatchReplaceRule.BodyMatcher == nil {
 			break
@@ -1237,6 +1250,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.ForwardWebSocketMessage(childComplexity, args["id"].(ulid.ULID)), true
+
+	case "Mutation.launchBrowser":
+		if e.complexity.Mutation.LaunchBrowser == nil {
+			break
+		}
+
+		return e.complexity.Mutation.LaunchBrowser(childComplexity), true
 
 	case "Mutation.modifyRequest":
 		if e.complexity.Mutation.ModifyRequest == nil {
@@ -2493,6 +2513,10 @@ type DeleteWorkflowResult {
   success: Boolean!
 }
 
+type LaunchBrowserResult {
+  success: Boolean!
+}
+
 type LLMSettings {
   provider: String!
   baseURL: String!
@@ -2606,6 +2630,7 @@ type Mutation {
   deleteWorkflow(id: ID!): DeleteWorkflowResult!
   runWorkflow(id: ID!): [WorkflowStepResult!]!
   updateLLMSettings(input: UpdateLLMSettingsInput!): LLMSettings!
+  launchBrowser: LaunchBrowserResult!
 }
 
 enum AgentMode {
@@ -6007,6 +6032,41 @@ func (ec *executionContext) _LLMSettings_enabled(ctx context.Context, field grap
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _LaunchBrowserResult_success(ctx context.Context, field graphql.CollectedField, obj *LaunchBrowserResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "LaunchBrowserResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Success, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _MatchReplaceRule_id(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -7672,6 +7732,41 @@ func (ec *executionContext) _Mutation_updateLLMSettings(ctx context.Context, fie
 	res := resTmp.(*LLMSettings)
 	fc.Result = res
 	return ec.marshalNLLMSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐLLMSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_launchBrowser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().LaunchBrowser(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*LaunchBrowserResult)
+	fc.Result = res
+	return ec.marshalNLaunchBrowserResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐLaunchBrowserResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
@@ -13485,6 +13580,33 @@ func (ec *executionContext) _LLMSettings(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var launchBrowserResultImplementors = []string{"LaunchBrowserResult"}
+
+func (ec *executionContext) _LaunchBrowserResult(ctx context.Context, sel ast.SelectionSet, obj *LaunchBrowserResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, launchBrowserResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LaunchBrowserResult")
+		case "success":
+			out.Values[i] = ec._LaunchBrowserResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var matchReplaceRuleImplementors = []string{"MatchReplaceRule"}
 
 func (ec *executionContext) _MatchReplaceRule(ctx context.Context, sel ast.SelectionSet, obj *MatchReplaceRule) graphql.Marshaler {
@@ -13773,6 +13895,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "updateLLMSettings":
 			out.Values[i] = ec._Mutation_updateLLMSettings(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "launchBrowser":
+			out.Values[i] = ec._Mutation_launchBrowser(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -15590,6 +15717,20 @@ func (ec *executionContext) marshalNLLMSettings2ᚖgithubᚗcomᚋVibeᚑCoding�
 		return graphql.Null
 	}
 	return ec._LLMSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNLaunchBrowserResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐLaunchBrowserResult(ctx context.Context, sel ast.SelectionSet, v LaunchBrowserResult) graphql.Marshaler {
+	return ec._LaunchBrowserResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLaunchBrowserResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐLaunchBrowserResult(ctx context.Context, sel ast.SelectionSet, v *LaunchBrowserResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._LaunchBrowserResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNMatchReplacePhase2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplacePhase(ctx context.Context, v interface{}) (MatchReplacePhase, error) {

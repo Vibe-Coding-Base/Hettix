@@ -279,6 +279,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		FindingService:            findingService,
 		WorkflowService:           workflowService,
 		LLMManager:                llmManager,
+		ProxyURL:                  url,
 	}, gqlEndpoint))
 	adminMux.Handle("/api/export/har", exportHandler(reqLogService, "har"))
 	adminMux.Handle("/api/export/csv", exportHandler(reqLogService, "csv"))
