@@ -1,0 +1,19 @@
+query LLMSettings {
+  llmSettings {
+    provider
+    baseURL
+    model
+    hasApiKey
+    enabled
+  }
+}
+
+mutation UpdateLLMSettings($input: UpdateLLMSettingsInput!) {
+  updateLLMSettings(input: $input) {
+    provider
+    baseURL
+    model
+    hasApiKey
+    enabled
+  }
+}

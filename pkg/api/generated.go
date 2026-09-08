@@ -184,6 +184,14 @@ type ComplexityRoot struct {
 		StatusCode func(childComplexity int) int
 	}
 
+	LLMSettings struct {
+		BaseURL   func(childComplexity int) int
+		Enabled   func(childComplexity int) int
+		HasAPIKey func(childComplexity int) int
+		Model     func(childComplexity int) int
+		Provider  func(childComplexity int) int
+	}
+
 	MatchReplaceRule struct {
 		BodyMatcher     func(childComplexity int) int
 		BodyReplacement func(childComplexity int) int
@@ -238,6 +246,7 @@ type ComplexityRoot struct {
 		SetSenderRequestFilter                func(childComplexity int, filter *SenderRequestFilterInput) int
 		StartIntruderAttack                   func(childComplexity int, input StartIntruderAttackInput) int
 		UpdateInterceptSettings               func(childComplexity int, input UpdateInterceptSettingsInput) int
+		UpdateLLMSettings                     func(childComplexity int, input UpdateLLMSettingsInput) int
 		UpdateWebSocketInterceptSettings      func(childComplexity int, input UpdateWebSocketInterceptSettingsInput) int
 	}
 
@@ -264,6 +273,7 @@ type ComplexityRoot struct {
 		IntruderAttack               func(childComplexity int, id ulid.ULID) int
 		IntruderAttacks              func(childComplexity int) int
 		IntruderResults              func(childComplexity int, attackID ulid.ULID) int
+		LlmSettings                  func(childComplexity int) int
 		MatchReplaceRules            func(childComplexity int) int
 		Projects                     func(childComplexity int) int
 		Scope                        func(childComplexity int) int
@@ -394,6 +404,7 @@ type MutationResolver interface {
 	SaveWorkflow(ctx context.Context, input SaveWorkflowInput) (*Workflow, error)
 	DeleteWorkflow(ctx context.Context, id ulid.ULID) (*DeleteWorkflowResult, error)
 	RunWorkflow(ctx context.Context, id ulid.ULID) ([]WorkflowStepResult, error)
+	UpdateLLMSettings(ctx context.Context, input UpdateLLMSettingsInput) (*LLMSettings, error)
 }
 type QueryResolver interface {
 	HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error)
@@ -419,6 +430,7 @@ type QueryResolver interface {
 	Findings(ctx context.Context) ([]Finding, error)
 	Workflows(ctx context.Context) ([]Workflow, error)
 	Workflow(ctx context.Context, id ulid.ULID) (*Workflow, error)
+	LlmSettings(ctx context.Context) (*LLMSettings, error)
 }
 
 type executableSchema struct {
@@ -947,6 +959,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.IntruderResult.StatusCode(childComplexity), true
 
+	case "LLMSettings.baseURL":
+		if e.complexity.LLMSettings.BaseURL == nil {
+			break
+		}
+
+		return e.complexity.LLMSettings.BaseURL(childComplexity), true
+
+	case "LLMSettings.enabled":
+		if e.complexity.LLMSettings.Enabled == nil {
+			break
+		}
+
+		return e.complexity.LLMSettings.Enabled(childComplexity), true
+
+	case "LLMSettings.hasApiKey":
+		if e.complexity.LLMSettings.HasAPIKey == nil {
+			break
+		}
+
+		return e.complexity.LLMSettings.HasAPIKey(childComplexity), true
+
+	case "LLMSettings.model":
+		if e.complexity.LLMSettings.Model == nil {
+			break
+		}
+
+		return e.complexity.LLMSettings.Model(childComplexity), true
+
+	case "LLMSettings.provider":
+		if e.complexity.LLMSettings.Provider == nil {
+			break
+		}
+
+		return e.complexity.LLMSettings.Provider(childComplexity), true
+
 	case "MatchReplaceRule.bodyMatcher":
 		if e.complexity.MatchReplaceRule.BodyMatcher == nil {
 			break
@@ -1359,6 +1406,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UpdateInterceptSettings(childComplexity, args["input"].(UpdateInterceptSettingsInput)), true
 
+	case "Mutation.updateLLMSettings":
+		if e.complexity.Mutation.UpdateLLMSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateLLMSettings_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateLLMSettings(childComplexity, args["input"].(UpdateLLMSettingsInput)), true
+
 	case "Mutation.updateWebSocketInterceptSettings":
 		if e.complexity.Mutation.UpdateWebSocketInterceptSettings == nil {
 			break
@@ -1507,6 +1566,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.IntruderResults(childComplexity, args["attackId"].(ulid.ULID)), true
+
+	case "Query.llmSettings":
+		if e.complexity.Query.LlmSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.LlmSettings(childComplexity), true
 
 	case "Query.matchReplaceRules":
 		if e.complexity.Query.MatchReplaceRules == nil {
@@ -2427,6 +2493,25 @@ type DeleteWorkflowResult {
   success: Boolean!
 }
 
+type LLMSettings {
+  provider: String!
+  baseURL: String!
+  model: String!
+  hasApiKey: Boolean!
+  enabled: Boolean!
+}
+
+input UpdateLLMSettingsInput {
+  provider: String!
+  baseURL: String!
+  """
+  When null the stored API key is kept; pass an empty string to clear it.
+  """
+  apiKey: String
+  model: String!
+  enabled: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -2451,6 +2536,7 @@ type Query {
   findings: [Finding!]!
   workflows: [Workflow!]!
   workflow(id: ID!): Workflow
+  llmSettings: LLMSettings!
 }
 
 enum MatchReplacePhase {
@@ -2519,6 +2605,7 @@ type Mutation {
   saveWorkflow(input: SaveWorkflowInput!): Workflow!
   deleteWorkflow(id: ID!): DeleteWorkflowResult!
   runWorkflow(id: ID!): [WorkflowStepResult!]!
+  updateLLMSettings(input: UpdateLLMSettingsInput!): LLMSettings!
 }
 
 enum AgentMode {
@@ -2940,6 +3027,21 @@ func (ec *executionContext) field_Mutation_updateInterceptSettings_args(ctx cont
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNUpdateInterceptSettingsInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐUpdateInterceptSettingsInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateLLMSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 UpdateLLMSettingsInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNUpdateLLMSettingsInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐUpdateLLMSettingsInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -5730,6 +5832,181 @@ func (ec *executionContext) _IntruderResult_error(ctx context.Context, field gra
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _LLMSettings_provider(ctx context.Context, field graphql.CollectedField, obj *LLMSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "LLMSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Provider, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _LLMSettings_baseURL(ctx context.Context, field graphql.CollectedField, obj *LLMSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "LLMSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaseURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _LLMSettings_model(ctx context.Context, field graphql.CollectedField, obj *LLMSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "LLMSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Model, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _LLMSettings_hasApiKey(ctx context.Context, field graphql.CollectedField, obj *LLMSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "LLMSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasAPIKey, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _LLMSettings_enabled(ctx context.Context, field graphql.CollectedField, obj *LLMSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "LLMSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Enabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _MatchReplaceRule_id(ctx context.Context, field graphql.CollectedField, obj *MatchReplaceRule) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -7355,6 +7632,48 @@ func (ec *executionContext) _Mutation_runWorkflow(ctx context.Context, field gra
 	return ec.marshalNWorkflowStepResult2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepResultᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_updateLLMSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateLLMSettings_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateLLMSettings(rctx, args["input"].(UpdateLLMSettingsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*LLMSettings)
+	fc.Result = res
+	return ec.marshalNLLMSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐLLMSettings(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -8386,6 +8705,41 @@ func (ec *executionContext) _Query_workflow(ctx context.Context, field graphql.C
 	res := resTmp.(*Workflow)
 	fc.Result = res
 	return ec.marshalOWorkflow2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflow(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_llmSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().LlmSettings(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*LLMSettings)
+	fc.Result = res
+	return ec.marshalNLLMSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐLLMSettings(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -12079,6 +12433,61 @@ func (ec *executionContext) unmarshalInputUpdateInterceptSettingsInput(ctx conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateLLMSettingsInput(ctx context.Context, obj interface{}) (UpdateLLMSettingsInput, error) {
+	var it UpdateLLMSettingsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "provider":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("provider"))
+			it.Provider, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "baseURL":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseURL"))
+			it.BaseURL, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "apiKey":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
+			it.APIKey, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "model":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("model"))
+			it.Model, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "enabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			it.Enabled, err = ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateWebSocketInterceptSettingsInput(ctx context.Context, obj interface{}) (UpdateWebSocketInterceptSettingsInput, error) {
 	var it UpdateWebSocketInterceptSettingsInput
 	asMap := map[string]interface{}{}
@@ -13029,6 +13438,53 @@ func (ec *executionContext) _IntruderResult(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var lLMSettingsImplementors = []string{"LLMSettings"}
+
+func (ec *executionContext) _LLMSettings(ctx context.Context, sel ast.SelectionSet, obj *LLMSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, lLMSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LLMSettings")
+		case "provider":
+			out.Values[i] = ec._LLMSettings_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "baseURL":
+			out.Values[i] = ec._LLMSettings_baseURL(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "model":
+			out.Values[i] = ec._LLMSettings_model(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "hasApiKey":
+			out.Values[i] = ec._LLMSettings_hasApiKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "enabled":
+			out.Values[i] = ec._LLMSettings_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var matchReplaceRuleImplementors = []string{"MatchReplaceRule"}
 
 func (ec *executionContext) _MatchReplaceRule(ctx context.Context, sel ast.SelectionSet, obj *MatchReplaceRule) graphql.Marshaler {
@@ -13312,6 +13768,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "runWorkflow":
 			out.Values[i] = ec._Mutation_runWorkflow(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updateLLMSettings":
+			out.Values[i] = ec._Mutation_updateLLMSettings(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -13706,6 +14167,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_workflow(ctx, field)
+				return res
+			})
+		case "llmSettings":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_llmSettings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "__type":
@@ -15103,6 +15578,20 @@ func (ec *executionContext) marshalNIntruderResult2ᚕgithubᚗcomᚋVibeᚑCodi
 	return ret
 }
 
+func (ec *executionContext) marshalNLLMSettings2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐLLMSettings(ctx context.Context, sel ast.SelectionSet, v LLMSettings) graphql.Marshaler {
+	return ec._LLMSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLLMSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐLLMSettings(ctx context.Context, sel ast.SelectionSet, v *LLMSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._LLMSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNMatchReplacePhase2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplacePhase(ctx context.Context, v interface{}) (MatchReplacePhase, error) {
 	var res MatchReplacePhase
 	err := res.UnmarshalGQL(v)
@@ -15591,6 +16080,11 @@ func (ec *executionContext) marshalNURL2ᚖnetᚋurlᚐURL(ctx context.Context, 
 
 func (ec *executionContext) unmarshalNUpdateInterceptSettingsInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐUpdateInterceptSettingsInput(ctx context.Context, v interface{}) (UpdateInterceptSettingsInput, error) {
 	res, err := ec.unmarshalInputUpdateInterceptSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateLLMSettingsInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐUpdateLLMSettingsInput(ctx context.Context, v interface{}) (UpdateLLMSettingsInput, error) {
+	res, err := ec.unmarshalInputUpdateLLMSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

@@ -375,6 +375,25 @@ type DeleteWorkflowResult {
   success: Boolean!
 }
 
+type LLMSettings {
+  provider: String!
+  baseURL: String!
+  model: String!
+  hasApiKey: Boolean!
+  enabled: Boolean!
+}
+
+input UpdateLLMSettingsInput {
+  provider: String!
+  baseURL: String!
+  """
+  When null the stored API key is kept; pass an empty string to clear it.
+  """
+  apiKey: String
+  model: String!
+  enabled: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -399,6 +418,7 @@ type Query {
   findings: [Finding!]!
   workflows: [Workflow!]!
   workflow(id: ID!): Workflow
+  llmSettings: LLMSettings!
 }
 
 enum MatchReplacePhase {
@@ -467,6 +487,7 @@ type Mutation {
   saveWorkflow(input: SaveWorkflowInput!): Workflow!
   deleteWorkflow(id: ID!): DeleteWorkflowResult!
   runWorkflow(id: ID!): [WorkflowStepResult!]!
+  updateLLMSettings(input: UpdateLLMSettingsInput!): LLMSettings!
 }
 
 enum AgentMode {

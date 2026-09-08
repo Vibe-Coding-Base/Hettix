@@ -59,7 +59,7 @@ type Resolver struct {
 	IntruderService           *intruder.Service
 	FindingService            *finding.Service
 	WorkflowService           *workflow.Service
-	LLMProvider               llm.Provider
+	LLMManager                *llm.Manager
 }
 
 type (
@@ -698,9 +698,47 @@ func (r *mutationResolver) UpdateInterceptSettings(
 	return updated, nil
 }
 
+func (r *queryResolver) LlmSettings(ctx context.Context) (*LLMSettings, error) {
+	return llmSettingsToGraphQL(r.LLMManager.Settings()), nil
+}
+
+func (r *mutationResolver) UpdateLLMSettings(ctx context.Context, input UpdateLLMSettingsInput) (*LLMSettings, error) {
+	current := r.LLMManager.Settings()
+
+	settings := llm.Settings{
+		Provider: input.Provider,
+		BaseURL:  input.BaseURL,
+		Model:    input.Model,
+		Enabled:  input.Enabled,
+		// A null API key keeps the stored one; a provided value (including "")
+		// replaces it. This lets the UI edit other fields without re-entering it.
+		APIKey: current.APIKey,
+	}
+	if input.APIKey != nil {
+		settings.APIKey = *input.APIKey
+	}
+
+	if err := r.LLMManager.Update(ctx, settings); err != nil {
+		return nil, fmt.Errorf("could not update LLM settings: %w", err)
+	}
+
+	return llmSettingsToGraphQL(r.LLMManager.Settings()), nil
+}
+
+func llmSettingsToGraphQL(s llm.Settings) *LLMSettings {
+	return &LLMSettings{
+		Provider:  s.Provider,
+		BaseURL:   s.BaseURL,
+		Model:     s.Model,
+		HasAPIKey: s.APIKey != "",
+		Enabled:   s.Enabled,
+	}
+}
+
 func (r *mutationResolver) RunAgent(ctx context.Context, input RunAgentInput) (*AgentReply, error) {
-	if r.LLMProvider == nil {
-		return nil, errors.New("AI assistant is not configured; set the HETTIX_LLM_* environment variables")
+	provider := r.LLMManager.Provider()
+	if provider == nil {
+		return nil, errors.New("AI assistant is not configured; set the LLM provider under Settings")
 	}
 
 	mode := agent.ModeAsk
@@ -728,7 +766,7 @@ func (r *mutationResolver) RunAgent(ctx context.Context, input RunAgentInput) (*
 	}
 
 	ag := agent.New(agent.Config{
-		Provider: r.LLMProvider,
+		Provider: provider,
 		Registry: aitools.NewRegistry(
 			r.RequestLogService, r.SenderService, r.ProjectService, r.IntruderService, r.FindingService,
 		),

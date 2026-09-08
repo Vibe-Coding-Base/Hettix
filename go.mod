@@ -6,6 +6,7 @@ toolchain go1.26.2
 
 require (
 	github.com/99designs/gqlgen v0.14.0
+	github.com/chromedp/cdproto v0.0.0-20220217222649-d8c14a5c6edf
 	github.com/chromedp/chromedp v0.7.8
 	github.com/gobwas/ws v1.1.0
 	github.com/google/go-cmp v0.6.0
@@ -20,7 +21,6 @@ require (
 
 require (
 	github.com/agnivade/levenshtein v1.1.0 // indirect
-	github.com/chromedp/cdproto v0.0.0-20220217222649-d8c14a5c6edf // indirect
 	github.com/chromedp/sysutil v1.0.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect

@@ -20,6 +20,8 @@ import MaterialLink from "@mui/material/Link";
 import { SwitchBaseProps } from "@mui/material/internal/SwitchBase";
 import { useEffect, useState } from "react";
 
+import LLMSettings from "./LLMSettings";
+
 import { useActiveProject } from "lib/ActiveProjectContext";
 import Link from "lib/components/Link";
 import { ActiveProjectDocument, useUpdateInterceptSettingsMutation } from "lib/graphql/generated";
@@ -172,6 +174,11 @@ export default function Settings(): JSX.Element {
       <Typography paragraph sx={{ mb: 4 }}>
         Settings allow you to tweak the behaviour of Hettix’s features.
       </Typography>
+
+      <Box sx={{ mb: 5 }}>
+        <LLMSettings />
+      </Box>
+
       <Typography variant="h5" sx={{ mb: 2 }}>
         Project settings
       </Typography>

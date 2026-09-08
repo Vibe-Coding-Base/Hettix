@@ -240,6 +240,15 @@ export type IntruderResult = {
   statusCode: Scalars['Int'];
 };
 
+export type LlmSettings = {
+  __typename?: 'LLMSettings';
+  baseURL: Scalars['String'];
+  enabled: Scalars['Boolean'];
+  hasApiKey: Scalars['Boolean'];
+  model: Scalars['String'];
+  provider: Scalars['String'];
+};
+
 export enum MatchReplacePhase {
   Request = 'REQUEST',
   Response = 'RESPONSE'
@@ -340,6 +349,7 @@ export type Mutation = {
   setSenderRequestFilter?: Maybe<SenderRequestFilter>;
   startIntruderAttack: IntruderAttack;
   updateInterceptSettings: InterceptSettings;
+  updateLLMSettings: LlmSettings;
   updateWebSocketInterceptSettings: WebSocketInterceptSettings;
 };
 
@@ -469,6 +479,11 @@ export type MutationUpdateInterceptSettingsArgs = {
 };
 
 
+export type MutationUpdateLlmSettingsArgs = {
+  input: UpdateLlmSettingsInput;
+};
+
+
 export type MutationUpdateWebSocketInterceptSettingsArgs = {
   input: UpdateWebSocketInterceptSettingsInput;
 };
@@ -499,6 +514,7 @@ export type Query = {
   intruderAttack?: Maybe<IntruderAttack>;
   intruderAttacks: Array<IntruderAttack>;
   intruderResults: Array<IntruderResult>;
+  llmSettings: LlmSettings;
   matchReplaceRules: Array<MatchReplaceRule>;
   projects: Array<Project>;
   scope: Array<ScopeRule>;
@@ -664,6 +680,15 @@ export type UpdateInterceptSettingsInput = {
   requestsEnabled: Scalars['Boolean'];
   responseFilter?: InputMaybe<Scalars['String']>;
   responsesEnabled: Scalars['Boolean'];
+};
+
+export type UpdateLlmSettingsInput = {
+  /** When null the stored API key is kept; pass an empty string to clear it. */
+  apiKey?: InputMaybe<Scalars['String']>;
+  baseURL: Scalars['String'];
+  enabled: Scalars['Boolean'];
+  model: Scalars['String'];
+  provider: Scalars['String'];
 };
 
 export type UpdateWebSocketInterceptSettingsInput = {
@@ -950,6 +975,18 @@ export type GetSenderRequestsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GetSenderRequestsQuery = { __typename?: 'Query', senderRequests: Array<{ __typename?: 'SenderRequest', id: string, url: any, method: HttpMethod, response?: { __typename?: 'HttpResponseLog', id: string, statusCode: number, statusReason: string } | null }> };
+
+export type LlmSettingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type LlmSettingsQuery = { __typename?: 'Query', llmSettings: { __typename?: 'LLMSettings', provider: string, baseURL: string, model: string, hasApiKey: boolean, enabled: boolean } };
+
+export type UpdateLlmSettingsMutationVariables = Exact<{
+  input: UpdateLlmSettingsInput;
+}>;
+
+
+export type UpdateLlmSettingsMutation = { __typename?: 'Mutation', updateLLMSettings: { __typename?: 'LLMSettings', provider: string, baseURL: string, model: string, hasApiKey: boolean, enabled: boolean } };
 
 export type UpdateInterceptSettingsMutationVariables = Exact<{
   input: UpdateInterceptSettingsInput;
@@ -2255,6 +2292,81 @@ export function useGetSenderRequestsLazyQuery(baseOptions?: Apollo.LazyQueryHook
 export type GetSenderRequestsQueryHookResult = ReturnType<typeof useGetSenderRequestsQuery>;
 export type GetSenderRequestsLazyQueryHookResult = ReturnType<typeof useGetSenderRequestsLazyQuery>;
 export type GetSenderRequestsQueryResult = Apollo.QueryResult<GetSenderRequestsQuery, GetSenderRequestsQueryVariables>;
+export const LlmSettingsDocument = gql`
+    query LLMSettings {
+  llmSettings {
+    provider
+    baseURL
+    model
+    hasApiKey
+    enabled
+  }
+}
+    `;
+
+/**
+ * __useLlmSettingsQuery__
+ *
+ * To run a query within a React component, call `useLlmSettingsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useLlmSettingsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useLlmSettingsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useLlmSettingsQuery(baseOptions?: Apollo.QueryHookOptions<LlmSettingsQuery, LlmSettingsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<LlmSettingsQuery, LlmSettingsQueryVariables>(LlmSettingsDocument, options);
+      }
+export function useLlmSettingsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<LlmSettingsQuery, LlmSettingsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<LlmSettingsQuery, LlmSettingsQueryVariables>(LlmSettingsDocument, options);
+        }
+export type LlmSettingsQueryHookResult = ReturnType<typeof useLlmSettingsQuery>;
+export type LlmSettingsLazyQueryHookResult = ReturnType<typeof useLlmSettingsLazyQuery>;
+export type LlmSettingsQueryResult = Apollo.QueryResult<LlmSettingsQuery, LlmSettingsQueryVariables>;
+export const UpdateLlmSettingsDocument = gql`
+    mutation UpdateLLMSettings($input: UpdateLLMSettingsInput!) {
+  updateLLMSettings(input: $input) {
+    provider
+    baseURL
+    model
+    hasApiKey
+    enabled
+  }
+}
+    `;
+export type UpdateLlmSettingsMutationFn = Apollo.MutationFunction<UpdateLlmSettingsMutation, UpdateLlmSettingsMutationVariables>;
+
+/**
+ * __useUpdateLlmSettingsMutation__
+ *
+ * To run a mutation, you first call `useUpdateLlmSettingsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useUpdateLlmSettingsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [updateLlmSettingsMutation, { data, loading, error }] = useUpdateLlmSettingsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useUpdateLlmSettingsMutation(baseOptions?: Apollo.MutationHookOptions<UpdateLlmSettingsMutation, UpdateLlmSettingsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<UpdateLlmSettingsMutation, UpdateLlmSettingsMutationVariables>(UpdateLlmSettingsDocument, options);
+      }
+export type UpdateLlmSettingsMutationHookResult = ReturnType<typeof useUpdateLlmSettingsMutation>;
+export type UpdateLlmSettingsMutationResult = Apollo.MutationResult<UpdateLlmSettingsMutation>;
+export type UpdateLlmSettingsMutationOptions = Apollo.BaseMutationOptions<UpdateLlmSettingsMutation, UpdateLlmSettingsMutationVariables>;
 export const UpdateInterceptSettingsDocument = gql`
     mutation UpdateInterceptSettings($input: UpdateInterceptSettingsInput!) {
   updateInterceptSettings(input: $input) {

@@ -25,6 +25,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/db/sqlite"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/finding"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/llm"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
@@ -203,6 +204,14 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		Logger:     cmd.config.logger.Named("finding").Sugar(),
 	})
 
+	llmManager := llm.NewManager(db)
+	if err := llmManager.Load(ctx); err != nil {
+		cmd.config.logger.Fatal("Failed to load LLM settings.", zap.Error(err))
+	}
+	if err := llmManager.Seed(ctx, llmSettingsFromEnv()); err != nil {
+		mainLogger.Warn("Failed to seed LLM settings from environment.", zap.Error(err))
+	}
+
 	workflowService := workflow.NewService(workflow.Config{
 		Repository: db,
 		Runner: workflow.NewRunner(workflow.RunnerConfig{
@@ -269,7 +278,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		IntruderService:           intruderService,
 		FindingService:            findingService,
 		WorkflowService:           workflowService,
-		LLMProvider:               llmProviderFromEnv(),
+		LLMManager:                llmManager,
 	}, gqlEndpoint))
 	adminMux.Handle("/api/export/har", exportHandler(reqLogService, "har"))
 	adminMux.Handle("/api/export/csv", exportHandler(reqLogService, "csv"))

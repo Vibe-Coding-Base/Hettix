@@ -139,6 +139,15 @@ CREATE TABLE IF NOT EXISTS workflows (
 	created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows (project_id, id);
+
+CREATE TABLE IF NOT EXISTS llm_settings (
+	id       INTEGER PRIMARY KEY CHECK (id = 1),
+	provider TEXT NOT NULL,
+	base_url TEXT NOT NULL,
+	api_key  TEXT NOT NULL,
+	model    TEXT NOT NULL,
+	enabled  INTEGER NOT NULL
+);
 `
 
 // OpenDatabase opens (creating if needed) a SQLite database at path and ensures

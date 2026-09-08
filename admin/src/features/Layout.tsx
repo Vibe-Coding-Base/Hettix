@@ -13,6 +13,7 @@ import HubIcon from "@mui/icons-material/Hub";
 import LocationSearchingIcon from "@mui/icons-material/LocationSearching";
 import MenuIcon from "@mui/icons-material/Menu";
 import SendIcon from "@mui/icons-material/Send";
+import SettingsIcon from "@mui/icons-material/Settings";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import {
   Theme,
@@ -392,6 +393,14 @@ export function Layout({ title, page, children }: Props): JSX.Element {
               </ListItemIcon>
             </Tooltip>
             <ListItemText primary="Projects" />
+          </ListItemButton>
+          <ListItemButton component={RouterLink} to="/settings" key="settings" selected={page === Page.Settings}>
+            <Tooltip title="Settings">
+              <ListItemIcon>
+                <SettingsIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Settings" />
           </ListItemButton>
         </List>
       </Drawer>

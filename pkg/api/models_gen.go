@@ -175,6 +175,14 @@ type IntruderResult struct {
 	Error      *string `json:"error"`
 }
 
+type LLMSettings struct {
+	Provider  string `json:"provider"`
+	BaseURL   string `json:"baseURL"`
+	Model     string `json:"model"`
+	HasAPIKey bool   `json:"hasApiKey"`
+	Enabled   bool   `json:"enabled"`
+}
+
 type MatchReplaceRule struct {
 	ID              ulid.ULID         `json:"id"`
 	Name            string            `json:"name"`
@@ -335,6 +343,15 @@ type UpdateInterceptSettingsInput struct {
 	ResponsesEnabled bool    `json:"responsesEnabled"`
 	RequestFilter    *string `json:"requestFilter"`
 	ResponseFilter   *string `json:"responseFilter"`
+}
+
+type UpdateLLMSettingsInput struct {
+	Provider string `json:"provider"`
+	BaseURL  string `json:"baseURL"`
+	// When null the stored API key is kept; pass an empty string to clear it.
+	APIKey  *string `json:"apiKey"`
+	Model   string  `json:"model"`
+	Enabled bool    `json:"enabled"`
 }
 
 type UpdateWebSocketInterceptSettingsInput struct {
