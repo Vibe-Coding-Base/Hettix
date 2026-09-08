@@ -47,14 +47,39 @@ func Launch(cfg LaunchConfig) error {
 		startURL = cfg.ProxyServer
 	}
 
+	// Seed a pentest-friendly profile (safe browsing, password manager and
+	// autofill off) before first launch. Ignore errors: the flags below still
+	// cover the important cases.
+	_ = seedPreferences(profileDir)
+
+	// A pentest-optimized flag set, modelled on Burp's embedded browser: route
+	// everything through the proxy, trust the MITM certificate, keep the profile
+	// isolated and quiet (no background networking, updates, sync, telemetry or
+	// popup blocking that would interfere with testing).
 	args := []string{
 		"--proxy-server=" + cfg.ProxyServer,
 		"--proxy-bypass-list=" + bypass,
 		"--ignore-certificate-errors",
 		"--test-type", // suppresses the ignore-certificate-errors warning bar
+		"--user-data-dir=" + profileDir,
 		"--no-first-run",
 		"--no-default-browser-check",
-		"--user-data-dir=" + profileDir,
+		"--no-service-autorun",
+		"--disable-background-networking",
+		"--disable-component-update",
+		"--disable-client-side-phishing-detection",
+		"--disable-sync",
+		"--disable-default-apps",
+		"--disable-popup-blocking",
+		"--disable-prompt-on-repost",
+		"--disable-breakpad",
+		"--disable-backgrounding-occluded-windows",
+		"--disable-search-engine-choice-screen",
+		"--metrics-recording-only",
+		"--safebrowsing-disable-auto-update",
+		"--password-store=basic",
+		"--use-mock-keychain",
+		"--disable-features=Translate,OptimizationHints,MediaRouter,AutofillServerCommunication",
 		startURL,
 	}
 
@@ -65,6 +90,38 @@ func Launch(cfg LaunchConfig) error {
 
 	// Detach: release the process so it outlives this call and Hettix.
 	return cmd.Process.Release()
+}
+
+// pentestPreferences disables browser features that get in the way of testing:
+// safe browsing (blocks "malicious" test payloads), the password manager and
+// autofill (noise and false state), and translate prompts.
+const pentestPreferences = `{
+  "safebrowsing": {"enabled": false},
+  "credentials_enable_service": false,
+  "autofill": {"enabled": false, "profile_enabled": false, "credit_card_enabled": false},
+  "translate": {"enabled": false},
+  "profile": {
+    "password_manager_enabled": false,
+    "default_content_setting_values": {"popups": 1}
+  }
+}`
+
+// seedPreferences writes a pentest-friendly default profile the first time the
+// browser is launched. It never overwrites an existing profile so operator
+// changes are preserved.
+func seedPreferences(profileDir string) error {
+	defaultDir := filepath.Join(profileDir, "Default")
+	prefs := filepath.Join(defaultDir, "Preferences")
+
+	if _, err := os.Stat(prefs); err == nil {
+		return nil // profile already exists; leave it untouched
+	}
+
+	if err := os.MkdirAll(defaultDir, 0o700); err != nil {
+		return err
+	}
+
+	return os.WriteFile(prefs, []byte(pentestPreferences), 0o600)
 }
 
 // profileDir returns a dedicated, isolated browser profile directory so the
