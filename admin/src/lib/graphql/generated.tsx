@@ -80,6 +80,11 @@ export type DeleteSenderRequestsResult = {
   success: Scalars['Boolean'];
 };
 
+export type DeleteWorkflowResult = {
+  __typename?: 'DeleteWorkflowResult';
+  success: Scalars['Boolean'];
+};
+
 export type DropWebSocketMessageResult = {
   __typename?: 'DropWebSocketMessageResult';
   success: Scalars['Boolean'];
@@ -318,6 +323,7 @@ export type Mutation = {
   deleteFinding: DeleteFindingResult;
   deleteProject: DeleteProjectResult;
   deleteSenderRequests: DeleteSenderRequestsResult;
+  deleteWorkflow: DeleteWorkflowResult;
   dropWebSocketMessage: DropWebSocketMessageResult;
   forwardWebSocketMessage: ModifyWebSocketMessageResult;
   modifyRequest: ModifyRequestResult;
@@ -325,6 +331,8 @@ export type Mutation = {
   modifyWebSocketMessage: ModifyWebSocketMessageResult;
   openProject?: Maybe<Project>;
   runAgent: AgentReply;
+  runWorkflow: Array<WorkflowStepResult>;
+  saveWorkflow: Workflow;
   sendRequest: SenderRequest;
   setHttpRequestLogFilter?: Maybe<HttpRequestLogFilter>;
   setMatchReplaceRules: Array<MatchReplaceRule>;
@@ -376,6 +384,11 @@ export type MutationDeleteProjectArgs = {
 };
 
 
+export type MutationDeleteWorkflowArgs = {
+  id: Scalars['ID'];
+};
+
+
 export type MutationDropWebSocketMessageArgs = {
   id: Scalars['ID'];
 };
@@ -408,6 +421,16 @@ export type MutationOpenProjectArgs = {
 
 export type MutationRunAgentArgs = {
   input: RunAgentInput;
+};
+
+
+export type MutationRunWorkflowArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type MutationSaveWorkflowArgs = {
+  input: SaveWorkflowInput;
 };
 
 
@@ -486,6 +509,8 @@ export type Query = {
   webSocketConnections: Array<WebSocketConnection>;
   webSocketInterceptSettings: WebSocketInterceptSettings;
   webSocketMessages: Array<WebSocketMessage>;
+  workflow?: Maybe<Workflow>;
+  workflows: Array<Workflow>;
 };
 
 
@@ -541,9 +566,20 @@ export type QueryWebSocketMessagesArgs = {
   searchExpression?: InputMaybe<Scalars['String']>;
 };
 
+
+export type QueryWorkflowArgs = {
+  id: Scalars['ID'];
+};
+
 export type RunAgentInput = {
   message: Scalars['String'];
   mode?: InputMaybe<AgentMode>;
+};
+
+export type SaveWorkflowInput = {
+  id?: InputMaybe<Scalars['ID']>;
+  name: Scalars['String'];
+  steps: Array<WorkflowStepInput>;
 };
 
 export type ScopeHeader = {
@@ -664,6 +700,54 @@ export type WebSocketMessage = {
   payload: Scalars['String'];
   timestamp: Scalars['Time'];
 };
+
+export type Workflow = {
+  __typename?: 'Workflow';
+  id: Scalars['ID'];
+  name: Scalars['String'];
+  steps: Array<WorkflowStep>;
+  timestamp: Scalars['Time'];
+};
+
+export type WorkflowStep = {
+  __typename?: 'WorkflowStep';
+  body?: Maybe<Scalars['String']>;
+  description?: Maybe<Scalars['String']>;
+  method?: Maybe<Scalars['String']>;
+  name?: Maybe<Scalars['String']>;
+  payloads?: Maybe<Array<Scalars['String']>>;
+  query?: Maybe<Scalars['String']>;
+  severity?: Maybe<Scalars['String']>;
+  title?: Maybe<Scalars['String']>;
+  type: WorkflowStepType;
+  url?: Maybe<Scalars['String']>;
+};
+
+export type WorkflowStepInput = {
+  body?: InputMaybe<Scalars['String']>;
+  description?: InputMaybe<Scalars['String']>;
+  method?: InputMaybe<Scalars['String']>;
+  name?: InputMaybe<Scalars['String']>;
+  payloads?: InputMaybe<Array<Scalars['String']>>;
+  query?: InputMaybe<Scalars['String']>;
+  severity?: InputMaybe<Scalars['String']>;
+  title?: InputMaybe<Scalars['String']>;
+  type: WorkflowStepType;
+  url?: InputMaybe<Scalars['String']>;
+};
+
+export type WorkflowStepResult = {
+  __typename?: 'WorkflowStepResult';
+  error?: Maybe<Scalars['String']>;
+  output: Scalars['String'];
+  type: WorkflowStepType;
+};
+
+export enum WorkflowStepType {
+  Finding = 'FINDING',
+  Fuzz = 'FUZZ',
+  Search = 'SEARCH'
+}
 
 export type RunAgentMutationVariables = Exact<{
   input: RunAgentInput;
@@ -931,6 +1015,32 @@ export type DropWebSocketMessageMutationVariables = Exact<{
 
 
 export type DropWebSocketMessageMutation = { __typename?: 'Mutation', dropWebSocketMessage: { __typename?: 'DropWebSocketMessageResult', success: boolean } };
+
+export type WorkflowsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type WorkflowsQuery = { __typename?: 'Query', workflows: Array<{ __typename?: 'Workflow', id: string, name: string, timestamp: any, steps: Array<{ __typename?: 'WorkflowStep', type: WorkflowStepType, query?: string | null, name?: string | null, method?: string | null, url?: string | null, body?: string | null, payloads?: Array<string> | null, title?: string | null, description?: string | null, severity?: string | null }> }> };
+
+export type SaveWorkflowMutationVariables = Exact<{
+  input: SaveWorkflowInput;
+}>;
+
+
+export type SaveWorkflowMutation = { __typename?: 'Mutation', saveWorkflow: { __typename?: 'Workflow', id: string } };
+
+export type DeleteWorkflowMutationVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type DeleteWorkflowMutation = { __typename?: 'Mutation', deleteWorkflow: { __typename?: 'DeleteWorkflowResult', success: boolean } };
+
+export type RunWorkflowMutationVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type RunWorkflowMutation = { __typename?: 'Mutation', runWorkflow: Array<{ __typename?: 'WorkflowStepResult', type: WorkflowStepType, output: string, error?: string | null }> };
 
 export type GetInterceptedRequestsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2508,6 +2618,155 @@ export function useDropWebSocketMessageMutation(baseOptions?: Apollo.MutationHoo
 export type DropWebSocketMessageMutationHookResult = ReturnType<typeof useDropWebSocketMessageMutation>;
 export type DropWebSocketMessageMutationResult = Apollo.MutationResult<DropWebSocketMessageMutation>;
 export type DropWebSocketMessageMutationOptions = Apollo.BaseMutationOptions<DropWebSocketMessageMutation, DropWebSocketMessageMutationVariables>;
+export const WorkflowsDocument = gql`
+    query Workflows {
+  workflows {
+    id
+    name
+    steps {
+      type
+      query
+      name
+      method
+      url
+      body
+      payloads
+      title
+      description
+      severity
+    }
+    timestamp
+  }
+}
+    `;
+
+/**
+ * __useWorkflowsQuery__
+ *
+ * To run a query within a React component, call `useWorkflowsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useWorkflowsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useWorkflowsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useWorkflowsQuery(baseOptions?: Apollo.QueryHookOptions<WorkflowsQuery, WorkflowsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<WorkflowsQuery, WorkflowsQueryVariables>(WorkflowsDocument, options);
+      }
+export function useWorkflowsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<WorkflowsQuery, WorkflowsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<WorkflowsQuery, WorkflowsQueryVariables>(WorkflowsDocument, options);
+        }
+export type WorkflowsQueryHookResult = ReturnType<typeof useWorkflowsQuery>;
+export type WorkflowsLazyQueryHookResult = ReturnType<typeof useWorkflowsLazyQuery>;
+export type WorkflowsQueryResult = Apollo.QueryResult<WorkflowsQuery, WorkflowsQueryVariables>;
+export const SaveWorkflowDocument = gql`
+    mutation SaveWorkflow($input: SaveWorkflowInput!) {
+  saveWorkflow(input: $input) {
+    id
+  }
+}
+    `;
+export type SaveWorkflowMutationFn = Apollo.MutationFunction<SaveWorkflowMutation, SaveWorkflowMutationVariables>;
+
+/**
+ * __useSaveWorkflowMutation__
+ *
+ * To run a mutation, you first call `useSaveWorkflowMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useSaveWorkflowMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [saveWorkflowMutation, { data, loading, error }] = useSaveWorkflowMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useSaveWorkflowMutation(baseOptions?: Apollo.MutationHookOptions<SaveWorkflowMutation, SaveWorkflowMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<SaveWorkflowMutation, SaveWorkflowMutationVariables>(SaveWorkflowDocument, options);
+      }
+export type SaveWorkflowMutationHookResult = ReturnType<typeof useSaveWorkflowMutation>;
+export type SaveWorkflowMutationResult = Apollo.MutationResult<SaveWorkflowMutation>;
+export type SaveWorkflowMutationOptions = Apollo.BaseMutationOptions<SaveWorkflowMutation, SaveWorkflowMutationVariables>;
+export const DeleteWorkflowDocument = gql`
+    mutation DeleteWorkflow($id: ID!) {
+  deleteWorkflow(id: $id) {
+    success
+  }
+}
+    `;
+export type DeleteWorkflowMutationFn = Apollo.MutationFunction<DeleteWorkflowMutation, DeleteWorkflowMutationVariables>;
+
+/**
+ * __useDeleteWorkflowMutation__
+ *
+ * To run a mutation, you first call `useDeleteWorkflowMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useDeleteWorkflowMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [deleteWorkflowMutation, { data, loading, error }] = useDeleteWorkflowMutation({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function useDeleteWorkflowMutation(baseOptions?: Apollo.MutationHookOptions<DeleteWorkflowMutation, DeleteWorkflowMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DeleteWorkflowMutation, DeleteWorkflowMutationVariables>(DeleteWorkflowDocument, options);
+      }
+export type DeleteWorkflowMutationHookResult = ReturnType<typeof useDeleteWorkflowMutation>;
+export type DeleteWorkflowMutationResult = Apollo.MutationResult<DeleteWorkflowMutation>;
+export type DeleteWorkflowMutationOptions = Apollo.BaseMutationOptions<DeleteWorkflowMutation, DeleteWorkflowMutationVariables>;
+export const RunWorkflowDocument = gql`
+    mutation RunWorkflow($id: ID!) {
+  runWorkflow(id: $id) {
+    type
+    output
+    error
+  }
+}
+    `;
+export type RunWorkflowMutationFn = Apollo.MutationFunction<RunWorkflowMutation, RunWorkflowMutationVariables>;
+
+/**
+ * __useRunWorkflowMutation__
+ *
+ * To run a mutation, you first call `useRunWorkflowMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useRunWorkflowMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [runWorkflowMutation, { data, loading, error }] = useRunWorkflowMutation({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function useRunWorkflowMutation(baseOptions?: Apollo.MutationHookOptions<RunWorkflowMutation, RunWorkflowMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<RunWorkflowMutation, RunWorkflowMutationVariables>(RunWorkflowDocument, options);
+      }
+export type RunWorkflowMutationHookResult = ReturnType<typeof useRunWorkflowMutation>;
+export type RunWorkflowMutationResult = Apollo.MutationResult<RunWorkflowMutation>;
+export type RunWorkflowMutationOptions = Apollo.BaseMutationOptions<RunWorkflowMutation, RunWorkflowMutationVariables>;
 export const GetInterceptedRequestsDocument = gql`
     query GetInterceptedRequests {
   interceptedRequests {

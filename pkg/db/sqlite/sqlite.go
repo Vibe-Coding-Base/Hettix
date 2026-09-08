@@ -129,6 +129,15 @@ CREATE TABLE IF NOT EXISTS findings (
 	created_at     INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_findings_project ON findings (project_id, id);
+
+CREATE TABLE IF NOT EXISTS workflows (
+	id         TEXT PRIMARY KEY,
+	project_id TEXT NOT NULL,
+	name       TEXT NOT NULL,
+	steps      TEXT NOT NULL,
+	created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows (project_id, id);
 `
 
 // OpenDatabase opens (creating if needed) a SQLite database at path and ensures

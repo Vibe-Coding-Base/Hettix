@@ -9,6 +9,7 @@ import FolderIcon from "@mui/icons-material/Folder";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import GpsFixedIcon from "@mui/icons-material/GpsFixed";
 import HomeIcon from "@mui/icons-material/Home";
+import HubIcon from "@mui/icons-material/Hub";
 import LocationSearchingIcon from "@mui/icons-material/LocationSearching";
 import MenuIcon from "@mui/icons-material/Menu";
 import SendIcon from "@mui/icons-material/Send";
@@ -54,6 +55,7 @@ export enum Page {
   Intruder,
   Sitemap,
   Findings,
+  Workflows,
 }
 
 const drawerWidth = 240;
@@ -354,6 +356,20 @@ export function Layout({ title, page, children }: Props): JSX.Element {
               </ListItemIcon>
             </Tooltip>
             <ListItemText primary="Findings" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/workflows"
+            key="workflows"
+            disabled={!activeProject}
+            selected={page === Page.Workflows}
+          >
+            <Tooltip title="Workflows">
+              <ListItemIcon>
+                <HubIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="Workflows" />
           </ListItemButton>
           <ListItemButton
             component={RouterLink}

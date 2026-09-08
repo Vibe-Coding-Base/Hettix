@@ -320,6 +320,61 @@ type DeleteFindingResult {
   success: Boolean!
 }
 
+enum WorkflowStepType {
+  SEARCH
+  FUZZ
+  FINDING
+}
+
+type WorkflowStep {
+  type: WorkflowStepType!
+  query: String
+  name: String
+  method: String
+  url: String
+  body: String
+  payloads: [String!]
+  title: String
+  description: String
+  severity: String
+}
+
+input WorkflowStepInput {
+  type: WorkflowStepType!
+  query: String
+  name: String
+  method: String
+  url: String
+  body: String
+  payloads: [String!]
+  title: String
+  description: String
+  severity: String
+}
+
+type Workflow {
+  id: ID!
+  name: String!
+  steps: [WorkflowStep!]!
+  timestamp: Time!
+}
+
+input SaveWorkflowInput {
+  id: ID
+  name: String!
+  steps: [WorkflowStepInput!]!
+}
+
+type WorkflowStepResult {
+  type: WorkflowStepType!
+  output: String!
+  error: String
+}
+
+type DeleteWorkflowResult {
+  success: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -342,6 +397,8 @@ type Query {
   intruderResults(attackId: ID!): [IntruderResult!]!
   sitemap: [SitemapEntry!]!
   findings: [Finding!]!
+  workflows: [Workflow!]!
+  workflow(id: ID!): Workflow
 }
 
 enum MatchReplacePhase {
@@ -407,6 +464,9 @@ type Mutation {
   startIntruderAttack(input: StartIntruderAttackInput!): IntruderAttack!
   createFinding(input: CreateFindingInput!): Finding!
   deleteFinding(id: ID!): DeleteFindingResult!
+  saveWorkflow(input: SaveWorkflowInput!): Workflow!
+  deleteWorkflow(id: ID!): DeleteWorkflowResult!
+  runWorkflow(id: ID!): [WorkflowStepResult!]!
 }
 
 enum AgentMode {

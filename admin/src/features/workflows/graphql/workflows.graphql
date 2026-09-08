@@ -1,0 +1,39 @@
+query Workflows {
+  workflows {
+    id
+    name
+    steps {
+      type
+      query
+      name
+      method
+      url
+      body
+      payloads
+      title
+      description
+      severity
+    }
+    timestamp
+  }
+}
+
+mutation SaveWorkflow($input: SaveWorkflowInput!) {
+  saveWorkflow(input: $input) {
+    id
+  }
+}
+
+mutation DeleteWorkflow($id: ID!) {
+  deleteWorkflow(id: $id) {
+    success
+  }
+}
+
+mutation RunWorkflow($id: ID!) {
+  runWorkflow(id: $id) {
+    type
+    output
+    error
+  }
+}

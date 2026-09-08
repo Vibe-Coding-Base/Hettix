@@ -85,6 +85,10 @@ type ComplexityRoot struct {
 		Success func(childComplexity int) int
 	}
 
+	DeleteWorkflowResult struct {
+		Success func(childComplexity int) int
+	}
+
 	DropWebSocketMessageResult struct {
 		Success func(childComplexity int) int
 	}
@@ -217,6 +221,7 @@ type ComplexityRoot struct {
 		DeleteFinding                         func(childComplexity int, id ulid.ULID) int
 		DeleteProject                         func(childComplexity int, id ulid.ULID) int
 		DeleteSenderRequests                  func(childComplexity int) int
+		DeleteWorkflow                        func(childComplexity int, id ulid.ULID) int
 		DropWebSocketMessage                  func(childComplexity int, id ulid.ULID) int
 		ForwardWebSocketMessage               func(childComplexity int, id ulid.ULID) int
 		ModifyRequest                         func(childComplexity int, request ModifyRequestInput) int
@@ -224,6 +229,8 @@ type ComplexityRoot struct {
 		ModifyWebSocketMessage                func(childComplexity int, input ModifyWebSocketMessageInput) int
 		OpenProject                           func(childComplexity int, id ulid.ULID) int
 		RunAgent                              func(childComplexity int, input RunAgentInput) int
+		RunWorkflow                           func(childComplexity int, id ulid.ULID) int
+		SaveWorkflow                          func(childComplexity int, input SaveWorkflowInput) int
 		SendRequest                           func(childComplexity int, id ulid.ULID) int
 		SetHTTPRequestLogFilter               func(childComplexity int, filter *HTTPRequestLogFilterInput) int
 		SetMatchReplaceRules                  func(childComplexity int, rules []MatchReplaceRuleInput) int
@@ -267,6 +274,8 @@ type ComplexityRoot struct {
 		WebSocketConnections         func(childComplexity int, searchExpression *string) int
 		WebSocketInterceptSettings   func(childComplexity int) int
 		WebSocketMessages            func(childComplexity int, connectionID ulid.ULID, searchExpression *string) int
+		Workflow                     func(childComplexity int, id ulid.ULID) int
+		Workflows                    func(childComplexity int) int
 	}
 
 	ScopeHeader struct {
@@ -327,6 +336,32 @@ type ComplexityRoot struct {
 		Payload   func(childComplexity int) int
 		Timestamp func(childComplexity int) int
 	}
+
+	Workflow struct {
+		ID        func(childComplexity int) int
+		Name      func(childComplexity int) int
+		Steps     func(childComplexity int) int
+		Timestamp func(childComplexity int) int
+	}
+
+	WorkflowStep struct {
+		Body        func(childComplexity int) int
+		Description func(childComplexity int) int
+		Method      func(childComplexity int) int
+		Name        func(childComplexity int) int
+		Payloads    func(childComplexity int) int
+		Query       func(childComplexity int) int
+		Severity    func(childComplexity int) int
+		Title       func(childComplexity int) int
+		Type        func(childComplexity int) int
+		URL         func(childComplexity int) int
+	}
+
+	WorkflowStepResult struct {
+		Error  func(childComplexity int) int
+		Output func(childComplexity int) int
+		Type   func(childComplexity int) int
+	}
 }
 
 type MutationResolver interface {
@@ -356,6 +391,9 @@ type MutationResolver interface {
 	StartIntruderAttack(ctx context.Context, input StartIntruderAttackInput) (*IntruderAttack, error)
 	CreateFinding(ctx context.Context, input CreateFindingInput) (*Finding, error)
 	DeleteFinding(ctx context.Context, id ulid.ULID) (*DeleteFindingResult, error)
+	SaveWorkflow(ctx context.Context, input SaveWorkflowInput) (*Workflow, error)
+	DeleteWorkflow(ctx context.Context, id ulid.ULID) (*DeleteWorkflowResult, error)
+	RunWorkflow(ctx context.Context, id ulid.ULID) ([]WorkflowStepResult, error)
 }
 type QueryResolver interface {
 	HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error)
@@ -379,6 +417,8 @@ type QueryResolver interface {
 	IntruderResults(ctx context.Context, attackID ulid.ULID) ([]IntruderResult, error)
 	Sitemap(ctx context.Context) ([]SitemapEntry, error)
 	Findings(ctx context.Context) ([]Finding, error)
+	Workflows(ctx context.Context) ([]Workflow, error)
+	Workflow(ctx context.Context, id ulid.ULID) (*Workflow, error)
 }
 
 type executableSchema struct {
@@ -486,6 +526,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DeleteSenderRequestsResult.Success(childComplexity), true
+
+	case "DeleteWorkflowResult.success":
+		if e.complexity.DeleteWorkflowResult.Success == nil {
+			break
+		}
+
+		return e.complexity.DeleteWorkflowResult.Success(childComplexity), true
 
 	case "DropWebSocketMessageResult.success":
 		if e.complexity.DropWebSocketMessageResult.Success == nil {
@@ -1108,6 +1155,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DeleteSenderRequests(childComplexity), true
 
+	case "Mutation.deleteWorkflow":
+		if e.complexity.Mutation.DeleteWorkflow == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteWorkflow_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteWorkflow(childComplexity, args["id"].(ulid.ULID)), true
+
 	case "Mutation.dropWebSocketMessage":
 		if e.complexity.Mutation.DropWebSocketMessage == nil {
 			break
@@ -1191,6 +1250,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RunAgent(childComplexity, args["input"].(RunAgentInput)), true
+
+	case "Mutation.runWorkflow":
+		if e.complexity.Mutation.RunWorkflow == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_runWorkflow_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RunWorkflow(childComplexity, args["id"].(ulid.ULID)), true
+
+	case "Mutation.saveWorkflow":
+		if e.complexity.Mutation.SaveWorkflow == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveWorkflow_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SaveWorkflow(childComplexity, args["input"].(SaveWorkflowInput)), true
 
 	case "Mutation.sendRequest":
 		if e.complexity.Mutation.SendRequest == nil {
@@ -1520,6 +1603,25 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.WebSocketMessages(childComplexity, args["connectionId"].(ulid.ULID), args["searchExpression"].(*string)), true
 
+	case "Query.workflow":
+		if e.complexity.Query.Workflow == nil {
+			break
+		}
+
+		args, err := ec.field_Query_workflow_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Workflow(childComplexity, args["id"].(ulid.ULID)), true
+
+	case "Query.workflows":
+		if e.complexity.Query.Workflows == nil {
+			break
+		}
+
+		return e.complexity.Query.Workflows(childComplexity), true
+
 	case "ScopeHeader.key":
 		if e.complexity.ScopeHeader.Key == nil {
 			break
@@ -1764,6 +1866,125 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.WebSocketMessage.Timestamp(childComplexity), true
+
+	case "Workflow.id":
+		if e.complexity.Workflow.ID == nil {
+			break
+		}
+
+		return e.complexity.Workflow.ID(childComplexity), true
+
+	case "Workflow.name":
+		if e.complexity.Workflow.Name == nil {
+			break
+		}
+
+		return e.complexity.Workflow.Name(childComplexity), true
+
+	case "Workflow.steps":
+		if e.complexity.Workflow.Steps == nil {
+			break
+		}
+
+		return e.complexity.Workflow.Steps(childComplexity), true
+
+	case "Workflow.timestamp":
+		if e.complexity.Workflow.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.Workflow.Timestamp(childComplexity), true
+
+	case "WorkflowStep.body":
+		if e.complexity.WorkflowStep.Body == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStep.Body(childComplexity), true
+
+	case "WorkflowStep.description":
+		if e.complexity.WorkflowStep.Description == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStep.Description(childComplexity), true
+
+	case "WorkflowStep.method":
+		if e.complexity.WorkflowStep.Method == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStep.Method(childComplexity), true
+
+	case "WorkflowStep.name":
+		if e.complexity.WorkflowStep.Name == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStep.Name(childComplexity), true
+
+	case "WorkflowStep.payloads":
+		if e.complexity.WorkflowStep.Payloads == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStep.Payloads(childComplexity), true
+
+	case "WorkflowStep.query":
+		if e.complexity.WorkflowStep.Query == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStep.Query(childComplexity), true
+
+	case "WorkflowStep.severity":
+		if e.complexity.WorkflowStep.Severity == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStep.Severity(childComplexity), true
+
+	case "WorkflowStep.title":
+		if e.complexity.WorkflowStep.Title == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStep.Title(childComplexity), true
+
+	case "WorkflowStep.type":
+		if e.complexity.WorkflowStep.Type == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStep.Type(childComplexity), true
+
+	case "WorkflowStep.url":
+		if e.complexity.WorkflowStep.URL == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStep.URL(childComplexity), true
+
+	case "WorkflowStepResult.error":
+		if e.complexity.WorkflowStepResult.Error == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStepResult.Error(childComplexity), true
+
+	case "WorkflowStepResult.output":
+		if e.complexity.WorkflowStepResult.Output == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStepResult.Output(childComplexity), true
+
+	case "WorkflowStepResult.type":
+		if e.complexity.WorkflowStepResult.Type == nil {
+			break
+		}
+
+		return e.complexity.WorkflowStepResult.Type(childComplexity), true
 
 	}
 	return 0, false
@@ -2151,6 +2372,61 @@ type DeleteFindingResult {
   success: Boolean!
 }
 
+enum WorkflowStepType {
+  SEARCH
+  FUZZ
+  FINDING
+}
+
+type WorkflowStep {
+  type: WorkflowStepType!
+  query: String
+  name: String
+  method: String
+  url: String
+  body: String
+  payloads: [String!]
+  title: String
+  description: String
+  severity: String
+}
+
+input WorkflowStepInput {
+  type: WorkflowStepType!
+  query: String
+  name: String
+  method: String
+  url: String
+  body: String
+  payloads: [String!]
+  title: String
+  description: String
+  severity: String
+}
+
+type Workflow {
+  id: ID!
+  name: String!
+  steps: [WorkflowStep!]!
+  timestamp: Time!
+}
+
+input SaveWorkflowInput {
+  id: ID
+  name: String!
+  steps: [WorkflowStepInput!]!
+}
+
+type WorkflowStepResult {
+  type: WorkflowStepType!
+  output: String!
+  error: String
+}
+
+type DeleteWorkflowResult {
+  success: Boolean!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -2173,6 +2449,8 @@ type Query {
   intruderResults(attackId: ID!): [IntruderResult!]!
   sitemap: [SitemapEntry!]!
   findings: [Finding!]!
+  workflows: [Workflow!]!
+  workflow(id: ID!): Workflow
 }
 
 enum MatchReplacePhase {
@@ -2238,6 +2516,9 @@ type Mutation {
   startIntruderAttack(input: StartIntruderAttackInput!): IntruderAttack!
   createFinding(input: CreateFindingInput!): Finding!
   deleteFinding(id: ID!): DeleteFindingResult!
+  saveWorkflow(input: SaveWorkflowInput!): Workflow!
+  deleteWorkflow(id: ID!): DeleteWorkflowResult!
+  runWorkflow(id: ID!): [WorkflowStepResult!]!
 }
 
 enum AgentMode {
@@ -2412,6 +2693,21 @@ func (ec *executionContext) field_Mutation_deleteProject_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteWorkflow_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_dropWebSocketMessage_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -2509,6 +2805,36 @@ func (ec *executionContext) field_Mutation_runAgent_args(ctx context.Context, ra
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNRunAgentInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐRunAgentInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_runWorkflow_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_saveWorkflow_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 SaveWorkflowInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNSaveWorkflowInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSaveWorkflowInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -2826,6 +3152,21 @@ func (ec *executionContext) field_Query_webSocketMessages_args(ctx context.Conte
 		}
 	}
 	args["searchExpression"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_workflow_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -3296,6 +3637,41 @@ func (ec *executionContext) _DeleteSenderRequestsResult_success(ctx context.Cont
 	}()
 	fc := &graphql.FieldContext{
 		Object:     "DeleteSenderRequestsResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Success, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _DeleteWorkflowResult_success(ctx context.Context, field graphql.CollectedField, obj *DeleteWorkflowResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "DeleteWorkflowResult",
 		Field:      field,
 		Args:       nil,
 		IsMethod:   false,
@@ -6853,6 +7229,132 @@ func (ec *executionContext) _Mutation_deleteFinding(ctx context.Context, field g
 	return ec.marshalNDeleteFindingResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteFindingResult(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_saveWorkflow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_saveWorkflow_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SaveWorkflow(rctx, args["input"].(SaveWorkflowInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Workflow)
+	fc.Result = res
+	return ec.marshalNWorkflow2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflow(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_deleteWorkflow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_deleteWorkflow_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteWorkflow(rctx, args["id"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*DeleteWorkflowResult)
+	fc.Result = res
+	return ec.marshalNDeleteWorkflowResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteWorkflowResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_runWorkflow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_runWorkflow_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RunWorkflow(rctx, args["id"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]WorkflowStepResult)
+	fc.Result = res
+	return ec.marshalNWorkflowStepResult2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepResultᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -7810,6 +8312,80 @@ func (ec *executionContext) _Query_findings(ctx context.Context, field graphql.C
 	res := resTmp.([]Finding)
 	fc.Result = res
 	return ec.marshalNFinding2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐFindingᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_workflows(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Workflows(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]Workflow)
+	fc.Result = res
+	return ec.marshalNWorkflow2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_workflow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_workflow_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Workflow(rctx, args["id"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*Workflow)
+	fc.Result = res
+	return ec.marshalOWorkflow2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflow(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -9070,6 +9646,571 @@ func (ec *executionContext) _WebSocketMessage_timestamp(ctx context.Context, fie
 	res := resTmp.(time.Time)
 	fc.Result = res
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Workflow_id(ctx context.Context, field graphql.CollectedField, obj *Workflow) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Workflow",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(ulid.ULID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Workflow_name(ctx context.Context, field graphql.CollectedField, obj *Workflow) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Workflow",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Workflow_steps(ctx context.Context, field graphql.CollectedField, obj *Workflow) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Workflow",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Steps, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]WorkflowStep)
+	fc.Result = res
+	return ec.marshalNWorkflowStep2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Workflow_timestamp(ctx context.Context, field graphql.CollectedField, obj *Workflow) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Workflow",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStep_type(ctx context.Context, field graphql.CollectedField, obj *WorkflowStep) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStep",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(WorkflowStepType)
+	fc.Result = res
+	return ec.marshalNWorkflowStepType2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepType(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStep_query(ctx context.Context, field graphql.CollectedField, obj *WorkflowStep) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStep",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Query, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStep_name(ctx context.Context, field graphql.CollectedField, obj *WorkflowStep) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStep",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStep_method(ctx context.Context, field graphql.CollectedField, obj *WorkflowStep) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStep",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Method, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStep_url(ctx context.Context, field graphql.CollectedField, obj *WorkflowStep) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStep",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStep_body(ctx context.Context, field graphql.CollectedField, obj *WorkflowStep) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStep",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Body, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStep_payloads(ctx context.Context, field graphql.CollectedField, obj *WorkflowStep) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStep",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Payloads, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStep_title(ctx context.Context, field graphql.CollectedField, obj *WorkflowStep) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStep",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Title, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStep_description(ctx context.Context, field graphql.CollectedField, obj *WorkflowStep) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStep",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStep_severity(ctx context.Context, field graphql.CollectedField, obj *WorkflowStep) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStep",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Severity, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStepResult_type(ctx context.Context, field graphql.CollectedField, obj *WorkflowStepResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStepResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(WorkflowStepType)
+	fc.Result = res
+	return ec.marshalNWorkflowStepType2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepType(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStepResult_output(ctx context.Context, field graphql.CollectedField, obj *WorkflowStepResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStepResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Output, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WorkflowStepResult_error(ctx context.Context, field graphql.CollectedField, obj *WorkflowStepResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WorkflowStepResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Error, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -10617,6 +11758,45 @@ func (ec *executionContext) unmarshalInputRunAgentInput(ctx context.Context, obj
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSaveWorkflowInput(ctx context.Context, obj interface{}) (SaveWorkflowInput, error) {
+	var it SaveWorkflowInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalOID2ᚖgithubᚗcomᚋoklogᚋulidᚐULID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			it.Name, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "steps":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("steps"))
+			it.Steps, err = ec.unmarshalNWorkflowStepInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputScopeHeaderInput(ctx context.Context, obj interface{}) (ScopeHeaderInput, error) {
 	var it ScopeHeaderInput
 	asMap := map[string]interface{}{}
@@ -10930,6 +12110,101 @@ func (ec *executionContext) unmarshalInputUpdateWebSocketInterceptSettingsInput(
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputWorkflowStepInput(ctx context.Context, obj interface{}) (WorkflowStepInput, error) {
+	var it WorkflowStepInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "type":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			it.Type, err = ec.unmarshalNWorkflowStepType2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "query":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("query"))
+			it.Query, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			it.Name, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "method":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("method"))
+			it.Method, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "url":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			it.URL, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "body":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("body"))
+			it.Body, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "payloads":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("payloads"))
+			it.Payloads, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "title":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			it.Title, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "description":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			it.Description, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "severity":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("severity"))
+			it.Severity, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -11187,6 +12462,33 @@ func (ec *executionContext) _DeleteSenderRequestsResult(ctx context.Context, sel
 			out.Values[i] = graphql.MarshalString("DeleteSenderRequestsResult")
 		case "success":
 			out.Values[i] = ec._DeleteSenderRequestsResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var deleteWorkflowResultImplementors = []string{"DeleteWorkflowResult"}
+
+func (ec *executionContext) _DeleteWorkflowResult(ctx context.Context, sel ast.SelectionSet, obj *DeleteWorkflowResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, deleteWorkflowResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DeleteWorkflowResult")
+		case "success":
+			out.Values[i] = ec._DeleteWorkflowResult_success(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -11998,6 +13300,21 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "saveWorkflow":
+			out.Values[i] = ec._Mutation_saveWorkflow(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "deleteWorkflow":
+			out.Values[i] = ec._Mutation_deleteWorkflow(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "runWorkflow":
+			out.Values[i] = ec._Mutation_runWorkflow(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -12366,6 +13683,31 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "workflows":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_workflows(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "workflow":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_workflow(ctx, field)
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -12685,6 +14027,127 @@ func (ec *executionContext) _WebSocketMessage(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var workflowImplementors = []string{"Workflow"}
+
+func (ec *executionContext) _Workflow(ctx context.Context, sel ast.SelectionSet, obj *Workflow) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, workflowImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Workflow")
+		case "id":
+			out.Values[i] = ec._Workflow_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+			out.Values[i] = ec._Workflow_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "steps":
+			out.Values[i] = ec._Workflow_steps(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "timestamp":
+			out.Values[i] = ec._Workflow_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var workflowStepImplementors = []string{"WorkflowStep"}
+
+func (ec *executionContext) _WorkflowStep(ctx context.Context, sel ast.SelectionSet, obj *WorkflowStep) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, workflowStepImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WorkflowStep")
+		case "type":
+			out.Values[i] = ec._WorkflowStep_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "query":
+			out.Values[i] = ec._WorkflowStep_query(ctx, field, obj)
+		case "name":
+			out.Values[i] = ec._WorkflowStep_name(ctx, field, obj)
+		case "method":
+			out.Values[i] = ec._WorkflowStep_method(ctx, field, obj)
+		case "url":
+			out.Values[i] = ec._WorkflowStep_url(ctx, field, obj)
+		case "body":
+			out.Values[i] = ec._WorkflowStep_body(ctx, field, obj)
+		case "payloads":
+			out.Values[i] = ec._WorkflowStep_payloads(ctx, field, obj)
+		case "title":
+			out.Values[i] = ec._WorkflowStep_title(ctx, field, obj)
+		case "description":
+			out.Values[i] = ec._WorkflowStep_description(ctx, field, obj)
+		case "severity":
+			out.Values[i] = ec._WorkflowStep_severity(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var workflowStepResultImplementors = []string{"WorkflowStepResult"}
+
+func (ec *executionContext) _WorkflowStepResult(ctx context.Context, sel ast.SelectionSet, obj *WorkflowStepResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, workflowStepResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WorkflowStepResult")
+		case "type":
+			out.Values[i] = ec._WorkflowStepResult_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "output":
+			out.Values[i] = ec._WorkflowStepResult_output(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "error":
+			out.Values[i] = ec._WorkflowStepResult_error(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -13124,6 +14587,20 @@ func (ec *executionContext) marshalNDeleteSenderRequestsResult2ᚖgithubᚗcom�
 		return graphql.Null
 	}
 	return ec._DeleteSenderRequestsResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNDeleteWorkflowResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteWorkflowResult(ctx context.Context, sel ast.SelectionSet, v DeleteWorkflowResult) graphql.Marshaler {
+	return ec._DeleteWorkflowResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDeleteWorkflowResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteWorkflowResult(ctx context.Context, sel ast.SelectionSet, v *DeleteWorkflowResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._DeleteWorkflowResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNDropWebSocketMessageResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDropWebSocketMessageResult(ctx context.Context, sel ast.SelectionSet, v DropWebSocketMessageResult) graphql.Marshaler {
@@ -13830,6 +15307,11 @@ func (ec *executionContext) unmarshalNRunAgentInput2githubᚗcomᚋVibeᚑCoding
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNSaveWorkflowInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐSaveWorkflowInput(ctx context.Context, v interface{}) (SaveWorkflowInput, error) {
+	res, err := ec.unmarshalInputSaveWorkflowInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNScopeRule2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐScopeRule(ctx context.Context, sel ast.SelectionSet, v ScopeRule) graphql.Marshaler {
 	return ec._ScopeRule(ctx, sel, &v)
 }
@@ -14235,6 +15717,196 @@ func (ec *executionContext) marshalNWebSocketMessage2ᚕgithubᚗcomᚋVibeᚑCo
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNWorkflow2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflow(ctx context.Context, sel ast.SelectionSet, v Workflow) graphql.Marshaler {
+	return ec._Workflow(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWorkflow2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowᚄ(ctx context.Context, sel ast.SelectionSet, v []Workflow) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNWorkflow2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflow(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNWorkflow2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflow(ctx context.Context, sel ast.SelectionSet, v *Workflow) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Workflow(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNWorkflowStep2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStep(ctx context.Context, sel ast.SelectionSet, v WorkflowStep) graphql.Marshaler {
+	return ec._WorkflowStep(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWorkflowStep2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepᚄ(ctx context.Context, sel ast.SelectionSet, v []WorkflowStep) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNWorkflowStep2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStep(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNWorkflowStepInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepInput(ctx context.Context, v interface{}) (WorkflowStepInput, error) {
+	res, err := ec.unmarshalInputWorkflowStepInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNWorkflowStepInput2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepInputᚄ(ctx context.Context, v interface{}) ([]WorkflowStepInput, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]WorkflowStepInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNWorkflowStepInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNWorkflowStepResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepResult(ctx context.Context, sel ast.SelectionSet, v WorkflowStepResult) graphql.Marshaler {
+	return ec._WorkflowStepResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWorkflowStepResult2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepResultᚄ(ctx context.Context, sel ast.SelectionSet, v []WorkflowStepResult) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNWorkflowStepResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepResult(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNWorkflowStepType2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepType(ctx context.Context, v interface{}) (WorkflowStepType, error) {
+	var res WorkflowStepType
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNWorkflowStepType2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflowStepType(ctx context.Context, sel ast.SelectionSet, v WorkflowStepType) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -14809,6 +16481,48 @@ func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.S
 	return graphql.MarshalString(v)
 }
 
+func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
 	if v == nil {
 		return nil, nil
@@ -14844,6 +16558,13 @@ func (ec *executionContext) marshalOWebSocketConnection2ᚖgithubᚗcomᚋVibe�
 		return graphql.Null
 	}
 	return ec._WebSocketConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOWorkflow2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWorkflow(ctx context.Context, sel ast.SelectionSet, v *Workflow) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Workflow(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

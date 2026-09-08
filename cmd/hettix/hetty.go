@@ -32,6 +32,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/workflow"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/wsintercept"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/wslog"
 )
@@ -202,6 +203,16 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		Logger:     cmd.config.logger.Named("finding").Sugar(),
 	})
 
+	workflowService := workflow.NewService(workflow.Config{
+		Repository: db,
+		Runner: workflow.NewRunner(workflow.RunnerConfig{
+			Search:   reqLogService,
+			Fuzz:     intruderService,
+			Findings: findingService,
+			Scope:    scope,
+		}),
+	})
+
 	projService, err := proj.NewService(proj.Config{
 		Repository:                db,
 		InterceptService:          interceptService,
@@ -211,6 +222,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		WebSocketInterceptService: wsInterceptService,
 		IntruderService:           intruderService,
 		FindingService:            findingService,
+		WorkflowService:           workflowService,
 		Scope:                     scope,
 		MatchReplaceEngine:        matchReplaceEngine,
 	})
@@ -256,6 +268,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		WebSocketInterceptService: wsInterceptService,
 		IntruderService:           intruderService,
 		FindingService:            findingService,
+		WorkflowService:           workflowService,
 		LLMProvider:               llmProviderFromEnv(),
 	}, gqlEndpoint))
 	adminMux.Handle("/api/export/har", exportHandler(reqLogService, "har"))

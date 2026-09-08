@@ -59,6 +59,10 @@ type DeleteSenderRequestsResult struct {
 	Success bool `json:"success"`
 }
 
+type DeleteWorkflowResult struct {
+	Success bool `json:"success"`
+}
+
 type DropWebSocketMessageResult struct {
 	Success bool `json:"success"`
 }
@@ -248,6 +252,12 @@ type RunAgentInput struct {
 	Mode    *AgentMode `json:"mode"`
 }
 
+type SaveWorkflowInput struct {
+	ID    *ulid.ULID          `json:"id"`
+	Name  string              `json:"name"`
+	Steps []WorkflowStepInput `json:"steps"`
+}
+
 type ScopeHeader struct {
 	Key   *string `json:"key"`
 	Value *string `json:"value"`
@@ -352,6 +362,45 @@ type WebSocketMessage struct {
 	Opcode    int                `json:"opcode"`
 	Payload   string             `json:"payload"`
 	Timestamp time.Time          `json:"timestamp"`
+}
+
+type Workflow struct {
+	ID        ulid.ULID      `json:"id"`
+	Name      string         `json:"name"`
+	Steps     []WorkflowStep `json:"steps"`
+	Timestamp time.Time      `json:"timestamp"`
+}
+
+type WorkflowStep struct {
+	Type        WorkflowStepType `json:"type"`
+	Query       *string          `json:"query"`
+	Name        *string          `json:"name"`
+	Method      *string          `json:"method"`
+	URL         *string          `json:"url"`
+	Body        *string          `json:"body"`
+	Payloads    []string         `json:"payloads"`
+	Title       *string          `json:"title"`
+	Description *string          `json:"description"`
+	Severity    *string          `json:"severity"`
+}
+
+type WorkflowStepInput struct {
+	Type        WorkflowStepType `json:"type"`
+	Query       *string          `json:"query"`
+	Name        *string          `json:"name"`
+	Method      *string          `json:"method"`
+	URL         *string          `json:"url"`
+	Body        *string          `json:"body"`
+	Payloads    []string         `json:"payloads"`
+	Title       *string          `json:"title"`
+	Description *string          `json:"description"`
+	Severity    *string          `json:"severity"`
+}
+
+type WorkflowStepResult struct {
+	Type   WorkflowStepType `json:"type"`
+	Output string           `json:"output"`
+	Error  *string          `json:"error"`
 }
 
 type AgentMode string
@@ -662,5 +711,48 @@ func (e *WebSocketDirection) UnmarshalGQL(v interface{}) error {
 }
 
 func (e WebSocketDirection) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type WorkflowStepType string
+
+const (
+	WorkflowStepTypeSearch  WorkflowStepType = "SEARCH"
+	WorkflowStepTypeFuzz    WorkflowStepType = "FUZZ"
+	WorkflowStepTypeFinding WorkflowStepType = "FINDING"
+)
+
+var AllWorkflowStepType = []WorkflowStepType{
+	WorkflowStepTypeSearch,
+	WorkflowStepTypeFuzz,
+	WorkflowStepTypeFinding,
+}
+
+func (e WorkflowStepType) IsValid() bool {
+	switch e {
+	case WorkflowStepTypeSearch, WorkflowStepTypeFuzz, WorkflowStepTypeFinding:
+		return true
+	}
+	return false
+}
+
+func (e WorkflowStepType) String() string {
+	return string(e)
+}
+
+func (e *WorkflowStepType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = WorkflowStepType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid WorkflowStepType", str)
+	}
+	return nil
+}
+
+func (e WorkflowStepType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }

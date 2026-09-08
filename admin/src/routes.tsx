@@ -14,6 +14,7 @@ import Sender from "pages/sender/index";
 import Settings from "pages/settings/index";
 import Sitemap from "pages/sitemap/index";
 import WebSocket from "pages/websocket/index";
+import Workflows from "pages/workflows/index";
 
 export const routes: RouteObject[] = [
   { path: "/", element: <Home /> },
@@ -30,4 +31,5 @@ export const routes: RouteObject[] = [
   { path: "/intruder", element: <Intruder /> },
   { path: "/sitemap", element: <Sitemap /> },
   { path: "/findings", element: <Findings /> },
+  { path: "/workflows", element: <Workflows /> },
 ];

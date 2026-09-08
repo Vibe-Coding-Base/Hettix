@@ -31,6 +31,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/workflow"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/wsintercept"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/wslog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/wsproxy"
@@ -57,6 +58,7 @@ type Resolver struct {
 	WebSocketInterceptService *wsintercept.Service
 	IntruderService           *intruder.Service
 	FindingService            *finding.Service
+	WorkflowService           *workflow.Service
 	LLMProvider               llm.Provider
 }
 
@@ -858,6 +860,171 @@ func webSocketConnectionToGraphQL(conn wslog.Connection) WebSocketConnection {
 		ClosedAt:     conn.ClosedAt,
 		MessageCount: conn.MessageCount,
 	}
+}
+
+func (r *queryResolver) Workflows(ctx context.Context) ([]Workflow, error) {
+	wfs, err := r.WorkflowService.Workflows(ctx)
+	if errors.Is(err, workflow.ErrProjectIDMustBeSet) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get workflows: %w", err)
+	}
+
+	out := make([]Workflow, len(wfs))
+	for i, wf := range wfs {
+		out[i] = workflowToGraphQL(wf)
+	}
+
+	return out, nil
+}
+
+func (r *queryResolver) Workflow(ctx context.Context, id ulid.ULID) (*Workflow, error) {
+	wf, err := r.WorkflowService.WorkflowByID(ctx, id)
+	switch {
+	case errors.Is(err, workflow.ErrWorkflowNotFound):
+		return nil, nil
+	case errors.Is(err, workflow.ErrProjectIDMustBeSet):
+		return nil, noActiveProjectErr(ctx)
+	case err != nil:
+		return nil, fmt.Errorf("could not get workflow: %w", err)
+	}
+
+	out := workflowToGraphQL(wf)
+
+	return &out, nil
+}
+
+func (r *mutationResolver) SaveWorkflow(ctx context.Context, input SaveWorkflowInput) (*Workflow, error) {
+	steps := make([]workflow.Step, len(input.Steps))
+	for i, s := range input.Steps {
+		steps[i] = workflowStepFromGraphQL(s)
+	}
+
+	wf, err := r.WorkflowService.Save(ctx, input.ID, input.Name, steps)
+	switch {
+	case errors.Is(err, workflow.ErrProjectIDMustBeSet):
+		return nil, noActiveProjectErr(ctx)
+	case errors.Is(err, workflow.ErrNameRequired):
+		return nil, gqlerror.Errorf("A workflow name is required.")
+	case errors.Is(err, workflow.ErrWorkflowNotFound):
+		return nil, gqlerror.Errorf("Workflow not found.")
+	case errors.Is(err, workflow.ErrUnknownStep):
+		return nil, gqlerror.Errorf("%s", err.Error())
+	case err != nil:
+		return nil, fmt.Errorf("could not save workflow: %w", err)
+	}
+
+	out := workflowToGraphQL(wf)
+
+	return &out, nil
+}
+
+func (r *mutationResolver) DeleteWorkflow(ctx context.Context, id ulid.ULID) (*DeleteWorkflowResult, error) {
+	err := r.WorkflowService.Delete(ctx, id)
+	switch {
+	case errors.Is(err, workflow.ErrWorkflowNotFound):
+		return &DeleteWorkflowResult{Success: false}, nil
+	case errors.Is(err, workflow.ErrProjectIDMustBeSet):
+		return nil, noActiveProjectErr(ctx)
+	case err != nil:
+		return nil, fmt.Errorf("could not delete workflow: %w", err)
+	}
+
+	return &DeleteWorkflowResult{Success: true}, nil
+}
+
+func (r *mutationResolver) RunWorkflow(ctx context.Context, id ulid.ULID) ([]WorkflowStepResult, error) {
+	results, err := r.WorkflowService.Run(ctx, id)
+	switch {
+	case errors.Is(err, workflow.ErrWorkflowNotFound):
+		return nil, gqlerror.Errorf("Workflow not found.")
+	case errors.Is(err, workflow.ErrProjectIDMustBeSet):
+		return nil, noActiveProjectErr(ctx)
+	case err != nil:
+		return nil, fmt.Errorf("could not run workflow: %w", err)
+	}
+
+	out := make([]WorkflowStepResult, len(results))
+	for i, res := range results {
+		result := WorkflowStepResult{
+			Type:   workflowStepTypeToGraphQL(res.Type),
+			Output: res.Output,
+		}
+		if res.Error != "" {
+			errMsg := res.Error
+			result.Error = &errMsg
+		}
+
+		out[i] = result
+	}
+
+	return out, nil
+}
+
+func workflowToGraphQL(wf workflow.Workflow) Workflow {
+	steps := make([]WorkflowStep, len(wf.Steps))
+	for i, s := range wf.Steps {
+		steps[i] = workflowStepToGraphQL(s)
+	}
+
+	return Workflow{ID: wf.ID, Name: wf.Name, Steps: steps, Timestamp: wf.CreatedAt}
+}
+
+func workflowStepToGraphQL(s workflow.Step) WorkflowStep {
+	return WorkflowStep{
+		Type:        workflowStepTypeToGraphQL(s.Type),
+		Query:       optionalString(s.Query),
+		Name:        optionalString(s.Name),
+		Method:      optionalString(s.Method),
+		URL:         optionalString(s.URL),
+		Body:        optionalString(s.Body),
+		Payloads:    s.Payloads,
+		Title:       optionalString(s.Title),
+		Description: optionalString(s.Description),
+		Severity:    optionalString(s.Severity),
+	}
+}
+
+func workflowStepFromGraphQL(s WorkflowStepInput) workflow.Step {
+	return workflow.Step{
+		Type:        workflow.StepType(strings.ToLower(string(s.Type))),
+		Query:       derefString(s.Query),
+		Name:        derefString(s.Name),
+		Method:      derefString(s.Method),
+		URL:         derefString(s.URL),
+		Body:        derefString(s.Body),
+		Payloads:    s.Payloads,
+		Title:       derefString(s.Title),
+		Description: derefString(s.Description),
+		Severity:    derefString(s.Severity),
+	}
+}
+
+func workflowStepTypeToGraphQL(t workflow.StepType) WorkflowStepType {
+	switch t {
+	case workflow.StepFuzz:
+		return WorkflowStepTypeFuzz
+	case workflow.StepFinding:
+		return WorkflowStepTypeFinding
+	default:
+		return WorkflowStepTypeSearch
+	}
+}
+
+func optionalString(s string) *string {
+	if s == "" {
+		return nil
+	}
+
+	return &s
+}
+
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+
+	return *s
 }
 
 func (r *queryResolver) Findings(ctx context.Context) ([]Finding, error) {
