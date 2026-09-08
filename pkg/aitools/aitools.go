@@ -52,6 +52,21 @@ create_finding, linking the request log id that evidences it.
 Be concise. When you reference a request, include its id so the operator can
 open it.`
 
+// AutoPilotAddendum is appended to the system prompt in auto mode, turning the
+// assistant into a goal-driven agent that plans and acts autonomously.
+const AutoPilotAddendum = `
+You are running in autonomous auto-pilot mode. Work toward the operator's
+objective without pausing for confirmation:
+- Begin with a short plan of the steps you intend to take.
+- Investigate with the read tools, then act deliberately with the mutating ones,
+  iterating as each result comes back.
+- Stay within scope; the tools enforce it, so adjust rather than retrying a
+  refused action.
+- Record every confirmed issue with create_finding, linked to the request log id
+  that evidences it.
+- When the objective is met, or no further progress is possible, stop and give a
+  concise summary of what you did and what you found.`
+
 // RequestLogService is the subset of the request-log service the tools use.
 type RequestLogService interface {
 	FindByQuery(ctx context.Context, expr httpql.Expression, limit int) ([]reqlog.RequestLog, error)

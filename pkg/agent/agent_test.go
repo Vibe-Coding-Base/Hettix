@@ -218,3 +218,34 @@ func TestSystemPromptPrepended(t *testing.T) {
 		t.Fatalf("system prompt not prepended: %+v", p.lastMsgs)
 	}
 }
+
+// TestAutoPilotMultiStep exercises an autonomous run: a read tool, then a
+// mutating tool, then a final summary — all executed without approval in auto
+// mode, mirroring how auto-pilot drives a multi-step plan.
+func TestAutoPilotMultiStep(t *testing.T) {
+	var executed []string
+
+	a := agent.New(agent.Config{
+		Provider: &scriptedProvider{responses: []llm.ChatResponse{
+			toolCallResp("c1", "search", `{"query":"req.method eq \"POST\""}`),
+			toolCallResp("c2", "replay", `{"id":"x"}`),
+			finalResp("Investigated and replayed the request."),
+		}},
+		Registry:      newRegistry(&executed),
+		Mode:          agent.ModeAuto,
+		MaxIterations: 30,
+	})
+
+	msgs, err := a.Run(context.Background(), []llm.Message{{Role: llm.RoleUser, Content: "audit POST requests"}})
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	if len(executed) != 2 || executed[0] != "search" || executed[1] != "replay" {
+		t.Fatalf("expected search then replay to execute, got %v", executed)
+	}
+
+	if last := msgs[len(msgs)-1]; last.Content != "Investigated and replayed the request." {
+		t.Fatalf("unexpected final message: %q", last.Content)
+	}
+}

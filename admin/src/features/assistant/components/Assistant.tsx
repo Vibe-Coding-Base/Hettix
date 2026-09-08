@@ -33,7 +33,11 @@ interface Turn {
 const MODES: { value: AgentMode; label: string; hint: string }[] = [
   { value: AgentMode.Ask, label: "Ask", hint: "Read-only: investigate traffic, no changes." },
   { value: AgentMode.Assist, label: "Assist", hint: "Suggests actions; each change needs approval." },
-  { value: AgentMode.Auto, label: "Auto", hint: "Acts within scope and policy guardrails." },
+  {
+    value: AgentMode.Auto,
+    label: "Auto-pilot",
+    hint: "Plans and acts autonomously toward your objective, within scope and policy guardrails.",
+  },
 ];
 
 export default function Assistant(): JSX.Element {

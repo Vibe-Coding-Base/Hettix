@@ -715,13 +715,24 @@ func (r *mutationResolver) RunAgent(ctx context.Context, input RunAgentInput) (*
 
 	var actions []AgentAction
 
+	// Auto-pilot: in auto mode the agent plans and acts autonomously, so it needs
+	// a planning prompt and a larger iteration budget for multi-step runs.
+	systemPrompt := aitools.SystemPrompt
+	maxIterations := 12
+
+	if mode == agent.ModeAuto {
+		systemPrompt = aitools.SystemPrompt + "\n" + aitools.AutoPilotAddendum
+		maxIterations = 30
+	}
+
 	ag := agent.New(agent.Config{
 		Provider: r.LLMProvider,
 		Registry: aitools.NewRegistry(
 			r.RequestLogService, r.SenderService, r.ProjectService, r.IntruderService, r.FindingService,
 		),
-		Mode:         mode,
-		SystemPrompt: aitools.SystemPrompt,
+		Mode:          mode,
+		MaxIterations: maxIterations,
+		SystemPrompt:  systemPrompt,
 		OnEvent: func(e agent.Event) {
 			output := e.Result
 			switch {
