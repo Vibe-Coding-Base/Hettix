@@ -9,6 +9,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import LocationSearchingIcon from "@mui/icons-material/LocationSearching";
 import MenuIcon from "@mui/icons-material/Menu";
 import SendIcon from "@mui/icons-material/Send";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import {
   Theme,
   useTheme,
@@ -46,6 +47,7 @@ export enum Page {
   Settings,
   Assistant,
   MatchReplace,
+  WebSocket,
 }
 
 const drawerWidth = 240;
@@ -290,6 +292,20 @@ export function Layout({ title, page, children }: Props): JSX.Element {
               </ListItemIcon>
             </Tooltip>
             <ListItemText primary="Match & Replace" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/websocket"
+            key="websocket"
+            disabled={!activeProject}
+            selected={page === Page.WebSocket}
+          >
+            <Tooltip title="WebSocket">
+              <ListItemIcon>
+                <SwapHorizIcon />
+              </ListItemIcon>
+            </Tooltip>
+            <ListItemText primary="WebSocket" />
           </ListItemButton>
           <ListItemButton
             component={RouterLink}

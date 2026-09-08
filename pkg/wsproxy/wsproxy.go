@@ -1,8 +1,8 @@
 // Package wsproxy man-in-the-middles WebSocket connections: it completes the
 // upgrade with the client, dials the upstream, and relays messages in both
-// directions, invoking a capture callback for each so they can be logged. It is
-// self-contained so it can be tested against a real WebSocket server before
-// being wired into the live proxy.
+// directions, invoking lifecycle hooks so connections and messages can be
+// stored. It is self-contained so it can be tested against a real WebSocket
+// server before being wired into the live proxy.
 package wsproxy
 
 import (
@@ -11,14 +11,17 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
+	"github.com/oklog/ulid"
 )
 
 // Direction is the travel direction of a WebSocket message.
@@ -37,18 +40,52 @@ func (d Direction) String() string {
 	return "client->server"
 }
 
-// Message is a captured WebSocket message.
+// ConnInfo describes a proxied WebSocket connection. ID is a ULID that links
+// the connection to its messages.
+type ConnInfo struct {
+	ID   string
+	URL  string
+	Host string
+	Path string
+	Time time.Time
+}
+
+// Message is a captured WebSocket message. ConnID matches the ConnInfo.ID of
+// the connection it belongs to.
 type Message struct {
+	ConnID    string
 	Direction Direction
 	Opcode    ws.OpCode
 	Payload   []byte
 	Time      time.Time
 }
 
-// CaptureFunc receives every relayed data message.
-type CaptureFunc func(Message)
+// Handlers receive the lifecycle events of a proxied connection. Every field is
+// optional.
+type Handlers struct {
+	// OnOpen is called once, after the upstream is dialed and the client
+	// handshake completes, before any message is relayed.
+	OnOpen func(ConnInfo)
+	// OnMessage is called for each relayed data message.
+	OnMessage func(Message)
+	// OnClose is called once when the connection is torn down.
+	OnClose func(connID string)
+}
 
 const handshakeMagic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+//nolint:gosec // connection IDs don't need cryptographic randomness
+var (
+	connEntropy   = rand.New(rand.NewSource(time.Now().UnixNano()))
+	connEntropyMu sync.Mutex
+)
+
+func newConnID() string {
+	connEntropyMu.Lock()
+	defer connEntropyMu.Unlock()
+
+	return ulid.MustNew(ulid.Timestamp(time.Now()), connEntropy).String()
+}
 
 // IsUpgrade reports whether a request is a WebSocket upgrade.
 func IsUpgrade(r *http.Request) bool {
@@ -58,9 +95,11 @@ func IsUpgrade(r *http.Request) bool {
 
 // Handler proxies a WebSocket upgrade request: it dials the upstream, hijacks
 // the client connection, completes the handshake and relays messages until
-// either side closes. capture may be nil.
-func Handler(w http.ResponseWriter, r *http.Request, capture CaptureFunc) error {
-	upstream, err := dialUpstream(r)
+// either side closes, invoking the lifecycle hooks along the way.
+func Handler(w http.ResponseWriter, r *http.Request, h Handlers) error {
+	target := targetURL(r)
+
+	upstream, err := dialUpstream(r, target)
 	if err != nil {
 		http.Error(w, "websocket upstream dial failed", http.StatusBadGateway)
 		return err
@@ -82,10 +121,26 @@ func Handler(w http.ResponseWriter, r *http.Request, capture CaptureFunc) error 
 		return err
 	}
 
-	return relay(client, upstream, capture)
+	connID := newConnID()
+
+	if h.OnOpen != nil {
+		h.OnOpen(ConnInfo{
+			ID:   connID,
+			URL:  target.String(),
+			Host: target.Host,
+			Path: target.Path,
+			Time: time.Now(),
+		})
+	}
+
+	if h.OnClose != nil {
+		defer h.OnClose(connID)
+	}
+
+	return relay(connID, client, upstream, h.OnMessage)
 }
 
-func dialUpstream(r *http.Request) (net.Conn, error) {
+func targetURL(r *http.Request) url.URL {
 	scheme := "ws"
 	if r.TLS != nil {
 		scheme = "wss"
@@ -96,15 +151,17 @@ func dialUpstream(r *http.Request) (net.Conn, error) {
 		host = r.Host
 	}
 
-	u := url.URL{Scheme: scheme, Host: host, Path: r.URL.Path, RawQuery: r.URL.RawQuery}
+	return url.URL{Scheme: scheme, Host: host, Path: r.URL.Path, RawQuery: r.URL.RawQuery}
+}
 
+func dialUpstream(r *http.Request, target url.URL) (net.Conn, error) {
 	dialer := ws.Dialer{
 		Header:    ws.HandshakeHeaderHTTP(upstreamHeaders(r.Header)),
 		TLSConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // MITM proxy dials many hosts
 		Timeout:   30 * time.Second,
 	}
 
-	conn, _, _, err := dialer.Dial(context.Background(), u.String())
+	conn, _, _, err := dialer.Dial(context.Background(), target.String())
 	if err != nil {
 		return nil, fmt.Errorf("wsproxy: upstream dial failed: %w", err)
 	}
@@ -112,11 +169,11 @@ func dialUpstream(r *http.Request) (net.Conn, error) {
 	return conn, nil
 }
 
-func relay(client, upstream net.Conn, capture CaptureFunc) error {
+func relay(connID string, client, upstream net.Conn, onMessage func(Message)) error {
 	errc := make(chan error, 2)
 
-	go pump(client, upstream, true, ClientToServer, capture, errc)
-	go pump(upstream, client, false, ServerToClient, capture, errc)
+	go pump(connID, client, upstream, true, ClientToServer, onMessage, errc)
+	go pump(connID, upstream, client, false, ServerToClient, onMessage, errc)
 
 	return <-errc
 }
@@ -124,7 +181,14 @@ func relay(client, upstream net.Conn, capture CaptureFunc) error {
 // pump reads data messages from src and writes them to dst. srcIsClient selects
 // the framing (client frames are masked); the write to dst uses the same role so
 // masking stays correct end to end.
-func pump(src, dst net.Conn, srcIsClient bool, dir Direction, capture CaptureFunc, errc chan<- error) {
+func pump(
+	connID string,
+	src, dst net.Conn,
+	srcIsClient bool,
+	dir Direction,
+	onMessage func(Message),
+	errc chan<- error,
+) {
 	for {
 		var (
 			data []byte
@@ -142,8 +206,8 @@ func pump(src, dst net.Conn, srcIsClient bool, dir Direction, capture CaptureFun
 			return
 		}
 
-		if capture != nil {
-			capture(Message{Direction: dir, Opcode: op, Payload: data, Time: time.Now()})
+		if onMessage != nil {
+			onMessage(Message{ConnID: connID, Direction: dir, Opcode: op, Payload: data, Time: time.Now()})
 		}
 
 		if srcIsClient {

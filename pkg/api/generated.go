@@ -203,6 +203,9 @@ type ComplexityRoot struct {
 		Scope                func(childComplexity int) int
 		SenderRequest        func(childComplexity int, id ulid.ULID) int
 		SenderRequests       func(childComplexity int, offset *int, limit *int) int
+		WebSocketConnection  func(childComplexity int, id ulid.ULID) int
+		WebSocketConnections func(childComplexity int) int
+		WebSocketMessages    func(childComplexity int, connectionID ulid.ULID) int
 	}
 
 	ScopeHeader struct {
@@ -231,6 +234,23 @@ type ComplexityRoot struct {
 	SenderRequestFilter struct {
 		OnlyInScope      func(childComplexity int) int
 		SearchExpression func(childComplexity int) int
+	}
+
+	WebSocketConnection struct {
+		ClosedAt     func(childComplexity int) int
+		Host         func(childComplexity int) int
+		ID           func(childComplexity int) int
+		MessageCount func(childComplexity int) int
+		Path         func(childComplexity int) int
+		Timestamp    func(childComplexity int) int
+		URL          func(childComplexity int) int
+	}
+
+	WebSocketMessage struct {
+		Direction func(childComplexity int) int
+		Opcode    func(childComplexity int) int
+		Payload   func(childComplexity int) int
+		Timestamp func(childComplexity int) int
 	}
 }
 
@@ -267,6 +287,9 @@ type QueryResolver interface {
 	InterceptedRequests(ctx context.Context) ([]HTTPRequest, error)
 	InterceptedRequest(ctx context.Context, id ulid.ULID) (*HTTPRequest, error)
 	MatchReplaceRules(ctx context.Context) ([]MatchReplaceRule, error)
+	WebSocketConnections(ctx context.Context) ([]WebSocketConnection, error)
+	WebSocketConnection(ctx context.Context, id ulid.ULID) (*WebSocketConnection, error)
+	WebSocketMessages(ctx context.Context, connectionID ulid.ULID) ([]WebSocketMessage, error)
 }
 
 type executableSchema struct {
@@ -1047,6 +1070,37 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.SenderRequests(childComplexity, args["offset"].(*int), args["limit"].(*int)), true
 
+	case "Query.webSocketConnection":
+		if e.complexity.Query.WebSocketConnection == nil {
+			break
+		}
+
+		args, err := ec.field_Query_webSocketConnection_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.WebSocketConnection(childComplexity, args["id"].(ulid.ULID)), true
+
+	case "Query.webSocketConnections":
+		if e.complexity.Query.WebSocketConnections == nil {
+			break
+		}
+
+		return e.complexity.Query.WebSocketConnections(childComplexity), true
+
+	case "Query.webSocketMessages":
+		if e.complexity.Query.WebSocketMessages == nil {
+			break
+		}
+
+		args, err := ec.field_Query_webSocketMessages_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.WebSocketMessages(childComplexity, args["connectionId"].(ulid.ULID)), true
+
 	case "ScopeHeader.key":
 		if e.complexity.ScopeHeader.Key == nil {
 			break
@@ -1158,6 +1212,83 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SenderRequestFilter.SearchExpression(childComplexity), true
+
+	case "WebSocketConnection.closedAt":
+		if e.complexity.WebSocketConnection.ClosedAt == nil {
+			break
+		}
+
+		return e.complexity.WebSocketConnection.ClosedAt(childComplexity), true
+
+	case "WebSocketConnection.host":
+		if e.complexity.WebSocketConnection.Host == nil {
+			break
+		}
+
+		return e.complexity.WebSocketConnection.Host(childComplexity), true
+
+	case "WebSocketConnection.id":
+		if e.complexity.WebSocketConnection.ID == nil {
+			break
+		}
+
+		return e.complexity.WebSocketConnection.ID(childComplexity), true
+
+	case "WebSocketConnection.messageCount":
+		if e.complexity.WebSocketConnection.MessageCount == nil {
+			break
+		}
+
+		return e.complexity.WebSocketConnection.MessageCount(childComplexity), true
+
+	case "WebSocketConnection.path":
+		if e.complexity.WebSocketConnection.Path == nil {
+			break
+		}
+
+		return e.complexity.WebSocketConnection.Path(childComplexity), true
+
+	case "WebSocketConnection.timestamp":
+		if e.complexity.WebSocketConnection.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.WebSocketConnection.Timestamp(childComplexity), true
+
+	case "WebSocketConnection.url":
+		if e.complexity.WebSocketConnection.URL == nil {
+			break
+		}
+
+		return e.complexity.WebSocketConnection.URL(childComplexity), true
+
+	case "WebSocketMessage.direction":
+		if e.complexity.WebSocketMessage.Direction == nil {
+			break
+		}
+
+		return e.complexity.WebSocketMessage.Direction(childComplexity), true
+
+	case "WebSocketMessage.opcode":
+		if e.complexity.WebSocketMessage.Opcode == nil {
+			break
+		}
+
+		return e.complexity.WebSocketMessage.Opcode(childComplexity), true
+
+	case "WebSocketMessage.payload":
+		if e.complexity.WebSocketMessage.Payload == nil {
+			break
+		}
+
+		return e.complexity.WebSocketMessage.Payload(childComplexity), true
+
+	case "WebSocketMessage.timestamp":
+		if e.complexity.WebSocketMessage.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.WebSocketMessage.Timestamp(childComplexity), true
 
 	}
 	return 0, false
@@ -1417,6 +1548,28 @@ type InterceptSettings {
   responseFilter: String
 }
 
+enum WebSocketDirection {
+  CLIENT_TO_SERVER
+  SERVER_TO_CLIENT
+}
+
+type WebSocketConnection {
+  id: ID!
+  url: String!
+  host: String!
+  path: String!
+  timestamp: Time!
+  closedAt: Time
+  messageCount: Int!
+}
+
+type WebSocketMessage {
+  direction: WebSocketDirection!
+  opcode: Int!
+  payload: String!
+  timestamp: Time!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -1429,6 +1582,9 @@ type Query {
   interceptedRequests: [HttpRequest!]!
   interceptedRequest(id: ID!): HttpRequest
   matchReplaceRules: [MatchReplaceRule!]!
+  webSocketConnections: [WebSocketConnection!]!
+  webSocketConnection(id: ID!): WebSocketConnection
+  webSocketMessages(connectionId: ID!): [WebSocketMessage!]!
 }
 
 enum MatchReplacePhase {
@@ -1884,6 +2040,36 @@ func (ec *executionContext) field_Query_senderRequests_args(ctx context.Context,
 		}
 	}
 	args["limit"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_webSocketConnection_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_webSocketMessages_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ulid.ULID
+	if tmp, ok := rawArgs["connectionId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("connectionId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["connectionId"] = arg0
 	return args, nil
 }
 
@@ -5293,6 +5479,122 @@ func (ec *executionContext) _Query_matchReplaceRules(ctx context.Context, field 
 	return ec.marshalNMatchReplaceRule2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐMatchReplaceRuleᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_webSocketConnections(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().WebSocketConnections(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]WebSocketConnection)
+	fc.Result = res
+	return ec.marshalNWebSocketConnection2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketConnectionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_webSocketConnection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_webSocketConnection_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().WebSocketConnection(rctx, args["id"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*WebSocketConnection)
+	fc.Result = res
+	return ec.marshalOWebSocketConnection2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketConnection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_webSocketMessages(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_webSocketMessages_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().WebSocketMessages(rctx, args["connectionId"].(ulid.ULID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]WebSocketMessage)
+	fc.Result = res
+	return ec.marshalNWebSocketMessage2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketMessageᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -5892,6 +6194,388 @@ func (ec *executionContext) _SenderRequestFilter_searchExpression(ctx context.Co
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketConnection_id(ctx context.Context, field graphql.CollectedField, obj *WebSocketConnection) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketConnection",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(ulid.ULID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋoklogᚋulidᚐULID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketConnection_url(ctx context.Context, field graphql.CollectedField, obj *WebSocketConnection) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketConnection",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketConnection_host(ctx context.Context, field graphql.CollectedField, obj *WebSocketConnection) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketConnection",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Host, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketConnection_path(ctx context.Context, field graphql.CollectedField, obj *WebSocketConnection) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketConnection",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Path, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketConnection_timestamp(ctx context.Context, field graphql.CollectedField, obj *WebSocketConnection) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketConnection",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketConnection_closedAt(ctx context.Context, field graphql.CollectedField, obj *WebSocketConnection) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketConnection",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ClosedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketConnection_messageCount(ctx context.Context, field graphql.CollectedField, obj *WebSocketConnection) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketConnection",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MessageCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketMessage_direction(ctx context.Context, field graphql.CollectedField, obj *WebSocketMessage) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketMessage",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Direction, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(WebSocketDirection)
+	fc.Result = res
+	return ec.marshalNWebSocketDirection2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketDirection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketMessage_opcode(ctx context.Context, field graphql.CollectedField, obj *WebSocketMessage) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketMessage",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Opcode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketMessage_payload(ctx context.Context, field graphql.CollectedField, obj *WebSocketMessage) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketMessage",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Payload, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _WebSocketMessage_timestamp(ctx context.Context, field graphql.CollectedField, obj *WebSocketMessage) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "WebSocketMessage",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -8530,6 +9214,45 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "webSocketConnections":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_webSocketConnections(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "webSocketConnection":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_webSocketConnection(ctx, field)
+				return res
+			})
+		case "webSocketMessages":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_webSocketMessages(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -8672,6 +9395,102 @@ func (ec *executionContext) _SenderRequestFilter(ctx context.Context, sel ast.Se
 			}
 		case "searchExpression":
 			out.Values[i] = ec._SenderRequestFilter_searchExpression(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var webSocketConnectionImplementors = []string{"WebSocketConnection"}
+
+func (ec *executionContext) _WebSocketConnection(ctx context.Context, sel ast.SelectionSet, obj *WebSocketConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, webSocketConnectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WebSocketConnection")
+		case "id":
+			out.Values[i] = ec._WebSocketConnection_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "url":
+			out.Values[i] = ec._WebSocketConnection_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "host":
+			out.Values[i] = ec._WebSocketConnection_host(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "path":
+			out.Values[i] = ec._WebSocketConnection_path(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "timestamp":
+			out.Values[i] = ec._WebSocketConnection_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "closedAt":
+			out.Values[i] = ec._WebSocketConnection_closedAt(ctx, field, obj)
+		case "messageCount":
+			out.Values[i] = ec._WebSocketConnection_messageCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var webSocketMessageImplementors = []string{"WebSocketMessage"}
+
+func (ec *executionContext) _WebSocketMessage(ctx context.Context, sel ast.SelectionSet, obj *WebSocketMessage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, webSocketMessageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WebSocketMessage")
+		case "direction":
+			out.Values[i] = ec._WebSocketMessage_direction(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "opcode":
+			out.Values[i] = ec._WebSocketMessage_opcode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "payload":
+			out.Values[i] = ec._WebSocketMessage_payload(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "timestamp":
+			out.Values[i] = ec._WebSocketMessage_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9685,6 +10504,112 @@ func (ec *executionContext) unmarshalNUpdateInterceptSettingsInput2githubᚗcom�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNWebSocketConnection2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketConnection(ctx context.Context, sel ast.SelectionSet, v WebSocketConnection) graphql.Marshaler {
+	return ec._WebSocketConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWebSocketConnection2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketConnectionᚄ(ctx context.Context, sel ast.SelectionSet, v []WebSocketConnection) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNWebSocketConnection2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketConnection(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNWebSocketDirection2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketDirection(ctx context.Context, v interface{}) (WebSocketDirection, error) {
+	var res WebSocketDirection
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNWebSocketDirection2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketDirection(ctx context.Context, sel ast.SelectionSet, v WebSocketDirection) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNWebSocketMessage2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketMessage(ctx context.Context, sel ast.SelectionSet, v WebSocketMessage) graphql.Marshaler {
+	return ec._WebSocketMessage(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWebSocketMessage2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []WebSocketMessage) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNWebSocketMessage2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketMessage(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
 	return ec.___Directive(ctx, sel, &v)
 }
@@ -10239,6 +11164,28 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return graphql.MarshalString(*v)
+}
+
+func (ec *executionContext) unmarshalOTime2ᚖtimeᚐTime(ctx context.Context, v interface{}) (*time.Time, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalTime(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel ast.SelectionSet, v *time.Time) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalTime(*v)
+}
+
+func (ec *executionContext) marshalOWebSocketConnection2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐWebSocketConnection(ctx context.Context, sel ast.SelectionSet, v *WebSocketConnection) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._WebSocketConnection(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

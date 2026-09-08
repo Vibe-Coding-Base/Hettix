@@ -17,6 +17,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/wslog"
 )
 
 //nolint:gosec
@@ -27,6 +28,7 @@ type Service struct {
 	interceptSvc    *intercept.Service
 	reqLogSvc       *reqlog.Service
 	senderSvc       *sender.Service
+	wsLogSvc        *wslog.Service
 	scope           *scope.Scope
 	matchReplace    *matchreplace.Engine
 	activeProjectID ulid.ULID
@@ -78,6 +80,7 @@ type Config struct {
 	InterceptService   *intercept.Service
 	ReqLogService      *reqlog.Service
 	SenderService      *sender.Service
+	WebSocketService   *wslog.Service
 	Scope              *scope.Scope
 	MatchReplaceEngine *matchreplace.Engine
 }
@@ -89,6 +92,7 @@ func NewService(cfg Config) (*Service, error) {
 		interceptSvc: cfg.InterceptService,
 		reqLogSvc:    cfg.ReqLogService,
 		senderSvc:    cfg.SenderService,
+		wsLogSvc:     cfg.WebSocketService,
 		scope:        cfg.Scope,
 		matchReplace: cfg.MatchReplaceEngine,
 	}, nil
@@ -133,6 +137,11 @@ func (svc *Service) CloseProject() error {
 	})
 	svc.senderSvc.SetActiveProjectID(ulid.ULID{})
 	svc.senderSvc.SetFindReqsFilter(sender.FindRequestsFilter{})
+
+	if svc.wsLogSvc != nil {
+		svc.wsLogSvc.SetActiveProjectID(ulid.ULID{})
+	}
+
 	svc.scope.SetRules(nil)
 
 	if svc.matchReplace != nil {
@@ -191,6 +200,11 @@ func (svc *Service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 		OnlyInScope: project.Settings.SenderOnlyFindInScope,
 		SearchExpr:  project.Settings.SenderSearchExpr,
 	})
+
+	// WebSocket capture.
+	if svc.wsLogSvc != nil {
+		svc.wsLogSvc.SetActiveProjectID(project.ID)
+	}
 
 	// Scope settings.
 	svc.scope.SetRules(project.Settings.ScopeRules)

@@ -1,0 +1,20 @@
+query WebSocketConnections {
+  webSocketConnections {
+    id
+    url
+    host
+    path
+    timestamp
+    closedAt
+    messageCount
+  }
+}
+
+query WebSocketMessages($connectionId: ID!) {
+  webSocketMessages(connectionId: $connectionId) {
+    direction
+    opcode
+    payload
+    timestamp
+  }
+}

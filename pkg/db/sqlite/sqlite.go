@@ -73,6 +73,28 @@ CREATE TABLE IF NOT EXISTS sender_requests (
 	res_roundtrip_ms      INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_sender_requests_project ON sender_requests (project_id, id);
+
+CREATE TABLE IF NOT EXISTS websocket_connections (
+	id         TEXT PRIMARY KEY,
+	project_id TEXT NOT NULL,
+	url        TEXT NOT NULL,
+	host       TEXT NOT NULL,
+	path       TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	closed_at  INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_ws_connections_project ON websocket_connections (project_id, id);
+
+CREATE TABLE IF NOT EXISTS websocket_messages (
+	id            INTEGER PRIMARY KEY AUTOINCREMENT,
+	connection_id TEXT NOT NULL,
+	direction     INTEGER NOT NULL,
+	opcode        INTEGER NOT NULL,
+	payload       BLOB,
+	created_at    INTEGER NOT NULL,
+	FOREIGN KEY (connection_id) REFERENCES websocket_connections (id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_ws_messages_connection ON websocket_messages (connection_id, id);
 `
 
 // OpenDatabase opens (creating if needed) a SQLite database at path and ensures

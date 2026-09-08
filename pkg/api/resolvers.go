@@ -29,6 +29,8 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/wslog"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/wsproxy"
 )
 
 var httpProtocolMap = map[string]HTTPProtocol{
@@ -48,6 +50,7 @@ type Resolver struct {
 	RequestLogService *reqlog.Service
 	InterceptService  *intercept.Service
 	SenderService     *sender.Service
+	WebSocketService  *wslog.Service
 	LLMProvider       llm.Provider
 }
 
@@ -750,6 +753,82 @@ func (r *queryResolver) MatchReplaceRules(ctx context.Context) ([]MatchReplaceRu
 	}
 
 	return matchReplaceRulesToGraphQL(rules), nil
+}
+
+func (r *queryResolver) WebSocketConnections(ctx context.Context) ([]WebSocketConnection, error) {
+	conns, err := r.WebSocketService.Connections(ctx)
+	if errors.Is(err, wslog.ErrProjectIDMustBeSet) {
+		return nil, noActiveProjectErr(ctx)
+	} else if err != nil {
+		return nil, fmt.Errorf("could not get websocket connections: %w", err)
+	}
+
+	out := make([]WebSocketConnection, len(conns))
+	for i, conn := range conns {
+		out[i] = webSocketConnectionToGraphQL(conn)
+	}
+
+	return out, nil
+}
+
+func (r *queryResolver) WebSocketConnection(ctx context.Context, id ulid.ULID) (*WebSocketConnection, error) {
+	conn, err := r.WebSocketService.ConnectionByID(ctx, id)
+	switch {
+	case errors.Is(err, wslog.ErrConnectionNotFound):
+		return nil, nil
+	case errors.Is(err, wslog.ErrProjectIDMustBeSet):
+		return nil, noActiveProjectErr(ctx)
+	case err != nil:
+		return nil, fmt.Errorf("could not get websocket connection: %w", err)
+	}
+
+	out := webSocketConnectionToGraphQL(conn)
+
+	return &out, nil
+}
+
+func (r *queryResolver) WebSocketMessages(ctx context.Context, connectionID ulid.ULID) ([]WebSocketMessage, error) {
+	msgs, err := r.WebSocketService.Messages(ctx, connectionID)
+	switch {
+	case errors.Is(err, wslog.ErrConnectionNotFound):
+		return nil, nil
+	case errors.Is(err, wslog.ErrProjectIDMustBeSet):
+		return nil, noActiveProjectErr(ctx)
+	case err != nil:
+		return nil, fmt.Errorf("could not get websocket messages: %w", err)
+	}
+
+	out := make([]WebSocketMessage, len(msgs))
+	for i, msg := range msgs {
+		out[i] = WebSocketMessage{
+			Direction: webSocketDirectionToGraphQL(msg.Direction),
+			Opcode:    msg.Opcode,
+			Payload:   string(msg.Payload),
+			Timestamp: msg.CreatedAt,
+		}
+	}
+
+	return out, nil
+}
+
+func webSocketConnectionToGraphQL(conn wslog.Connection) WebSocketConnection {
+	return WebSocketConnection{
+		ID:           conn.ID,
+		URL:          conn.URL,
+		Host:         conn.Host,
+		Path:         conn.Path,
+		Timestamp:    conn.CreatedAt,
+		ClosedAt:     conn.ClosedAt,
+		MessageCount: conn.MessageCount,
+	}
+}
+
+func webSocketDirectionToGraphQL(d wsproxy.Direction) WebSocketDirection {
+	if d == wsproxy.ServerToClient {
+		return WebSocketDirectionServerToClient
+	}
+
+	return WebSocketDirectionClientToServer
 }
 
 func (r *mutationResolver) SetMatchReplaceRules(ctx context.Context, input []MatchReplaceRuleInput) ([]MatchReplaceRule, error) {

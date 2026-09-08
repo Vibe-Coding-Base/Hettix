@@ -10,6 +10,7 @@ import ProxyLogs from "pages/proxy/logs/index";
 import Scope from "pages/scope/index";
 import Sender from "pages/sender/index";
 import Settings from "pages/settings/index";
+import WebSocket from "pages/websocket/index";
 
 export const routes: RouteObject[] = [
   { path: "/", element: <Home /> },
@@ -22,4 +23,5 @@ export const routes: RouteObject[] = [
   { path: "/settings", element: <Settings /> },
   { path: "/assistant", element: <Assistant /> },
   { path: "/match-replace", element: <MatchReplace /> },
+  { path: "/websocket", element: <WebSocket /> },
 ];

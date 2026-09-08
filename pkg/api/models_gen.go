@@ -244,6 +244,23 @@ type UpdateInterceptSettingsInput struct {
 	ResponseFilter   *string `json:"responseFilter"`
 }
 
+type WebSocketConnection struct {
+	ID           ulid.ULID  `json:"id"`
+	URL          string     `json:"url"`
+	Host         string     `json:"host"`
+	Path         string     `json:"path"`
+	Timestamp    time.Time  `json:"timestamp"`
+	ClosedAt     *time.Time `json:"closedAt"`
+	MessageCount int        `json:"messageCount"`
+}
+
+type WebSocketMessage struct {
+	Direction WebSocketDirection `json:"direction"`
+	Opcode    int                `json:"opcode"`
+	Payload   string             `json:"payload"`
+	Timestamp time.Time          `json:"timestamp"`
+}
+
 type AgentMode string
 
 const (
@@ -423,5 +440,46 @@ func (e *MatchReplacePhase) UnmarshalGQL(v interface{}) error {
 }
 
 func (e MatchReplacePhase) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type WebSocketDirection string
+
+const (
+	WebSocketDirectionClientToServer WebSocketDirection = "CLIENT_TO_SERVER"
+	WebSocketDirectionServerToClient WebSocketDirection = "SERVER_TO_CLIENT"
+)
+
+var AllWebSocketDirection = []WebSocketDirection{
+	WebSocketDirectionClientToServer,
+	WebSocketDirectionServerToClient,
+}
+
+func (e WebSocketDirection) IsValid() bool {
+	switch e {
+	case WebSocketDirectionClientToServer, WebSocketDirectionServerToClient:
+		return true
+	}
+	return false
+}
+
+func (e WebSocketDirection) String() string {
+	return string(e)
+}
+
+func (e *WebSocketDirection) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = WebSocketDirection(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid WebSocketDirection", str)
+	}
+	return nil
+}
+
+func (e WebSocketDirection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }

@@ -350,6 +350,9 @@ export type Query = {
   scope: Array<ScopeRule>;
   senderRequest?: Maybe<SenderRequest>;
   senderRequests: Array<SenderRequest>;
+  webSocketConnection?: Maybe<WebSocketConnection>;
+  webSocketConnections: Array<WebSocketConnection>;
+  webSocketMessages: Array<WebSocketMessage>;
 };
 
 
@@ -377,6 +380,16 @@ export type QuerySenderRequestArgs = {
 export type QuerySenderRequestsArgs = {
   limit?: InputMaybe<Scalars['Int']>;
   offset?: InputMaybe<Scalars['Int']>;
+};
+
+
+export type QueryWebSocketConnectionArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type QueryWebSocketMessagesArgs = {
+  connectionId: Scalars['ID'];
 };
 
 export type RunAgentInput = {
@@ -446,6 +459,30 @@ export type UpdateInterceptSettingsInput = {
   requestsEnabled: Scalars['Boolean'];
   responseFilter?: InputMaybe<Scalars['String']>;
   responsesEnabled: Scalars['Boolean'];
+};
+
+export type WebSocketConnection = {
+  __typename?: 'WebSocketConnection';
+  closedAt?: Maybe<Scalars['Time']>;
+  host: Scalars['String'];
+  id: Scalars['ID'];
+  messageCount: Scalars['Int'];
+  path: Scalars['String'];
+  timestamp: Scalars['Time'];
+  url: Scalars['String'];
+};
+
+export enum WebSocketDirection {
+  ClientToServer = 'CLIENT_TO_SERVER',
+  ServerToClient = 'SERVER_TO_CLIENT'
+}
+
+export type WebSocketMessage = {
+  __typename?: 'WebSocketMessage';
+  direction: WebSocketDirection;
+  opcode: Scalars['Int'];
+  payload: Scalars['String'];
+  timestamp: Scalars['Time'];
 };
 
 export type RunAgentMutationVariables = Exact<{
@@ -618,6 +655,18 @@ export type UpdateInterceptSettingsMutationVariables = Exact<{
 
 
 export type UpdateInterceptSettingsMutation = { __typename?: 'Mutation', updateInterceptSettings: { __typename?: 'InterceptSettings', requestsEnabled: boolean, responsesEnabled: boolean, requestFilter?: string | null, responseFilter?: string | null } };
+
+export type WebSocketConnectionsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type WebSocketConnectionsQuery = { __typename?: 'Query', webSocketConnections: Array<{ __typename?: 'WebSocketConnection', id: string, url: string, host: string, path: string, timestamp: any, closedAt?: any | null, messageCount: number }> };
+
+export type WebSocketMessagesQueryVariables = Exact<{
+  connectionId: Scalars['ID'];
+}>;
+
+
+export type WebSocketMessagesQuery = { __typename?: 'Query', webSocketMessages: Array<{ __typename?: 'WebSocketMessage', direction: WebSocketDirection, opcode: number, payload: string, timestamp: any }> };
 
 export type GetInterceptedRequestsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1644,6 +1693,84 @@ export function useUpdateInterceptSettingsMutation(baseOptions?: Apollo.Mutation
 export type UpdateInterceptSettingsMutationHookResult = ReturnType<typeof useUpdateInterceptSettingsMutation>;
 export type UpdateInterceptSettingsMutationResult = Apollo.MutationResult<UpdateInterceptSettingsMutation>;
 export type UpdateInterceptSettingsMutationOptions = Apollo.BaseMutationOptions<UpdateInterceptSettingsMutation, UpdateInterceptSettingsMutationVariables>;
+export const WebSocketConnectionsDocument = gql`
+    query WebSocketConnections {
+  webSocketConnections {
+    id
+    url
+    host
+    path
+    timestamp
+    closedAt
+    messageCount
+  }
+}
+    `;
+
+/**
+ * __useWebSocketConnectionsQuery__
+ *
+ * To run a query within a React component, call `useWebSocketConnectionsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useWebSocketConnectionsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useWebSocketConnectionsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useWebSocketConnectionsQuery(baseOptions?: Apollo.QueryHookOptions<WebSocketConnectionsQuery, WebSocketConnectionsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<WebSocketConnectionsQuery, WebSocketConnectionsQueryVariables>(WebSocketConnectionsDocument, options);
+      }
+export function useWebSocketConnectionsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<WebSocketConnectionsQuery, WebSocketConnectionsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<WebSocketConnectionsQuery, WebSocketConnectionsQueryVariables>(WebSocketConnectionsDocument, options);
+        }
+export type WebSocketConnectionsQueryHookResult = ReturnType<typeof useWebSocketConnectionsQuery>;
+export type WebSocketConnectionsLazyQueryHookResult = ReturnType<typeof useWebSocketConnectionsLazyQuery>;
+export type WebSocketConnectionsQueryResult = Apollo.QueryResult<WebSocketConnectionsQuery, WebSocketConnectionsQueryVariables>;
+export const WebSocketMessagesDocument = gql`
+    query WebSocketMessages($connectionId: ID!) {
+  webSocketMessages(connectionId: $connectionId) {
+    direction
+    opcode
+    payload
+    timestamp
+  }
+}
+    `;
+
+/**
+ * __useWebSocketMessagesQuery__
+ *
+ * To run a query within a React component, call `useWebSocketMessagesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useWebSocketMessagesQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useWebSocketMessagesQuery({
+ *   variables: {
+ *      connectionId: // value for 'connectionId'
+ *   },
+ * });
+ */
+export function useWebSocketMessagesQuery(baseOptions: Apollo.QueryHookOptions<WebSocketMessagesQuery, WebSocketMessagesQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<WebSocketMessagesQuery, WebSocketMessagesQueryVariables>(WebSocketMessagesDocument, options);
+      }
+export function useWebSocketMessagesLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<WebSocketMessagesQuery, WebSocketMessagesQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<WebSocketMessagesQuery, WebSocketMessagesQueryVariables>(WebSocketMessagesDocument, options);
+        }
+export type WebSocketMessagesQueryHookResult = ReturnType<typeof useWebSocketMessagesQuery>;
+export type WebSocketMessagesLazyQueryHookResult = ReturnType<typeof useWebSocketMessagesLazyQuery>;
+export type WebSocketMessagesQueryResult = Apollo.QueryResult<WebSocketMessagesQuery, WebSocketMessagesQueryVariables>;
 export const GetInterceptedRequestsDocument = gql`
     query GetInterceptedRequests {
   interceptedRequests {

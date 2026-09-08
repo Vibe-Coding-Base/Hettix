@@ -38,7 +38,7 @@ type Proxy struct {
 	reqModifiers []RequestModifyMiddleware
 	resModifiers []ResponseModifyMiddleware
 
-	wsCapture wsproxy.CaptureFunc
+	wsHandlers wsproxy.Handlers
 }
 
 type Config struct {
@@ -46,8 +46,9 @@ type Config struct {
 	CAKey  crypto.PrivateKey
 	Logger log.Logger
 
-	// WebSocketCapture, if set, receives every relayed WebSocket message.
-	WebSocketCapture wsproxy.CaptureFunc
+	// WebSocketHandlers, if set, receive the lifecycle events of every relayed
+	// WebSocket connection.
+	WebSocketHandlers wsproxy.Handlers
 }
 
 // NewProxy returns a new Proxy.
@@ -62,7 +63,7 @@ func NewProxy(cfg Config) (*Proxy, error) {
 		reqModifiers: make([]RequestModifyMiddleware, 0),
 		resModifiers: make([]ResponseModifyMiddleware, 0),
 		logger:       cfg.Logger,
-		wsCapture:    cfg.WebSocketCapture,
+		wsHandlers:   cfg.WebSocketHandlers,
 	}
 
 	if p.logger == nil {
@@ -103,7 +104,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if wsproxy.IsUpgrade(r) {
-		if err := wsproxy.Handler(w, r, p.wsCapture); err != nil {
+		if err := wsproxy.Handler(w, r, p.wsHandlers); err != nil {
 			p.logger.Errorw("WebSocket proxying failed.", "error", err)
 		}
 		return

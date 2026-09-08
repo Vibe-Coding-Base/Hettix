@@ -192,6 +192,28 @@ type InterceptSettings {
   responseFilter: String
 }
 
+enum WebSocketDirection {
+  CLIENT_TO_SERVER
+  SERVER_TO_CLIENT
+}
+
+type WebSocketConnection {
+  id: ID!
+  url: String!
+  host: String!
+  path: String!
+  timestamp: Time!
+  closedAt: Time
+  messageCount: Int!
+}
+
+type WebSocketMessage {
+  direction: WebSocketDirection!
+  opcode: Int!
+  payload: String!
+  timestamp: Time!
+}
+
 type Query {
   httpRequestLog(id: ID!): HttpRequestLog
   httpRequestLogs(offset: Int, limit: Int): [HttpRequestLog!]!
@@ -204,6 +226,9 @@ type Query {
   interceptedRequests: [HttpRequest!]!
   interceptedRequest(id: ID!): HttpRequest
   matchReplaceRules: [MatchReplaceRule!]!
+  webSocketConnections: [WebSocketConnection!]!
+  webSocketConnection(id: ID!): WebSocketConnection
+  webSocketMessages(connectionId: ID!): [WebSocketMessage!]!
 }
 
 enum MatchReplacePhase {

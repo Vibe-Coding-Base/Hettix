@@ -29,7 +29,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/wsproxy"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/wslog"
 )
 
 var version = "0.0.0"
@@ -177,11 +177,17 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 
 	matchReplaceEngine := matchreplace.NewEngine()
 
+	wsLogService := wslog.NewService(wslog.Config{
+		Repository: db,
+		Logger:     cmd.config.logger.Named("websocket").Sugar(),
+	})
+
 	projService, err := proj.NewService(proj.Config{
 		Repository:         db,
 		InterceptService:   interceptService,
 		ReqLogService:      reqLogService,
 		SenderService:      senderService,
+		WebSocketService:   wsLogService,
 		Scope:              scope,
 		MatchReplaceEngine: matchReplaceEngine,
 	})
@@ -189,17 +195,11 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		cmd.config.logger.Fatal("Failed to create new projects service.", zap.Error(err))
 	}
 
-	wsLogger := cmd.config.logger.Named("websocket").Sugar()
 	proxy, err := proxy.NewProxy(proxy.Config{
-		CACert: caCert,
-		CAKey:  caKey,
-		Logger: cmd.config.logger.Named("proxy").Sugar(),
-		WebSocketCapture: func(m wsproxy.Message) {
-			wsLogger.Infow("WebSocket message.",
-				"direction", m.Direction.String(),
-				"opcode", uint8(m.Opcode),
-				"bytes", len(m.Payload))
-		},
+		CACert:            caCert,
+		CAKey:             caKey,
+		Logger:            cmd.config.logger.Named("proxy").Sugar(),
+		WebSocketHandlers: wsLogService.Handlers(),
 	})
 	if err != nil {
 		cmd.config.logger.Fatal("Failed to create new proxy.", zap.Error(err))
@@ -226,6 +226,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		RequestLogService: reqLogService,
 		InterceptService:  interceptService,
 		SenderService:     senderService,
+		WebSocketService:  wsLogService,
 		LLMProvider:       llmProviderFromEnv(),
 	}, gqlEndpoint))
 	adminMux.Handle("/", adminHandler)
