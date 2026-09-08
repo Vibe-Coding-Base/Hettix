@@ -15,6 +15,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import SendIcon from "@mui/icons-material/Send";
 import SettingsIcon from "@mui/icons-material/Settings";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import TransformIcon from "@mui/icons-material/Transform";
 import {
   Theme,
   useTheme,
@@ -57,6 +58,7 @@ export enum Page {
   Sitemap,
   Findings,
   Workflows,
+  Decoder,
 }
 
 interface NavItem {
@@ -219,8 +221,15 @@ export function Layout({ title, page, children }: Props): JSX.Element {
     [
       { page: Page.Sender, to: "/sender", label: "Sender", icon: <SendIcon />, project: true },
       { page: Page.Intruder, to: "/intruder", label: "Intruder", icon: <GpsFixedIcon />, project: true },
-      { page: Page.MatchReplace, to: "/match-replace", label: "Match & Replace", icon: <FindReplaceIcon />, project: true },
+      {
+        page: Page.MatchReplace,
+        to: "/match-replace",
+        label: "Match & Replace",
+        icon: <FindReplaceIcon />,
+        project: true,
+      },
       { page: Page.Workflows, to: "/workflows", label: "Workflows", icon: <HubIcon />, project: true },
+      { page: Page.Decoder, to: "/decoder", label: "Decoder", icon: <TransformIcon /> },
     ],
     [
       { page: Page.Findings, to: "/findings", label: "Findings", icon: <BugReportIcon />, project: true },

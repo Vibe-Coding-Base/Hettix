@@ -2,16 +2,20 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import {
   Alert,
   Box,
+  FormControlLabel,
   IconButton,
   Link,
   MenuItem,
   Snackbar,
   styled,
+  Switch,
   TableCell,
   TableCellProps,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
 } from "@mui/material";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import Actions from "./Actions";
@@ -27,6 +31,29 @@ const ActionsTableCell = styled(TableCell)<TableCellProps>(() => ({
   paddingTop: 0,
   paddingBottom: 0,
 }));
+
+const STATIC_EXTENSIONS = /\.(css|js|mjs|png|jpe?g|gif|svg|ico|webp|woff2?|ttf|eot|map)(\?|$)/i;
+
+type LogEntry = { method: string; url: string; response?: { statusCode: number } | null };
+
+function statusClass(code: number): string {
+  return `${Math.floor(code / 100)}xx`;
+}
+
+function applyLogFilters<T extends LogEntry>(logs: readonly T[], statuses: string[], hideStatic: boolean): T[] {
+  return logs.filter((log) => {
+    if (hideStatic && STATIC_EXTENSIONS.test(log.url)) {
+      return false;
+    }
+    if (statuses.length > 0) {
+      const cls = log.response ? statusClass(log.response.statusCode) : "none";
+      if (!statuses.includes(cls)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
 
 export function RequestLogs(): JSX.Element {
   const navigate = useNavigate();
@@ -55,6 +82,14 @@ export function RequestLogs(): JSX.Element {
     });
     handleContextMenuClose();
   };
+
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [hideStatic, setHideStatic] = useState(false);
+
+  const filteredLogs = useMemo(
+    () => applyLogFilters(data?.httpRequestLogs || [], statusFilter, hideStatic),
+    [data?.httpRequestLogs, statusFilter, hideStatic]
+  );
 
   const [newSenderReqId, setNewSenderReqId] = useState("");
   const [copiedReqNotifOpen, setCopiedReqNotifOpen] = useState(false);
@@ -104,6 +139,26 @@ export function RequestLogs(): JSX.Element {
           <Actions />
         </Box>
       </Box>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 1, pb: 1, flexWrap: "wrap" }}>
+        <ToggleButtonGroup size="small" value={statusFilter} onChange={(_, value: string[]) => setStatusFilter(value)}>
+          <ToggleButton value="2xx" sx={{ color: "success.main" }}>
+            2xx
+          </ToggleButton>
+          <ToggleButton value="3xx" sx={{ color: "info.main" }}>
+            3xx
+          </ToggleButton>
+          <ToggleButton value="4xx" sx={{ color: "warning.main" }}>
+            4xx
+          </ToggleButton>
+          <ToggleButton value="5xx" sx={{ color: "error.main" }}>
+            5xx
+          </ToggleButton>
+        </ToggleButtonGroup>
+        <FormControlLabel
+          control={<Switch size="small" checked={hideStatic} onChange={(e) => setHideStatic(e.target.checked)} />}
+          label="Hide static assets"
+        />
+      </Box>
       <Box sx={{ display: "flex", flex: "1 auto", position: "relative" }}>
         <SplitPane split="horizontal" size={"40%"}>
           <Box sx={{ width: "100%", height: "100%", pb: 2 }}>
@@ -122,7 +177,7 @@ export function RequestLogs(): JSX.Element {
                 </Alert>
               </Snackbar>
               <RequestsTable
-                requests={data?.httpRequestLogs || []}
+                requests={filteredLogs}
                 activeRowId={id}
                 actionsCell={actionsCell}
                 onRowClick={handleRowClick}

@@ -1,6 +1,7 @@
 import { RouteObject } from "react-router-dom";
 
 import Assistant from "pages/assistant/index";
+import Decoder from "pages/decoder/index";
 import Findings from "pages/findings/index";
 import Home from "pages/index";
 import Intruder from "pages/intruder/index";
@@ -32,4 +33,5 @@ export const routes: RouteObject[] = [
   { path: "/sitemap", element: <Sitemap /> },
   { path: "/findings", element: <Findings /> },
   { path: "/workflows", element: <Workflows /> },
+  { path: "/decoder", element: <Decoder /> },
 ];
