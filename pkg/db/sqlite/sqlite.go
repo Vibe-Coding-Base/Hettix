@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -152,6 +153,17 @@ func OpenDatabase(path string) (*Database, error) {
 
 	if _, err := db.Exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;"); err != nil {
 		db.Close()
+
+		// A pre-existing file that isn't a SQLite database (for example a
+		// database from a previous, pre-SQLite version of Hettix) surfaces here.
+		// Point the operator at the offending file rather than the opaque driver
+		// error.
+		if strings.Contains(err.Error(), "file is not a database") {
+			return nil, fmt.Errorf(
+				"sqlite: %q exists but is not a valid Hettix database (likely from an older version); "+
+					"move or remove it and Hettix will create a fresh one: %w", path, err)
+		}
+
 		return nil, fmt.Errorf("sqlite: failed to set pragmas: %w", err)
 	}
 
