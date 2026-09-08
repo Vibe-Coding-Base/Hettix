@@ -5,3 +5,7 @@
 /cmd/hettix/admin
 *.pem
 *.test
+
+# Bundled portable browser and installer build artifacts (fetched/built, never committed).
+/browser/
+/installer/out/
