@@ -15,7 +15,7 @@ export default defineConfig({
   plugins: [react()],
   define: {
     // Keep in sync with `version` in cmd/hettix/hetty.go.
-    "import.meta.env.VITE_VERSION": JSON.stringify("0.1.0"),
+    "import.meta.env.VITE_VERSION": JSON.stringify("0.2.0"),
   },
   resolve: {
     alias: [
