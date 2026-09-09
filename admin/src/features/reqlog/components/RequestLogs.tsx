@@ -5,7 +5,6 @@ import {
   FormControlLabel,
   IconButton,
   Link,
-  MenuItem,
   Snackbar,
   styled,
   Switch,
@@ -22,10 +21,11 @@ import Actions from "./Actions";
 import LogDetail from "./LogDetail";
 import Search from "./Search";
 
+import { useContextMenu } from "lib/components/ContextMenu";
 import RequestsTable from "lib/components/RequestsTable";
 import SplitPane from "lib/components/SplitPane";
-import useContextMenu from "lib/components/useContextMenu";
 import { useCreateSenderRequestFromHttpRequestLogMutation, useHttpRequestLogsQuery } from "lib/graphql/generated";
+import { toCurl } from "lib/toCurl";
 
 const ActionsTableCell = styled(TableCell)<TableCellProps>(() => ({
   paddingTop: 0,
@@ -71,17 +71,7 @@ export function RequestLogs(): JSX.Element {
     },
   });
 
-  const [copyToSenderId, setCopyToSenderId] = useState("");
-  const [Menu, handleContextMenu, handleContextMenuClose] = useContextMenu();
-
-  const handleCopyToSenderClick = () => {
-    createSenderReqFromLog({
-      variables: {
-        id: copyToSenderId,
-      },
-    });
-    handleContextMenuClose();
-  };
+  const ctxMenu = useContextMenu();
 
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [hideStatic, setHideStatic] = useState(false);
@@ -104,25 +94,24 @@ export function RequestLogs(): JSX.Element {
     navigate(`/proxy/logs?id=${id}`);
   };
 
-  const contextLog = filteredLogs.find((log) => log.id === copyToSenderId);
-
   const handleRowContextClick = (e: React.MouseEvent, id: string) => {
-    setCopyToSenderId(id);
-    handleContextMenu(e);
-  };
-
-  const handleSendToIntruder = () => {
-    if (contextLog) {
-      navigate(`/intruder?url=${encodeURIComponent(contextLog.url)}&method=${contextLog.method}`);
+    const log = filteredLogs.find((l) => l.id === id);
+    if (!log) {
+      return;
     }
-    handleContextMenuClose();
-  };
 
-  const handleCopyURL = () => {
-    if (contextLog) {
-      navigator.clipboard?.writeText(contextLog.url);
-    }
-    handleContextMenuClose();
+    ctxMenu.open(e, [
+      { label: "Send to Sender", onClick: () => createSenderReqFromLog({ variables: { id } }) },
+      {
+        label: "Send to Intruder",
+        onClick: () => navigate(`/intruder?url=${encodeURIComponent(log.url)}&method=${log.method}`),
+      },
+      { label: "Copy URL", onClick: () => navigator.clipboard?.writeText(log.url), divider: true },
+      {
+        label: "Copy as curl",
+        onClick: () => navigator.clipboard?.writeText(toCurl({ method: log.method, url: log.url })),
+      },
+    ]);
   };
 
   const actionsCell = (id: string) => (
@@ -131,7 +120,6 @@ export function RequestLogs(): JSX.Element {
         <IconButton
           size="small"
           onClick={() => {
-            setCopyToSenderId(id);
             createSenderReqFromLog({
               variables: {
                 id,
@@ -179,11 +167,7 @@ export function RequestLogs(): JSX.Element {
         <SplitPane split="horizontal" size={"40%"}>
           <Box sx={{ width: "100%", height: "100%", pb: 2 }}>
             <Box sx={{ width: "100%", height: "100%", overflow: "scroll" }}>
-              <Menu>
-                <MenuItem onClick={handleCopyToSenderClick}>Send to Sender</MenuItem>
-                <MenuItem onClick={handleSendToIntruder}>Send to Intruder</MenuItem>
-                <MenuItem onClick={handleCopyURL}>Copy URL</MenuItem>
-              </Menu>
+              {ctxMenu.menu}
               <Snackbar
                 open={copiedReqNotifOpen}
                 autoHideDuration={3000}
