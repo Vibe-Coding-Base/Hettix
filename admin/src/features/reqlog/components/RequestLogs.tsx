@@ -104,9 +104,25 @@ export function RequestLogs(): JSX.Element {
     navigate(`/proxy/logs?id=${id}`);
   };
 
+  const contextLog = filteredLogs.find((log) => log.id === copyToSenderId);
+
   const handleRowContextClick = (e: React.MouseEvent, id: string) => {
     setCopyToSenderId(id);
     handleContextMenu(e);
+  };
+
+  const handleSendToIntruder = () => {
+    if (contextLog) {
+      navigate(`/intruder?url=${encodeURIComponent(contextLog.url)}&method=${contextLog.method}`);
+    }
+    handleContextMenuClose();
+  };
+
+  const handleCopyURL = () => {
+    if (contextLog) {
+      navigator.clipboard?.writeText(contextLog.url);
+    }
+    handleContextMenuClose();
   };
 
   const actionsCell = (id: string) => (
@@ -164,7 +180,9 @@ export function RequestLogs(): JSX.Element {
           <Box sx={{ width: "100%", height: "100%", pb: 2 }}>
             <Box sx={{ width: "100%", height: "100%", overflow: "scroll" }}>
               <Menu>
-                <MenuItem onClick={handleCopyToSenderClick}>Copy request to Sender</MenuItem>
+                <MenuItem onClick={handleCopyToSenderClick}>Send to Sender</MenuItem>
+                <MenuItem onClick={handleSendToIntruder}>Send to Intruder</MenuItem>
+                <MenuItem onClick={handleCopyURL}>Copy URL</MenuItem>
               </Menu>
               <Snackbar
                 open={copiedReqNotifOpen}

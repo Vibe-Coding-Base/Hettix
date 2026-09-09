@@ -16,6 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
   HttpMethod,
@@ -30,8 +31,8 @@ export default function Intruder(): JSX.Element {
   const [selected, setSelected] = useState<string | null>(null);
 
   return (
-    <Box sx={{ display: "flex", gap: 2, height: "calc(100vh - 120px)" }}>
-      <Box sx={{ width: 420, flexShrink: 0, overflow: "auto" }}>
+    <Box sx={{ display: "flex", gap: 3, height: "calc(100vh - 110px)", p: 1 }}>
+      <Box sx={{ width: 460, flexShrink: 0, overflow: "auto", pr: 1 }}>
         <AttackForm onStarted={setSelected} />
         <AttackList selected={selected} onSelect={setSelected} />
       </Box>
@@ -39,20 +40,28 @@ export default function Intruder(): JSX.Element {
         {selected ? (
           <Results attackId={selected} />
         ) : (
-          <Typography color="text.secondary" sx={{ p: 2 }}>
-            Start an attack or select one to view its results.
-          </Typography>
+          <Paper variant="outlined" sx={{ p: 4, textAlign: "center", color: "text.secondary" }}>
+            <Typography>Configure an attack on the left, or select a past attack to view its results.</Typography>
+          </Paper>
         )}
       </Box>
     </Box>
   );
 }
 
+function methodFromParam(value: string | null): HttpMethod {
+  const upper = (value ?? "").toUpperCase();
+  return (Object.values(HttpMethod) as string[]).includes(upper) ? (upper as HttpMethod) : HttpMethod.Get;
+}
+
 function AttackForm({ onStarted }: { onStarted: (id: string) => void }): JSX.Element {
+  const [searchParams] = useSearchParams();
   const [name, setName] = useState("");
-  const [method, setMethod] = useState<HttpMethod>(HttpMethod.Get);
-  const [url, setUrl] = useState("");
-  const [body, setBody] = useState("");
+  // Prefill from "Send to Intruder" (query params); the operator then marks the
+  // insertion point with § and adds payloads.
+  const [method, setMethod] = useState<HttpMethod>(methodFromParam(searchParams.get("method")));
+  const [url, setUrl] = useState(searchParams.get("url") ?? "");
+  const [body, setBody] = useState(searchParams.get("body") ?? "");
   const [payloadText, setPayloadText] = useState("");
 
   const [start, { loading, error }] = useStartIntruderAttackMutation({
