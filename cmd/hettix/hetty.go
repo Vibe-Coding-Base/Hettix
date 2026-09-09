@@ -3,48 +3,26 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"embed"
 	"errors"
 	"flag"
 	"fmt"
-	"io/fs"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
 	"strings"
-	"time"
 
 	"github.com/chromedp/chromedp"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
 
-	"github.com/Vibe-Coding-Base/Hettix/pkg/api"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/adminui"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/app"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/chrome"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/db/sqlite"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/finding"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/llm"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/sender"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/workflow"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/wsintercept"
-	"github.com/Vibe-Coding-Base/Hettix/pkg/wslog"
 )
 
 var version = "0.1.0"
-
-// The `all:` prefix embeds every file, including any whose name starts with
-// "." or "_" that a plain embed would skip.
-//
-//go:embed all:admin
-var adminContent embed.FS
 
 var hettixUsage = `
 Usage:
@@ -135,154 +113,28 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 		url = fmt.Sprintf("http://localhost:%v", listenPort)
 	}
 
-	// Expand `~` in filepaths.
-	caCertFile, err := expandHome(cmd.cert)
-	if err != nil {
-		cmd.config.logger.Fatal("Failed to parse CA certificate filepath.", zap.Error(err))
-	}
-
-	caKeyFile, err := expandHome(cmd.key)
-	if err != nil {
-		cmd.config.logger.Fatal("Failed to parse CA private key filepath.", zap.Error(err))
-	}
-
-	dbPath, err := expandHome(cmd.db)
-	if err != nil {
-		cmd.config.logger.Fatal("Failed to parse database path.", zap.Error(err))
-	}
-
-	// Load existing CA certificate and key from disk, or generate and write
-	// to disk if no files exist yet.
-	caCert, caKey, err := proxy.LoadOrCreateCA(caKeyFile, caCertFile)
-	if err != nil {
-		cmd.config.logger.Fatal("Failed to load or create CA key pair.", zap.Error(err))
-	}
-
-	db, err := sqlite.OpenDatabase(dbPath)
-	if err != nil {
-		cmd.config.logger.Fatal("Failed to open database.", zap.Error(err))
-	}
-	defer func() { _ = db.Close() }()
-
-	scope := &scope.Scope{}
-
-	reqLogService := reqlog.NewService(reqlog.Config{
-		Scope:      scope,
-		Repository: db,
-		Logger:     cmd.config.logger.Named("reqlog").Sugar(),
-	})
-
-	interceptService := intercept.NewService(intercept.Config{
-		Logger: cmd.config.logger.Named("intercept").Sugar(),
-	})
-
-	senderService := sender.NewService(sender.Config{
-		Repository:    db,
-		ReqLogService: reqLogService,
-	})
-
-	matchReplaceEngine := matchreplace.NewEngine()
-
-	wsLogService := wslog.NewService(wslog.Config{
-		Repository: db,
-		Logger:     cmd.config.logger.Named("websocket").Sugar(),
-	})
-
-	wsInterceptService := wsintercept.NewService(wsintercept.Config{
-		Logger: cmd.config.logger.Named("wsintercept").Sugar(),
-	})
-
-	intruderClient := &http.Client{Transport: &sender.HTTPTransport{}, Timeout: 30 * time.Second}
-	intruderService := intruder.NewService(intruder.Config{
-		Repository: db,
-		Runner:     intruder.NewRunner(intruderClient, 15),
-		Logger:     cmd.config.logger.Named("intruder").Sugar(),
-	})
-
-	findingService := finding.NewService(finding.Config{
-		Repository: db,
-		Logger:     cmd.config.logger.Named("finding").Sugar(),
-	})
-
-	llmManager := llm.NewManager(db)
-	if err := llmManager.Load(ctx); err != nil {
-		cmd.config.logger.Fatal("Failed to load LLM settings.", zap.Error(err))
-	}
-	if err := llmManager.Seed(ctx, llmSettingsFromEnv()); err != nil {
-		mainLogger.Warn("Failed to seed LLM settings from environment.", zap.Error(err))
-	}
-
-	workflowService := workflow.NewService(workflow.Config{
-		Repository: db,
-		Runner: workflow.NewRunner(workflow.RunnerConfig{
-			Search:   reqLogService,
-			Fuzz:     intruderService,
-			Findings: findingService,
-			Scope:    scope,
-		}),
-	})
-
-	projService, err := proj.NewService(proj.Config{
-		Repository:                db,
-		InterceptService:          interceptService,
-		ReqLogService:             reqLogService,
-		SenderService:             senderService,
-		WebSocketService:          wsLogService,
-		WebSocketInterceptService: wsInterceptService,
-		IntruderService:           intruderService,
-		FindingService:            findingService,
-		WorkflowService:           workflowService,
-		Scope:                     scope,
-		MatchReplaceEngine:        matchReplaceEngine,
+	application, err := app.Build(ctx, app.Config{
+		Logger:     cmd.config.logger,
+		Version:    version,
+		DBPath:     cmd.db,
+		CACertFile: cmd.cert,
+		CAKeyFile:  cmd.key,
+		ProxyURL:   url,
+		LLMEnv:     llmSettingsFromEnv(),
 	})
 	if err != nil {
-		cmd.config.logger.Fatal("Failed to create new projects service.", zap.Error(err))
+		cmd.config.logger.Fatal("Failed to build application.", zap.Error(err))
 	}
+	defer func() { _ = application.Close() }()
 
-	wsHandlers := wsLogService.Handlers()
-	wsHandlers.Intercept = wsInterceptService.Intercept
+	proxyHandler := application.Proxy
 
-	proxy, err := proxy.NewProxy(proxy.Config{
-		CACert:            caCert,
-		CAKey:             caKey,
-		Logger:            cmd.config.logger.Named("proxy").Sugar(),
-		WebSocketHandlers: wsHandlers,
-	})
+	adminHandler, err := adminui.Handler()
 	if err != nil {
-		cmd.config.logger.Fatal("Failed to create new proxy.", zap.Error(err))
+		cmd.config.logger.Fatal("Failed to construct admin handler.", zap.Error(err))
 	}
 
-	proxy.UseRequestModifier(matchReplaceEngine.RequestModifier)
-	proxy.UseResponseModifier(matchReplaceEngine.ResponseModifier)
-	proxy.UseRequestModifier(reqLogService.RequestModifier)
-	proxy.UseResponseModifier(reqLogService.ResponseModifier)
-	proxy.UseRequestModifier(interceptService.RequestModifier)
-	proxy.UseResponseModifier(interceptService.ResponseModifier)
-
-	fsSub, err := fs.Sub(adminContent, "admin")
-	if err != nil {
-		cmd.config.logger.Fatal("Failed to construct file system subtree from admin dir.", zap.Error(err))
-	}
-
-	adminHandler := spaFileServer(fsSub)
-
-	gqlEndpoint := "/api/graphql/"
-	adminMux := http.NewServeMux()
-	adminMux.Handle(gqlEndpoint, api.HTTPHandler(&api.Resolver{
-		ProjectService:            projService,
-		RequestLogService:         reqLogService,
-		InterceptService:          interceptService,
-		SenderService:             senderService,
-		WebSocketService:          wsLogService,
-		WebSocketInterceptService: wsInterceptService,
-		IntruderService:           intruderService,
-		FindingService:            findingService,
-		WorkflowService:           workflowService,
-		LLMManager:                llmManager,
-		ProxyURL:                  url,
-	}, gqlEndpoint))
-	adminMux.Handle("/api/export/har", exportHandler(reqLogService, "har"))
-	adminMux.Handle("/api/export/csv", exportHandler(reqLogService, "csv"))
+	adminMux := application.APIMux
 	adminMux.Handle("/", adminHandler)
 
 	hostname, _ := os.Hostname()
@@ -310,7 +162,7 @@ func (cmd *HettixCommand) Exec(ctx context.Context, _ []string) error {
 			return
 		}
 
-		proxy.ServeHTTP(w, req)
+		proxyHandler.ServeHTTP(w, req)
 	})
 
 	httpServer := &http.Server{

@@ -2,10 +2,17 @@
 /dist
 /hettix
 /hettix.exe
-/cmd/hettix/admin
+*.exe~
+/pkg/adminui/admin
 *.pem
+*.db
+*.sqlite
 *.test
 
 # Bundled portable browser and installer build artifacts (fetched/built, never committed).
 /browser/
 /installer/out/
+
+# Wails desktop build output and auto-generated JS runtime (the admin UI lives in /admin).
+/cmd/hettix-desktop/build/bin/
+/cmd/hettix-desktop/frontend/

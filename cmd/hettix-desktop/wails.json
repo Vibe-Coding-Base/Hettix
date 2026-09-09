@@ -1,0 +1,15 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Hettix",
+  "outputfilename": "Hettix",
+  "frontend:install": "",
+  "frontend:build": "",
+  "author": {
+    "name": "Vibe-Coding-Base"
+  },
+  "info": {
+    "productName": "Hettix",
+    "productVersion": "0.1.0",
+    "comments": "HTTP toolkit for security research"
+  }
+}

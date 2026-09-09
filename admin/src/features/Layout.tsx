@@ -40,6 +40,9 @@ import { Link as RouterLink } from "react-router-dom";
 
 import { useActiveProject } from "lib/ActiveProjectContext";
 import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
+import { AppMenuBar } from "lib/components/AppMenuBar";
+import { WindowControls } from "lib/components/WindowControls";
+import { dragStyle, isDesktop, noDragStyle } from "lib/desktop";
 
 export enum Page {
   Home,
@@ -251,24 +254,32 @@ export function Layout({ title, page, children }: Props): JSX.Element {
   return (
     <Box sx={{ display: "flex", height: "100%" }}>
       <AppBar position="fixed" open={open}>
-        <Toolbar>
+        <Toolbar
+          disableGutters={isDesktop}
+          style={isDesktop ? dragStyle : undefined}
+          sx={isDesktop ? { pl: 1.5 } : undefined}
+        >
           <IconButton
             color="inherit"
             aria-label="Open drawer"
             onClick={handleDrawerOpen}
             edge="start"
+            style={isDesktop ? noDragStyle : undefined}
             sx={{
-              mr: 5,
+              mr: isDesktop ? 1 : 5,
               ...(open && { display: "none" }),
             }}
           >
             <MenuIcon />
           </IconButton>
+          {isDesktop && <AppMenuBar />}
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-around",
+              alignItems: "center",
               width: "100%",
+              ...(isDesktop && { ml: 3 }),
             }}
           >
             <Typography variant="h5" noWrap sx={{ width: "100%" }}>
@@ -277,6 +288,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
             </Typography>
             <Box sx={{ flexShrink: 0, pt: 0.75 }}>v{import.meta.env.VITE_VERSION || "0.0"}</Box>
           </Box>
+          {isDesktop && <WindowControls />}
         </Toolbar>
       </AppBar>
       <Drawer variant="permanent" open={open}>
