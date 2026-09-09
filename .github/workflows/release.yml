@@ -180,7 +180,7 @@ jobs:
           VERSION: ${{ steps.v.outputs.version }}
         run: |
           cd cmd/hettix-desktop
-          "$(go env GOPATH)/bin/wails" build -s -skipbindings -ldflags "-X main.version=${VERSION}" -o Hettix
+          "$(go env GOPATH)/bin/wails" build -s -skipbindings -tags webkit2_41 -ldflags "-X main.version=${VERSION}" -o Hettix
       - name: Package binary
         env:
           VERSION: ${{ steps.v.outputs.version }}

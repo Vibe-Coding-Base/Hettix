@@ -10,10 +10,12 @@ build: build-admin
 # application manifest and hangs at startup), so this uses the wails CLI with
 # the frontend build handled separately by build-admin. The output name is set
 # by wails.json (Hettix.exe on Windows, Hettix on Linux, Hettix.app on macOS).
+# On Linux, webkit2gtk-4.1 (modern distros) needs the webkit2_41 build tag.
+WAILS_TAGS := $(if $(filter Linux,$(shell uname -s)),-tags webkit2_41,)
 .PHONY: build-desktop
 build-desktop: build-admin
 	cd cmd/hettix-desktop && \
-	wails build -s -skipbindings
+	wails build -s -skipbindings $(WAILS_TAGS)
 
 .PHONY: build-admin
 build-admin:
