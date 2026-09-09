@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-  Builds the full Hettix Windows installer: admin UI, binary, bundled browser
-  and the Inno Setup package.
+  Builds the full Hettix Windows installer: admin UI, native desktop app,
+  bundled browser and the Inno Setup package.
 
 .DESCRIPTION
   Runs end to end:
-    1. Builds the admin SPA and embeds it into the binary.
-    2. Compiles hettix.exe (CGO-free).
+    1. Builds the admin SPA and embeds it into the shared adminui package.
+    2. Compiles the native desktop app (Hettix.exe) with the Wails CLI.
     3. Fetches a portable Chromium into browser/ (unless -SkipBrowser).
     4. Compiles installer\hettix.iss with Inno Setup (ISCC.exe).
   The resulting installer is written to installer\out\.
@@ -28,17 +28,23 @@ Set-Location $repoRoot
 
 Write-Host "==> Building admin UI"
 Push-Location admin
-npm ci
-npm run build
+yarn install --frozen-lockfile
+yarn run build
 Pop-Location
 
 Write-Host "==> Embedding admin UI"
-Remove-Item -Recurse -Force cmd\hettix\admin -ErrorAction SilentlyContinue
-Copy-Item -Recurse admin\dist cmd\hettix\admin
+Remove-Item -Recurse -Force pkg\adminui\admin -ErrorAction SilentlyContinue
+Copy-Item -Recurse admin\dist pkg\adminui\admin
 
-Write-Host "==> Building hettix.exe"
+Write-Host "==> Building Hettix.exe (desktop app)"
 $env:CGO_ENABLED = "0"
-go build -o hettix.exe ./cmd/hettix
+$wails = Join-Path (go env GOPATH) "bin\wails.exe"
+if (-not (Test-Path $wails)) {
+  throw "Wails CLI not found at $wails. Install it: go install github.com/wailsapp/wails/v2/cmd/wails@latest"
+}
+Push-Location cmd\hettix-desktop
+& $wails build -s -skipbindings -ldflags "-X main.version=$Version" -o Hettix.exe
+Pop-Location
 
 if (-not $SkipBrowser) {
   Write-Host "==> Fetching portable Chromium"
@@ -46,13 +52,19 @@ if (-not $SkipBrowser) {
 }
 
 Write-Host "==> Compiling installer"
-$iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+$iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
 if (-not $iscc) {
-  foreach ($p in @(
+  $candidates = @(
     "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-    "${env:ProgramFiles}\Inno Setup 6\ISCC.exe"
-  )) {
-    if (Test-Path $p) { $iscc = $p; break }
+    "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
+    "${env:LOCALAPPDATA}\Programs\Inno Setup 6\ISCC.exe"
+  )
+  $regKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1"
+  $regLoc = (Get-ItemProperty -Path $regKey -ErrorAction SilentlyContinue).InstallLocation
+  if ($regLoc) { $candidates += (Join-Path $regLoc "ISCC.exe") }
+
+  foreach ($p in $candidates) {
+    if ($p -and (Test-Path $p)) { $iscc = $p; break }
   }
 }
 if (-not $iscc) {

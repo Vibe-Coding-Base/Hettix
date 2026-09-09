@@ -99,7 +99,7 @@ export default function Assistant(): JSX.Element {
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
             <CircularProgress size={16} />
             <Typography variant="body2" color="text.secondary">
-              Hetty is working…
+              Hettix is working…
             </Typography>
           </Box>
         )}
@@ -122,7 +122,7 @@ export default function Assistant(): JSX.Element {
         <TextField
           fullWidth
           size="small"
-          placeholder="Ask Hetty about the traffic…"
+          placeholder="Ask Hettix about the traffic…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
@@ -153,7 +153,7 @@ function TurnView({ turn }: { turn: Turn }): JSX.Element {
       }}
     >
       <Typography variant="caption" color="text.secondary">
-        {isUser ? "You" : "Hetty"}
+        {isUser ? "You" : "Hettix"}
       </Typography>
 
       {turn.actions?.map((action, i) => (

@@ -28,7 +28,7 @@ const maxBodyChars = 2000
 
 // SystemPrompt primes the assistant with its role, the query language and how to
 // use the tools.
-const SystemPrompt = `You are Hetty, an assistant embedded in the Hettix HTTP security testing proxy.
+const SystemPrompt = `You are Hettix, an assistant embedded in the Hettix HTTP security testing proxy.
 You help a security researcher investigate captured HTTP traffic.
 
 Use the provided tools to answer questions about the traffic; do not invent

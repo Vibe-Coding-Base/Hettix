@@ -208,13 +208,13 @@ func (loopingProvider) Chat(context.Context, llm.ChatRequest) (llm.ChatResponse,
 
 func TestSystemPromptPrepended(t *testing.T) {
 	p := &scriptedProvider{responses: []llm.ChatResponse{finalResp("hi")}}
-	a := agent.New(agent.Config{Provider: p, Registry: agent.NewRegistry(), SystemPrompt: "You are Hetty."})
+	a := agent.New(agent.Config{Provider: p, Registry: agent.NewRegistry(), SystemPrompt: "You are Hettix."})
 
 	if _, err := a.Run(context.Background(), []llm.Message{{Role: llm.RoleUser, Content: "hello"}}); err != nil {
 		t.Fatal(err)
 	}
 
-	if len(p.lastMsgs) == 0 || p.lastMsgs[0].Role != llm.RoleSystem || p.lastMsgs[0].Content != "You are Hetty." {
+	if len(p.lastMsgs) == 0 || p.lastMsgs[0].Role != llm.RoleSystem || p.lastMsgs[0].Content != "You are Hettix." {
 		t.Fatalf("system prompt not prepended: %+v", p.lastMsgs)
 	}
 }

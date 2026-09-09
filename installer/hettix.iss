@@ -6,7 +6,7 @@
 ; Build with: ISCC.exe installer\hettix.iss  (see scripts/build-installer.ps1)
 
 #define MyAppName "Hettix"
-#define MyAppExeName "hettix.exe"
+#define MyAppExeName "Hettix.exe"
 #ifndef MyAppVersion
   #define MyAppVersion "0.0.0"
 #endif
@@ -30,7 +30,7 @@ WizardStyle=modern
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"
 
 [Files]
-Source: "..\hettix.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\cmd\hettix-desktop\build\bin\Hettix.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; The bundled portable browser. Fetch it first with scripts/fetch-browser.ps1.
 Source: "..\browser\*"; DestDir: "{app}\browser"; Flags: ignoreversion recursesubdirs createallsubdirs
 

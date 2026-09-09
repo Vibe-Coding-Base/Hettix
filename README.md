@@ -23,28 +23,27 @@ goal to an assistant in plain language and have it plan, query traffic, replay
 and mutate requests, and record findings — under scope enforcement and an
 approval policy you control.
 
-See the [modernization roadmap](https://claude.ai/code/artifact/743a7fb6-3033-4e01-b511-c39fbf75bd8d)
-for the architecture assessment, the HTTPQL query-language specification, and the
-agentic-AI design.
-
 ## Features
 
-Available today:
-
-- Machine-in-the-middle (MITM) HTTP proxy with request/response logging and search
-- HTTP client for manually crafting, editing, and replaying requests
-- Request/response interception for manual review (edit, forward, cancel)
-- Scope rules to keep traffic focused
-- Web-based admin interface
-- Project-based storage on disk
-
-On the roadmap:
-
-- **HTTPQL** — a typed query language for filtering traffic, compiled to SQL
-- **AI Assistant** — a multi-provider LLM agent (DeepSeek, OpenAI, Anthropic,
-  Gemini, Ollama/local) woven into every flow
+- **MITM proxy** — request/response logging with **HTTPQL**, a typed query
+  language for filtering traffic that compiles to SQL
+- **Interception** — pause, edit, forward or cancel requests and responses for
+  manual review
+- **Sender** — craft, edit and replay HTTP requests by hand
+- **Intruder** — fuzz requests with wordlists loaded from file
+- **Match & Replace** — rewrite traffic on the fly with rules
 - **WebSocket** capture and interception
-- **Match & Replace**, **Automate** (fuzzing), **Sitemap**, and **Findings**
+- **Sitemap**, **Scope** rules, and **Findings** tracking
+- **Workflows** — chain search, fuzzing and findings into repeatable jobs
+- **Decoder** — base64 / URL / hex / HTML, plus an in-editor right-click menu to
+  decode selected text in place or send it to the Decoder
+- **AI Assistant** — an LLM agent woven into every flow, backed by any
+  OpenAI-compatible provider (DeepSeek, OpenAI, Ollama/local, and similar)
+- **Native desktop app** (Windows) and a **headless server** (all platforms),
+  sharing the same backend and admin UI
+- **Bundled browser** — launch a pre-wired, pentest-optimised portable Chromium
+  straight from the app, Burp-style
+- Project-based storage backed by SQLite
 
 ## Getting started
 
@@ -58,27 +57,52 @@ Hettix has no binary releases yet; build it from source.
 ### Build
 
 The admin frontend is compiled to a static bundle and embedded into the Go
-binary, so build the frontend first:
+binaries, so `make` builds the frontend first:
 
 ```sh
-make build
+make build          # headless server -> ./hettix
+make build-desktop  # native desktop app -> cmd/hettix-desktop/build/bin/Hettix.exe (Windows)
 ```
 
-This produces a `hettix` binary in the repository root. To build and install it
-into your `$PATH` in one step (after `make build-admin`):
+`make build` produces a `hettix` binary in the repository root. To install the
+server into your `$PATH`:
 
 ```sh
-go install ./cmd/hettix
+make build-admin && go install ./cmd/hettix
 ```
+
+The desktop app is built with the [Wails](https://wails.io) CLI
+(`go install github.com/wailsapp/wails/v2/cmd/wails@latest`); a plain `go build`
+of the desktop package will not produce a working window.
 
 ### Run
+
+Headless server (all platforms):
 
 ```sh
 ./hettix
 ```
 
-Then open the printed URL (default `http://localhost:8080`) and configure your
-browser to use Hettix as its HTTP proxy.
+Open the printed URL (default `http://localhost:8080`) and point your browser's
+HTTP proxy at it. On the desktop app, the admin UI runs in a native window and
+the proxy listens on `:8080` (configurable with `--proxy-addr`).
+
+### Configure the AI assistant
+
+The assistant works with any OpenAI-compatible endpoint. Configure it from the
+**Settings** page, or seed it on first run with environment variables:
+
+```sh
+export HETTIX_LLM_BASE_URL=https://api.deepseek.com/v1
+export HETTIX_LLM_API_KEY=your-api-key   # omit for a local Ollama
+export HETTIX_LLM_MODEL=deepseek-chat
+```
+
+### Windows installer
+
+`scripts/build-installer.ps1` packages the desktop app together with the bundled
+portable browser into an Inno Setup installer (written to `installer/out/`). It
+needs the [Wails](https://wails.io) CLI and [Inno Setup](https://jrsoftware.org/isinfo.php).
 
 ### Usage
 

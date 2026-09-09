@@ -16,7 +16,6 @@ import {
   TextFieldProps,
   Typography,
 } from "@mui/material";
-import MaterialLink from "@mui/material/Link";
 import { SwitchBaseProps } from "@mui/material/internal/SwitchBase";
 import { useEffect, useState } from "react";
 
@@ -230,13 +229,7 @@ export default function Settings(): JSX.Element {
                     onChange={(e) => setInterceptReqFilter(e.target.value)}
                   />
                   <FormHelperText>
-                    Filter expression to match incoming requests on. When set, only matching requests are intercepted.{" "}
-                    <MaterialLink
-                      href="https://hetty.xyz/docs/guides/intercept?utm_source=hettyapp#request-filter"
-                      target="_blank"
-                    >
-                      Read docs.
-                    </MaterialLink>
+                    Filter expression to match incoming requests on. When set, only matching requests are intercepted.
                   </FormHelperText>
                 </FormControl>
                 <Button
@@ -285,13 +278,7 @@ export default function Settings(): JSX.Element {
                     onChange={(e) => setInterceptResFilter(e.target.value)}
                   />
                   <FormHelperText>
-                    Filter expression to match received responses on. When set, only matching responses are intercepted.{" "}
-                    <MaterialLink
-                      href="https://hetty.xyz/docs/guides/intercept/?utm_source=hettyapp#response-filter"
-                      target="_blank"
-                    >
-                      Read docs.
-                    </MaterialLink>
+                    Filter expression to match received responses on. When set, only matching responses are intercepted.
                   </FormHelperText>
                 </FormControl>
                 <Button

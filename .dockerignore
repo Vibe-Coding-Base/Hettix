@@ -1,8 +1,10 @@
-/admin/.env
 /admin/.next
 /admin/dist
 /admin/node_modules
+/browser
+/cmd/hettix-desktop/build
 /dist
-/docs
 /hettix
-/cmd/hettix/admin
+/hettix.exe
+/installer/out
+/pkg/adminui/admin
