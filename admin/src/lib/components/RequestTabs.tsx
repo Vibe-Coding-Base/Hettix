@@ -1,10 +1,11 @@
 import { TabContext, TabList, TabPanel } from "@mui/lab";
-import { Box, Tab } from "@mui/material";
+import { Box, Button, Tab, ToggleButton } from "@mui/material";
 import { useState } from "react";
 
 import { KeyValuePairTable, KeyValuePair, KeyValuePairTableProps } from "./KeyValuePair";
 
 import Editor from "lib/components/Editor";
+import { canPrettify, prettify } from "lib/prettify";
 
 enum TabValue {
   QueryParams = "queryParams",
@@ -35,6 +36,8 @@ function RequestTabs(props: RequestTabsProps): JSX.Element {
     onBodyChange,
   } = props;
   const [tabValue, setTabValue] = useState(TabValue.QueryParams);
+  const [pretty, setPretty] = useState(false);
+  const readOnly = onBodyChange === undefined;
 
   const tabSx = {
     textTransform: "none",
@@ -42,12 +45,13 @@ function RequestTabs(props: RequestTabsProps): JSX.Element {
 
   const queryParamsLength = onQueryParamChange ? queryParams.length - 1 : queryParams.length;
   const headersLength = onHeaderChange ? headers.length - 1 : headers.length;
+  const showPretty = tabValue === TabValue.Body && canPrettify(body);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <TabContext value={tabValue}>
-        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 1 }}>
-          <TabList onChange={(_, value) => setTabValue(value)}>
+        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 1, display: "flex", alignItems: "center" }}>
+          <TabList onChange={(_, value) => setTabValue(value)} sx={{ flex: 1 }}>
             <Tab
               value={TabValue.QueryParams}
               label={"Query Params" + (queryParamsLength ? ` (${queryParamsLength})` : "")}
@@ -60,6 +64,22 @@ function RequestTabs(props: RequestTabsProps): JSX.Element {
               sx={tabSx}
             />
           </TabList>
+          {showPretty &&
+            (readOnly ? (
+              <ToggleButton
+                value="pretty"
+                size="small"
+                selected={pretty}
+                onChange={() => setPretty((p) => !p)}
+                sx={{ mr: 1, textTransform: "none", py: 0.2 }}
+              >
+                Pretty
+              </ToggleButton>
+            ) : (
+              <Button size="small" sx={{ mr: 1 }} onClick={() => onBodyChange && body && onBodyChange(prettify(body))}>
+                Format
+              </Button>
+            ))}
         </Box>
         <Box flex="1 auto" overflow="scroll" height="100%">
           <TabPanel value={TabValue.QueryParams} sx={{ p: 0, height: "100%" }}>
@@ -74,11 +94,11 @@ function RequestTabs(props: RequestTabsProps): JSX.Element {
           </TabPanel>
           <TabPanel value={TabValue.Body} sx={{ p: 0, height: "100%" }}>
             <Editor
-              content={body || ""}
+              content={readOnly && pretty && body ? prettify(body) : body || ""}
               onChange={(value) => {
                 onBodyChange && onBodyChange(value || "");
               }}
-              monacoOptions={{ readOnly: onBodyChange === undefined }}
+              monacoOptions={{ readOnly }}
               contentType={headers.find(({ key }) => key.toLowerCase() === "content-type")?.value}
             />
           </TabPanel>

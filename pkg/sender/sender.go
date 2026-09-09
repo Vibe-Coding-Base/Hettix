@@ -216,6 +216,12 @@ func parseHTTPRequest(ctx context.Context, req Request) (*http.Request, error) {
 		httpReq.Header = req.Header
 	}
 
+	// Only advertise gzip, the one encoding the response reader can decompress,
+	// so responses don't come back as unreadable brotli/deflate bytes.
+	if httpReq.Header.Get("Accept-Encoding") != "" {
+		httpReq.Header.Set("Accept-Encoding", "gzip")
+	}
+
 	return httpReq, nil
 }
 

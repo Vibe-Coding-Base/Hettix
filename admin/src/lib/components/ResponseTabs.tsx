@@ -5,6 +5,7 @@ import { useState } from "react";
 import { KeyValuePairTable, KeyValuePair, KeyValuePairTableProps } from "./KeyValuePair";
 
 import Editor from "lib/components/Editor";
+import { canPrettify, prettify } from "lib/prettify";
 
 interface ResponseTabsProps {
   headers: KeyValuePair[];
@@ -27,41 +28,6 @@ function isHTML(contentType?: string, body?: string | null): boolean {
   }
   const trimmed = body?.trimStart() ?? "";
   return /^<!doctype html|^<html[\s>]/i.test(trimmed);
-}
-
-// prettify pretty-prints JSON and XML; other content is returned unchanged.
-function prettify(body: string): string {
-  const trimmed = body.trimStart();
-
-  if (trimmed[0] === "{" || trimmed[0] === "[") {
-    try {
-      return JSON.stringify(JSON.parse(body), null, 2);
-    } catch {
-      return body;
-    }
-  }
-
-  if (trimmed[0] === "<") {
-    let depth = 0;
-    return trimmed
-      .replace(/>\s*</g, "><")
-      .replace(/</g, "\n<")
-      .split("\n")
-      .filter((line) => line.trim() !== "")
-      .map((line) => {
-        if (/^<\/.+/.test(line)) {
-          depth = Math.max(depth - 1, 0);
-        }
-        const indented = "  ".repeat(depth) + line;
-        if (/^<[^/!?][^>]*[^/]>$/.test(line)) {
-          depth += 1;
-        }
-        return indented;
-      })
-      .join("\n");
-  }
-
-  return body;
 }
 
 const reqNotSent = (
@@ -98,7 +64,7 @@ function ResponseTabs(props: ResponseTabsProps): JSX.Element {
             {canRender && <Tab value={TabValue.Render} label="Render" sx={tabSx} />}
             <Tab value={TabValue.Headers} label={"Headers" + (headersLength ? ` (${headersLength})` : "")} sx={tabSx} />
           </TabList>
-          {readOnly && tabValue === TabValue.Body && body && (
+          {readOnly && tabValue === TabValue.Body && canPrettify(body) && (
             <ToggleButton
               value="pretty"
               size="small"

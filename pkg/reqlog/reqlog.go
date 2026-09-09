@@ -2,12 +2,14 @@ package reqlog
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/oklog/ulid"
@@ -293,11 +295,34 @@ func ParseHTTPResponse(res *http.Response) (ResponseLog, error) {
 		return ResponseLog{}, fmt.Errorf("reqlog: could not read body: %w", err)
 	}
 
+	header := res.Header
+
+	// Decompress gzip bodies so they are stored and shown as text. The proxy
+	// already gunzips before this runs (Content-Encoding is removed), so this
+	// only affects direct callers like the sender.
+	if strings.EqualFold(header.Get("Content-Encoding"), "gzip") {
+		if decoded, derr := gunzip(body); derr == nil {
+			body = decoded
+			header = header.Clone()
+			header.Del("Content-Encoding")
+		}
+	}
+
 	return ResponseLog{
 		Proto:      res.Proto,
 		StatusCode: res.StatusCode,
 		Status:     res.Status,
-		Header:     res.Header,
+		Header:     header,
 		Body:       body,
 	}, nil
+}
+
+func gunzip(body []byte) ([]byte, error) {
+	reader, err := gzip.NewReader(bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+
+	return io.ReadAll(reader)
 }

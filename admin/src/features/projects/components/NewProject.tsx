@@ -33,6 +33,8 @@ function NewProject(): JSX.Element {
         <TextField
           sx={{
             mr: 2,
+            mb: { xs: 2, sm: 0 },
+            minWidth: 260,
           }}
           color="primary"
           size="small"
