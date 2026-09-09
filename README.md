@@ -47,7 +47,9 @@ approval policy you control.
 
 ## Getting started
 
-Hettix has no binary releases yet; build it from source.
+Prebuilt binaries are attached to each [release](https://github.com/Vibe-Coding-Base/Hettix/releases):
+the headless `hettix` server for Linux/macOS/Windows, the native desktop app
+(Windows installer, macOS `.app`, Linux tarball). Or build from source below.
 
 ### Prerequisites
 
@@ -60,8 +62,8 @@ The admin frontend is compiled to a static bundle and embedded into the Go
 binaries, so `make` builds the frontend first:
 
 ```sh
-make build          # headless server -> ./hettix
-make build-desktop  # native desktop app -> cmd/hettix-desktop/build/bin/Hettix.exe (Windows)
+make build          # headless server -> ./hettix (all platforms)
+make build-desktop  # native desktop app -> cmd/hettix-desktop/build/bin/
 ```
 
 `make build` produces a `hettix` binary in the repository root. To install the
@@ -71,9 +73,12 @@ server into your `$PATH`:
 make build-admin && go install ./cmd/hettix
 ```
 
-The desktop app is built with the [Wails](https://wails.io) CLI
-(`go install github.com/wailsapp/wails/v2/cmd/wails@latest`); a plain `go build`
-of the desktop package will not produce a working window.
+The desktop app runs on Windows, macOS and Linux and is built with the
+[Wails](https://wails.io) CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`);
+a plain `go build` of the desktop package will not produce a working window. On
+Windows it is frameless with a custom title bar; macOS and Linux use the native
+window frame. Linux needs the WebKit dev packages (`libgtk-3-dev`,
+`libwebkit2gtk-4.1-dev`).
 
 ### Run
 

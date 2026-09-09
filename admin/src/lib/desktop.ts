@@ -9,6 +9,7 @@ interface WailsWindowRuntime {
   WindowToggleMaximise: () => void;
   WindowIsMaximised: () => Promise<boolean>;
   WindowReload: () => void;
+  BrowserOpenURL: (url: string) => void;
   Quit: () => void;
 }
 
@@ -20,6 +21,21 @@ function runtime(): WailsWindowRuntime | undefined {
 }
 
 export const isDesktop = runtime() !== undefined;
+
+// The window is frameless (custom title bar and controls) only on Windows; the
+// webview's user agent reliably identifies the host OS.
+export const isFramelessDesktop = isDesktop && typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
+
+// openExternal opens a URL in the user's real browser rather than navigating the
+// app's webview to it. In browser mode it falls back to a new tab.
+export function openExternal(url: string): void {
+  const rt = runtime();
+  if (rt) {
+    rt.BrowserOpenURL(url);
+  } else {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
 
 export const desktopWindow = {
   minimise(): void {

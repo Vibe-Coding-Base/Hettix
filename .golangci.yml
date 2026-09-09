@@ -18,6 +18,11 @@ linters:
         - (*database/sql.DB).Close
         - fmt.Fprint
   exclusions:
+    paths:
+      # The Wails desktop shell needs platform GUI toolkits (WebView2 / WebKit)
+      # to compile, which the Linux lint runner lacks; it is built and vetted in
+      # the per-platform desktop jobs instead.
+      - cmd/hettix-desktop
     rules:
       - path: _test\.go
         linters:

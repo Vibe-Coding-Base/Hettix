@@ -41,8 +41,9 @@ import { Link as RouterLink } from "react-router-dom";
 import { useActiveProject } from "lib/ActiveProjectContext";
 import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
 import { AppMenuBar } from "lib/components/AppMenuBar";
+import { UpdateBanner } from "lib/components/UpdateBanner";
 import { WindowControls } from "lib/components/WindowControls";
-import { dragStyle, isDesktop, noDragStyle } from "lib/desktop";
+import { dragStyle, isDesktop, isFramelessDesktop, noDragStyle } from "lib/desktop";
 
 export enum Page {
   Home,
@@ -255,16 +256,16 @@ export function Layout({ title, page, children }: Props): JSX.Element {
     <Box sx={{ display: "flex", height: "100%" }}>
       <AppBar position="fixed" open={open}>
         <Toolbar
-          disableGutters={isDesktop}
-          style={isDesktop ? dragStyle : undefined}
-          sx={isDesktop ? { pl: 1.5 } : undefined}
+          disableGutters={isFramelessDesktop}
+          style={isFramelessDesktop ? dragStyle : undefined}
+          sx={isFramelessDesktop ? { pl: 1.5 } : undefined}
         >
           <IconButton
             color="inherit"
             aria-label="Open drawer"
             onClick={handleDrawerOpen}
             edge="start"
-            style={isDesktop ? noDragStyle : undefined}
+            style={isFramelessDesktop ? noDragStyle : undefined}
             sx={{
               mr: isDesktop ? 1 : 5,
               ...(open && { display: "none" }),
@@ -288,7 +289,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
             </Typography>
             <Box sx={{ flexShrink: 0, pt: 0.75 }}>v{import.meta.env.VITE_VERSION || "0.0"}</Box>
           </Box>
-          {isDesktop && <WindowControls />}
+          {isFramelessDesktop && <WindowControls />}
         </Toolbar>
       </AppBar>
       <Drawer variant="permanent" open={open}>
@@ -325,6 +326,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
       <Box component="main" sx={{ flexGrow: 1, mx: 3, mt: 11 }}>
         {children}
       </Box>
+      <UpdateBanner />
     </Box>
   );
 }

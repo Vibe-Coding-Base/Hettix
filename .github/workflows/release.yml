@@ -62,7 +62,7 @@ jobs:
           path: dist/*
 
   installer:
-    name: Windows installer
+    name: Desktop (Windows installer)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -100,9 +100,101 @@ jobs:
           name: installer
           path: out/*
 
+  desktop-macos:
+    name: Desktop (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: yarn
+          cache-dependency-path: admin/yarn.lock
+      - name: Resolve version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+      - name: Build and embed admin UI
+        run: |
+          cd admin && yarn install --frozen-lockfile && yarn run build && cd ..
+          rm -rf pkg/adminui/admin && cp -R admin/dist pkg/adminui/admin
+      - name: Build app bundle
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          cd cmd/hettix-desktop
+          "$(go env GOPATH)/bin/wails" build -s -skipbindings -platform darwin/universal -ldflags "-X main.version=${VERSION}"
+      - name: Package .app
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          mkdir -p out
+          ditto -c -k --keepParent cmd/hettix-desktop/build/bin/Hettix.app "out/Hettix_${VERSION}_macos.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos
+          path: out/*
+
+  desktop-linux:
+    name: Desktop (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: yarn
+          cache-dependency-path: admin/yarn.lock
+      - name: Install WebView dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+      - name: Resolve version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+      - name: Build and embed admin UI
+        run: |
+          cd admin && yarn install --frozen-lockfile && yarn run build && cd ..
+          rm -rf pkg/adminui/admin && cp -R admin/dist pkg/adminui/admin
+      - name: Build app binary
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          cd cmd/hettix-desktop
+          "$(go env GOPATH)/bin/wails" build -s -skipbindings -ldflags "-X main.version=${VERSION}" -o Hettix
+      - name: Package binary
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          mkdir -p out
+          tar -C cmd/hettix-desktop/build/bin -czf "out/Hettix_${VERSION}_linux_amd64.tar.gz" Hettix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux
+          path: out/*
+
   release:
     name: Publish release
-    needs: [cli, installer]
+    needs: [cli, installer, desktop-macos, desktop-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:

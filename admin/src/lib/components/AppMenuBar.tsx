@@ -1,9 +1,10 @@
-import { Box, Button, Dialog, DialogContent, Divider, Menu, MenuItem, Typography } from "@mui/material";
+import { Box, Button, Dialog, DialogContent, Divider, Link, Menu, MenuItem, Typography } from "@mui/material";
 import { useState } from "react";
 import type { MouseEvent } from "react";
 
-import { desktopWindow, noDragStyle } from "lib/desktop";
+import { desktopWindow, noDragStyle, openExternal } from "lib/desktop";
 import { useLaunchBrowserMutation } from "lib/graphql/generated";
+import { checkForUpdate } from "lib/updateCheck";
 
 const VERSION = import.meta.env.VITE_VERSION || "0.0";
 
@@ -21,10 +22,23 @@ interface MenuGroup {
 // AppMenuBar renders the desktop window's File/View/Help menu strip. It only
 // appears in the desktop shell; window actions use the Wails runtime and the
 // browser launch reuses the same GraphQL mutation as the Home screen.
+type UpdateState =
+  | { status: "checking" }
+  | { status: "result"; current: string; latest: string; updateAvailable: boolean; url: string }
+  | { status: "error"; message: string };
+
 export function AppMenuBar(): JSX.Element {
   const [anchor, setAnchor] = useState<{ el: HTMLElement; group: number } | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [update, setUpdate] = useState<UpdateState | null>(null);
   const [launchBrowser] = useLaunchBrowserMutation();
+
+  const runUpdateCheck = () => {
+    setUpdate({ status: "checking" });
+    checkForUpdate()
+      .then((r) => setUpdate({ status: "result", ...r }))
+      .catch((e) => setUpdate({ status: "error", message: e instanceof Error ? e.message : String(e) }));
+  };
 
   const groups: MenuGroup[] = [
     {
@@ -46,7 +60,11 @@ export function AppMenuBar(): JSX.Element {
     },
     {
       label: "Help",
-      items: [{ label: "About Hettix", onClick: () => setAboutOpen(true) }],
+      items: [
+        { label: "Check for updates…", onClick: runUpdateCheck },
+        { divider: true },
+        { label: "About Hettix", onClick: () => setAboutOpen(true) },
+      ],
     },
   ];
 
@@ -96,7 +114,33 @@ export function AppMenuBar(): JSX.Element {
       </Menu>
 
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <UpdateDialog state={update} onClose={() => setUpdate(null)} />
     </Box>
+  );
+}
+
+function UpdateDialog({ state, onClose }: { state: UpdateState | null; onClose: () => void }): JSX.Element {
+  return (
+    <Dialog open={state !== null} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogContent sx={{ py: 3 }}>
+        {state?.status === "checking" && <Typography>Checking for updates…</Typography>}
+        {state?.status === "error" && (
+          <Typography color="error">Could not check for updates: {state.message}</Typography>
+        )}
+        {state?.status === "result" &&
+          (state.updateAvailable ? (
+            <Typography>
+              Hettix {state.latest} is available (you have {state.current}).{" "}
+              <Link component="button" type="button" onClick={() => openExternal(state.url)}>
+                Open the release page
+              </Link>
+              .
+            </Typography>
+          ) : (
+            <Typography>You are on the latest version ({state.current}).</Typography>
+          ))}
+      </DialogContent>
+    </Dialog>
   );
 }
 

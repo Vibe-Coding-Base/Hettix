@@ -1,12 +1,9 @@
-//go:build windows
-
 // Command hettix-desktop runs Hettix as a native desktop application. It reuses
-// the same backend and admin UI as the headless server, but presents them in a
-// frameless OS webview window with custom in-app chrome, and runs the MITM proxy
-// on its own TCP port.
+// the same backend and admin UI as the headless server, but presents them in an
+// OS webview window and runs the MITM proxy on its own TCP port.
 //
-// It targets Windows (WebView2); the headless `hettix` server covers every
-// platform.
+// On Windows the window is frameless and the admin UI paints its own title bar
+// and window controls; on macOS and Linux the native window frame is used.
 package main
 
 import (
@@ -18,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -98,10 +96,10 @@ func main() {
 		Height:    900,
 		MinWidth:  960,
 		MinHeight: 600,
-		// Frameless: the admin UI paints its own title bar, menu and window
-		// controls, so the app looks the same on every OS instead of wearing the
-		// dated native menu bar.
-		Frameless:        true,
+		// On Windows the admin UI paints its own title bar and window controls, so
+		// the window is frameless. macOS and Linux keep their native frame (and
+		// window controls) instead.
+		Frameless:        runtime.GOOS == "windows",
 		BackgroundColour: &options.RGBA{R: 33, G: 33, B: 33, A: 255},
 		AssetServer: &assetserver.Options{
 			Handler: apiMux,
