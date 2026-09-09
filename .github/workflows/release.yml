@@ -205,3 +205,6 @@ jobs:
         with:
           files: assets/**/*
           generate_release_notes: true
+          # Fresh releases have no assets to overwrite; skipping the update path
+          # avoids a transient "Not Found" on the asset-update API.
+          overwrite_files: false
