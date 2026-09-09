@@ -29,13 +29,14 @@ function NewProject(): JSX.Element {
       <Box mb={3}>
         <Typography variant="h6">New project</Typography>
       </Box>
-      <form onSubmit={handleCreateAndOpenProjectForm} autoComplete="off">
+      <Box
+        component="form"
+        onSubmit={handleCreateAndOpenProjectForm}
+        autoComplete="off"
+        sx={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}
+      >
         <TextField
-          sx={{
-            mr: 2,
-            mb: { xs: 2, sm: 0 },
-            minWidth: 260,
-          }}
+          fullWidth
           color="primary"
           size="small"
           label="Project name"
@@ -52,16 +53,12 @@ function NewProject(): JSX.Element {
           variant="contained"
           color="primary"
           size="large"
-          sx={{
-            pt: 0.9,
-            pb: 0.7,
-          }}
           disabled={createProjResult.loading || openProjResult.loading}
           startIcon={createProjResult.loading || openProjResult.loading ? <CircularProgress size={22} /> : <AddIcon />}
         >
           Create & open project
         </Button>
-      </form>
+      </Box>
     </div>
   );
 }

@@ -43,9 +43,10 @@ function languageForContentType(contentType?: string): string | undefined {
 }
 
 // sniffLanguage guesses the language from the body when the Content-Type is
-// missing or unhelpful, so responses still get highlighted.
+// missing or unhelpful, so responses still get highlighted. It also skips a
+// leading XSSI guard (Google's )]}' , for(;;); / while(1);) that some APIs add.
 function sniffLanguage(content: string): string | undefined {
-  const trimmed = content.trimStart();
+  const trimmed = content.replace(/^(\)\]\}'[,\s]*|for\s*\(;;\);|while\s*\(1\);|&&&START&&&)\s*/, "").trimStart();
   if (trimmed === "") {
     return undefined;
   }

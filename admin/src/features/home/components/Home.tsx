@@ -83,7 +83,7 @@ function NoProjectOnboarding({ onLaunch, launching }: { onLaunch: () => void; la
           <Typography variant="h6" sx={{ mb: 1 }}>
             Open a project
           </Typography>
-          <List dense>
+          <List dense sx={{ maxHeight: 260, overflow: "auto" }}>
             {projects.map((project) => (
               <ListItemButton
                 key={project.id}
