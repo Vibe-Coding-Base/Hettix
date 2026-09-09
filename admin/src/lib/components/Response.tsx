@@ -13,7 +13,11 @@ function Response({ response }: ResponseProps): JSX.Element {
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
       {response && (
         <Box sx={{ flexShrink: 0, px: 1, pb: 0.5, overflowX: "auto" }}>
-          <ResponseStatus proto={response.proto} statusCode={response.statusCode} statusReason={response.statusReason} />
+          <ResponseStatus
+            proto={response.proto}
+            statusCode={response.statusCode}
+            statusReason={response.statusReason}
+          />
         </Box>
       )}
       <Box sx={{ flex: 1, minHeight: 0 }}>

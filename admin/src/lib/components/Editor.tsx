@@ -1,6 +1,11 @@
-import MonacoEditor, { EditorProps } from "@monaco-editor/react";
+import MonacoEditor, { EditorProps, OnMount } from "@monaco-editor/react";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import { Box, IconButton, Popover, Typography } from "@mui/material";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { useAppearance } from "lib/AppearanceContext";
+import { CODECS } from "lib/codec";
 
 const defaultMonacoOptions: EditorProps["options"] = {
   readOnly: true,
@@ -67,6 +72,14 @@ function sniffLanguage(content: string): string | undefined {
   return undefined;
 }
 
+interface DecodePopover {
+  top: number;
+  left: number;
+  label: string;
+  value: string;
+  error: boolean;
+}
+
 interface Props {
   content: string;
   contentType?: string;
@@ -78,15 +91,123 @@ interface Props {
 function Editor({ content, contentType, language, monacoOptions, onChange }: Props): JSX.Element {
   const resolved = language ?? languageForContentType(contentType) ?? sniffLanguage(content);
   const { fontFamily, fontSize } = useAppearance();
+  const navigate = useNavigate();
+  const [decode, setDecode] = useState<DecodePopover | null>(null);
+
+  // handleMount adds Burp-style "decode selection" and "Send to Decoder" items
+  // to the editor's right-click menu, so encoded strings can be decoded in place
+  // without leaving the request/response view.
+  const handleMount: OnMount = (editor) => {
+    const anchorAtSelection = (): { top: number; left: number } | undefined => {
+      const selection = editor.getSelection();
+      const dom = editor.getDomNode();
+      if (!selection || !dom) {
+        return undefined;
+      }
+      const visible = editor.getScrolledVisiblePosition(selection.getEndPosition());
+      if (!visible) {
+        return undefined;
+      }
+      const rect = dom.getBoundingClientRect();
+      return { top: rect.top + visible.top + visible.height, left: rect.left + visible.left };
+    };
+
+    CODECS.forEach((codec, index) => {
+      editor.addAction({
+        id: `hettix.decode.${codec.label.toLowerCase()}`,
+        label: `Decode ${codec.label}`,
+        contextMenuGroupId: "9_hettix",
+        contextMenuOrder: index,
+        precondition: "editorHasSelection",
+        run: (ed) => {
+          const selection = ed.getSelection();
+          const model = ed.getModel();
+          if (!selection || !model || selection.isEmpty()) {
+            return;
+          }
+          const anchor = anchorAtSelection();
+          if (!anchor) {
+            return;
+          }
+          const text = model.getValueInRange(selection);
+          try {
+            setDecode({ ...anchor, label: codec.label, value: codec.decode(text), error: false });
+          } catch (e) {
+            setDecode({
+              ...anchor,
+              label: codec.label,
+              value: e instanceof Error ? e.message : String(e),
+              error: true,
+            });
+          }
+        },
+      });
+    });
+
+    editor.addAction({
+      id: "hettix.sendToDecoder",
+      label: "Send to Decoder",
+      contextMenuGroupId: "9_hettix",
+      contextMenuOrder: CODECS.length,
+      run: (ed) => {
+        const selection = ed.getSelection();
+        const model = ed.getModel();
+        const text =
+          selection && model && !selection.isEmpty() ? model.getValueInRange(selection) : model?.getValue() ?? "";
+        navigate(`/decoder?input=${encodeURIComponent(text)}`);
+      },
+    });
+  };
 
   return (
-    <MonacoEditor
-      language={resolved}
-      theme="vs-dark"
-      options={{ fontFamily, fontSize, ...defaultMonacoOptions, ...monacoOptions }}
-      value={content}
-      onChange={onChange}
-    />
+    <>
+      <MonacoEditor
+        language={resolved}
+        theme="vs-dark"
+        options={{ fontFamily, fontSize, ...defaultMonacoOptions, ...monacoOptions }}
+        value={content}
+        onChange={onChange}
+        onMount={handleMount}
+      />
+      <Popover
+        open={decode !== null}
+        onClose={() => setDecode(null)}
+        anchorReference="anchorPosition"
+        anchorPosition={decode ? { top: decode.top, left: decode.left } : undefined}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
+      >
+        {decode && (
+          <Box sx={{ p: 1, maxWidth: 460 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
+              <Typography variant="caption" color={decode.error ? "error" : "text.secondary"}>
+                {decode.error ? `${decode.label} decode failed` : `${decode.label} decoded`}
+              </Typography>
+              {!decode.error && (
+                <IconButton
+                  size="small"
+                  aria-label="Copy decoded value"
+                  onClick={() => navigator.clipboard?.writeText(decode.value)}
+                >
+                  <ContentCopyIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              )}
+            </Box>
+            <Box
+              sx={{
+                fontFamily: "monospace",
+                fontSize: 12,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-all",
+                maxHeight: 240,
+                overflow: "auto",
+              }}
+            >
+              {decode.value}
+            </Box>
+          </Box>
+        )}
+      </Popover>
+    </>
   );
 }
 
