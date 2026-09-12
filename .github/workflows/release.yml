@@ -47,7 +47,8 @@ jobs:
           build() {
             os=$1; arch=$2; ext=$3
             GOOS=$os GOARCH=$arch go build -ldflags "-s -w -X main.version=${VERSION}" -o "hettix${ext}" ./cmd/hettix
-            name="hettix_${VERSION}_${os}_${arch}"
+            # "cli" in the name so the headless server isn't mistaken for the desktop app.
+            name="hettix-cli_${VERSION}_${os}_${arch}"
             if [ "$os" = "windows" ]; then zip -q "dist/${name}.zip" "hettix${ext}"; else tar -czf "dist/${name}.tar.gz" "hettix${ext}"; fi
             rm -f "hettix${ext}"
           }
@@ -133,6 +134,14 @@ jobs:
         run: |
           cd cmd/hettix-desktop
           "$(go env GOPATH)/bin/wails" build -s -skipbindings -platform darwin/universal -ldflags "-X main.version=${VERSION}"
+      - name: Bundle Chromium into the app
+        run: |
+          APP=cmd/hettix-desktop/build/bin/Hettix.app/Contents/MacOS
+          REV=$(curl -fsSL https://storage.googleapis.com/chromium-browser-snapshots/Mac_Arm/LAST_CHANGE)
+          curl -fsSL "https://storage.googleapis.com/chromium-browser-snapshots/Mac_Arm/${REV}/chrome-mac.zip" -o chrome-mac.zip
+          mkdir -p "$APP/browser"
+          unzip -q chrome-mac.zip -d "$APP/browser"
+          chmod -R +x "$APP/browser/chrome-mac/Chromium.app/Contents/MacOS" || true
       - name: Package .app
         env:
           VERSION: ${{ steps.v.outputs.version }}
@@ -181,12 +190,19 @@ jobs:
         run: |
           cd cmd/hettix-desktop
           "$(go env GOPATH)/bin/wails" build -s -skipbindings -tags webkit2_41 -ldflags "-X main.version=${VERSION}" -o Hettix
+      - name: Bundle Chromium next to the binary
+        run: |
+          REV=$(curl -fsSL https://storage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE)
+          curl -fsSL "https://storage.googleapis.com/chromium-browser-snapshots/Linux_x64/${REV}/chrome-linux.zip" -o chrome-linux.zip
+          mkdir -p cmd/hettix-desktop/build/bin/browser
+          unzip -q chrome-linux.zip -d cmd/hettix-desktop/build/bin/browser
+          chmod +x cmd/hettix-desktop/build/bin/browser/chrome-linux/chrome || true
       - name: Package binary
         env:
           VERSION: ${{ steps.v.outputs.version }}
         run: |
           mkdir -p out
-          tar -C cmd/hettix-desktop/build/bin -czf "out/Hettix_${VERSION}_linux_amd64.tar.gz" Hettix
+          tar -C cmd/hettix-desktop/build/bin -czf "out/Hettix_${VERSION}_linux_amd64.tar.gz" Hettix browser
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-linux

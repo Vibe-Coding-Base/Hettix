@@ -48,8 +48,13 @@ approval policy you control.
 ## Getting started
 
 Prebuilt binaries are attached to each [release](https://github.com/Vibe-Coding-Base/Hettix/releases):
-the headless `hettix` server for Linux/macOS/Windows, the native desktop app
-(Windows installer, macOS `.app`, Linux tarball). Or build from source below.
+
+- **Desktop app** — `Hettix-setup-*.exe` (Windows installer), `Hettix_*_macos.zip`
+  (macOS `.app`), `Hettix_*_linux_amd64.tar.gz` (Linux). Each bundles a
+  pentest-ready Chromium; if it's missing the app falls back to a system browser.
+- **Headless server** — `hettix-cli_*` archives for Linux/macOS/Windows (no UI).
+
+Or build from source below.
 
 ### Prerequisites
 
