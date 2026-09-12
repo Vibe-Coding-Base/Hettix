@@ -22,6 +22,9 @@ function Response({ response }: ResponseProps): JSX.Element {
       )}
       <Box sx={{ flex: 1, minHeight: 0 }}>
         <ResponseTabs
+          proto={response?.proto}
+          statusCode={response?.statusCode}
+          statusReason={response?.statusReason}
           body={response?.body}
           headers={response?.headers || []}
           hasResponse={response !== undefined && response !== null}

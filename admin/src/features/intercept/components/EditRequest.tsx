@@ -322,6 +322,9 @@ function EditRequest(): JSX.Element {
               Request
             </Typography>
             <RequestTabs
+              method={interceptedReq?.method}
+              url={interceptedReq?.url}
+              proto={interceptedReq?.proto}
               queryParams={interceptedReq ? queryParams : []}
               headers={interceptedReq ? reqHeaders : []}
               body={reqBody}
@@ -350,6 +353,9 @@ function EditRequest(): JSX.Element {
               )}
             </Box>
             <ResponseTabs
+              proto={interceptedRes?.proto}
+              statusCode={interceptedRes?.statusCode}
+              statusReason={interceptedRes?.statusReason}
               headers={interceptedRes ? resHeaders : []}
               body={resBody}
               onHeaderChange={interceptedRes ? handleResHeaderChange : undefined}

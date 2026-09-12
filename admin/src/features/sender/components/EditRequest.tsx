@@ -199,6 +199,8 @@ function EditRequest(): JSX.Element {
               Request
             </Typography>
             <RequestTabs
+              method={method}
+              url={url}
               queryParams={queryParams}
               headers={headers}
               body={body}

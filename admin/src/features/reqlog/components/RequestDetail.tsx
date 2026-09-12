@@ -9,7 +9,7 @@ interface Props {
 }
 
 function RequestDetail({ request }: Props): JSX.Element {
-  const { method, url, headers, body } = request;
+  const { method, url, proto, headers, body } = request;
 
   const parsedUrl = new URL(url);
 
@@ -36,8 +36,15 @@ function RequestDetail({ request }: Props): JSX.Element {
         </Typography>
       </Box>
 
-      <Box flex="1 auto" overflow="scroll">
-        <RequestTabs headers={headers} queryParams={queryParamsFromURL(url)} body={body} />
+      <Box flex="1 auto" overflow="hidden">
+        <RequestTabs
+          method={method}
+          url={url}
+          proto={proto}
+          headers={headers}
+          queryParams={queryParamsFromURL(url)}
+          body={body}
+        />
       </Box>
     </Box>
   );

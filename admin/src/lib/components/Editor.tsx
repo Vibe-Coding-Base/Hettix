@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAppearance } from "lib/AppearanceContext";
-import { CODECS } from "lib/codec";
+import { DecoderDialog } from "lib/components/DecoderDialog";
 
 const defaultMonacoOptions: EditorProps["options"] = {
   readOnly: true,
@@ -14,6 +14,18 @@ const defaultMonacoOptions: EditorProps["options"] = {
     enabled: false,
   },
   scrollBeyondLastLine: false,
+  // Drop the chrome that reads as ugly "borders": the overview ruler strip on
+  // the right, editor shadows, and the current-line highlight.
+  overviewRulerLanes: 0,
+  overviewRulerBorder: false,
+  hideCursorInOverviewRuler: true,
+  renderLineHighlight: "none",
+  scrollbar: {
+    verticalScrollbarSize: 10,
+    horizontalScrollbarSize: 10,
+    useShadows: false,
+    alwaysConsumeMouseWheel: false,
+  },
 };
 
 // languageForContentType maps a Content-Type to a Monaco language id.
@@ -77,7 +89,12 @@ interface DecodePopover {
   left: number;
   label: string;
   value: string;
-  error: boolean;
+}
+
+interface DecodeDialogState {
+  top: number;
+  left: number;
+  text: string;
 }
 
 interface Props {
@@ -93,9 +110,10 @@ function Editor({ content, contentType, language, monacoOptions, onChange }: Pro
   const { fontFamily, fontSize } = useAppearance();
   const navigate = useNavigate();
   const [decode, setDecode] = useState<DecodePopover | null>(null);
+  const [decodeDialog, setDecodeDialog] = useState<DecodeDialogState | null>(null);
 
-  // handleMount adds Burp-style "decode selection" and "Send to Decoder" items
-  // to the editor's right-click menu, so encoded strings can be decoded in place
+  // handleMount adds Burp-style "Decode…" and "Send to Decoder" items to the
+  // editor's right-click menu, so encoded strings can be decoded in place
   // without leaving the request/response view.
   const handleMount: OnMount = (editor) => {
     const anchorAtSelection = (): { top: number; left: number } | undefined => {
@@ -112,43 +130,31 @@ function Editor({ content, contentType, language, monacoOptions, onChange }: Pro
       return { top: rect.top + visible.top + visible.height, left: rect.left + visible.left };
     };
 
-    CODECS.forEach((codec, index) => {
-      editor.addAction({
-        id: `hettix.decode.${codec.label.toLowerCase()}`,
-        label: `Decode ${codec.label}`,
-        contextMenuGroupId: "9_hettix",
-        contextMenuOrder: index,
-        precondition: "editorHasSelection",
-        run: (ed) => {
-          const selection = ed.getSelection();
-          const model = ed.getModel();
-          if (!selection || !model || selection.isEmpty()) {
-            return;
-          }
-          const anchor = anchorAtSelection();
-          if (!anchor) {
-            return;
-          }
-          const text = model.getValueInRange(selection);
-          try {
-            setDecode({ ...anchor, label: codec.label, value: codec.decode(text), error: false });
-          } catch (e) {
-            setDecode({
-              ...anchor,
-              label: codec.label,
-              value: e instanceof Error ? e.message : String(e),
-              error: true,
-            });
-          }
-        },
-      });
+    editor.addAction({
+      id: "hettix.decode",
+      label: "Decode…",
+      contextMenuGroupId: "9_hettix",
+      contextMenuOrder: 0,
+      precondition: "editorHasSelection",
+      run: (ed) => {
+        const selection = ed.getSelection();
+        const model = ed.getModel();
+        if (!selection || !model || selection.isEmpty()) {
+          return;
+        }
+        const anchor = anchorAtSelection();
+        if (!anchor) {
+          return;
+        }
+        setDecodeDialog({ ...anchor, text: model.getValueInRange(selection) });
+      },
     });
 
     editor.addAction({
       id: "hettix.sendToDecoder",
       label: "Send to Decoder",
       contextMenuGroupId: "9_hettix",
-      contextMenuOrder: CODECS.length,
+      contextMenuOrder: 1,
       run: (ed) => {
         const selection = ed.getSelection();
         const model = ed.getModel();
@@ -169,6 +175,16 @@ function Editor({ content, contentType, language, monacoOptions, onChange }: Pro
         onChange={onChange}
         onMount={handleMount}
       />
+      <DecoderDialog
+        open={decodeDialog !== null}
+        initialText={decodeDialog?.text ?? ""}
+        onClose={() => setDecodeDialog(null)}
+        onApply={(label, value) => {
+          if (decodeDialog) {
+            setDecode({ top: decodeDialog.top, left: decodeDialog.left, label, value });
+          }
+        }}
+      />
       <Popover
         open={decode !== null}
         onClose={() => setDecode(null)}
@@ -179,18 +195,16 @@ function Editor({ content, contentType, language, monacoOptions, onChange }: Pro
         {decode && (
           <Box sx={{ p: 1, maxWidth: 460 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
-              <Typography variant="caption" color={decode.error ? "error" : "text.secondary"}>
-                {decode.error ? `${decode.label} decode failed` : `${decode.label} decoded`}
+              <Typography variant="caption" color="text.secondary">
+                {decode.label} decoded
               </Typography>
-              {!decode.error && (
-                <IconButton
-                  size="small"
-                  aria-label="Copy decoded value"
-                  onClick={() => navigator.clipboard?.writeText(decode.value)}
-                >
-                  <ContentCopyIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              )}
+              <IconButton
+                size="small"
+                aria-label="Copy decoded value"
+                onClick={() => navigator.clipboard?.writeText(decode.value)}
+              >
+                <ContentCopyIcon sx={{ fontSize: 14 }} />
+              </IconButton>
             </Box>
             <Box
               sx={{

@@ -6,14 +6,19 @@ import { KeyValuePairTable, KeyValuePair, KeyValuePairTableProps } from "./KeyVa
 
 import Editor from "lib/components/Editor";
 import { canPrettify, prettify } from "lib/prettify";
+import { rawRequest } from "lib/rawHttp";
 
 enum TabValue {
-  QueryParams = "queryParams",
-  Headers = "headers",
+  Raw = "raw",
   Body = "body",
+  Headers = "headers",
+  QueryParams = "queryParams",
 }
 
 interface RequestTabsProps {
+  method?: string;
+  url?: string;
+  proto?: string | null;
   queryParams: KeyValuePair[];
   headers: KeyValuePair[];
   onQueryParamChange?: KeyValuePairTableProps["onChange"];
@@ -26,6 +31,9 @@ interface RequestTabsProps {
 
 function RequestTabs(props: RequestTabsProps): JSX.Element {
   const {
+    method,
+    url,
+    proto,
     queryParams,
     onQueryParamChange,
     onQueryParamDelete,
@@ -35,32 +43,30 @@ function RequestTabs(props: RequestTabsProps): JSX.Element {
     body,
     onBodyChange,
   } = props;
-  const [tabValue, setTabValue] = useState(TabValue.QueryParams);
-  const [pretty, setPretty] = useState(false);
   const readOnly = onBodyChange === undefined;
+  // Viewers land on the full raw message (Burp-style); editors land on the
+  // editable body.
+  const [tabValue, setTabValue] = useState(readOnly ? TabValue.Raw : TabValue.Body);
+  const [pretty, setPretty] = useState(false);
 
-  const tabSx = {
-    textTransform: "none",
-  };
+  const tabSx = { textTransform: "none" };
 
   const queryParamsLength = onQueryParamChange ? queryParams.length - 1 : queryParams.length;
   const headersLength = onHeaderChange ? headers.length - 1 : headers.length;
   const showPretty = tabValue === TabValue.Body && canPrettify(body);
+  const contentType = headers.find(({ key }) => key.toLowerCase() === "content-type")?.value;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <TabContext value={tabValue}>
         <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 1, display: "flex", alignItems: "center" }}>
-          <TabList onChange={(_, value) => setTabValue(value)} sx={{ flex: 1 }}>
-            <Tab
-              value={TabValue.QueryParams}
-              label={"Query Params" + (queryParamsLength ? ` (${queryParamsLength})` : "")}
-              sx={tabSx}
-            />
+          <TabList onChange={(_, value) => setTabValue(value)} sx={{ flex: 1, minHeight: 40 }}>
+            <Tab value={TabValue.Raw} label="Raw" sx={tabSx} />
+            <Tab value={TabValue.Body} label={"Body" + (body?.length ? ` (${body.length})` : "")} sx={tabSx} />
             <Tab value={TabValue.Headers} label={"Headers" + (headersLength ? ` (${headersLength})` : "")} sx={tabSx} />
             <Tab
-              value={TabValue.Body}
-              label={"Body" + (body?.length ? ` (${body.length} byte` + (body.length > 1 ? "s" : "") + ")" : "")}
+              value={TabValue.QueryParams}
+              label={"Query" + (queryParamsLength ? ` (${queryParamsLength})` : "")}
               sx={tabSx}
             />
           </TabList>
@@ -81,16 +87,9 @@ function RequestTabs(props: RequestTabsProps): JSX.Element {
               </Button>
             ))}
         </Box>
-        <Box flex="1 auto" overflow="scroll" height="100%">
-          <TabPanel value={TabValue.QueryParams} sx={{ p: 0, height: "100%" }}>
-            <Box>
-              <KeyValuePairTable items={queryParams} onChange={onQueryParamChange} onDelete={onQueryParamDelete} />
-            </Box>
-          </TabPanel>
-          <TabPanel value={TabValue.Headers} sx={{ p: 0, height: "100%" }}>
-            <Box>
-              <KeyValuePairTable items={headers} onChange={onHeaderChange} onDelete={onHeaderDelete} />
-            </Box>
+        <Box flex="1 auto" overflow="hidden" height="100%">
+          <TabPanel value={TabValue.Raw} sx={{ p: 0, height: "100%" }}>
+            <Editor content={rawRequest({ method, url, proto, headers, body })} language="plaintext" />
           </TabPanel>
           <TabPanel value={TabValue.Body} sx={{ p: 0, height: "100%" }}>
             <Editor
@@ -99,8 +98,14 @@ function RequestTabs(props: RequestTabsProps): JSX.Element {
                 onBodyChange && onBodyChange(value || "");
               }}
               monacoOptions={{ readOnly }}
-              contentType={headers.find(({ key }) => key.toLowerCase() === "content-type")?.value}
+              contentType={contentType}
             />
+          </TabPanel>
+          <TabPanel value={TabValue.Headers} sx={{ p: 0, height: "100%", overflow: "auto" }}>
+            <KeyValuePairTable items={headers} onChange={onHeaderChange} onDelete={onHeaderDelete} />
+          </TabPanel>
+          <TabPanel value={TabValue.QueryParams} sx={{ p: 0, height: "100%", overflow: "auto" }}>
+            <KeyValuePairTable items={queryParams} onChange={onQueryParamChange} onDelete={onQueryParamDelete} />
           </TabPanel>
         </Box>
       </TabContext>
