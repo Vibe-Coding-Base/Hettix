@@ -32,6 +32,7 @@ import useOpenProjectMutation from "../hooks/useOpenProjectMutation";
 
 import Link from "lib/components/Link";
 import {
+  ProjectsDocument,
   ProjectsQuery,
   useCloseProjectMutation,
   useDeleteProjectMutation,
@@ -65,14 +66,14 @@ function ProjectList(): JSX.Element {
   });
   const [deleteProject, deleteProjResult] = useDeleteProjectMutation({
     errorPolicy: "all",
-    update(cache) {
-      cache.modify({
-        fields: {
-          projects(_, { DELETE }) {
-            return DELETE;
-          },
-        },
-      });
+    // Refetch so every project list (here and on Home) updates immediately;
+    // also evict the deleted project from the cache.
+    refetchQueries: [{ query: ProjectsDocument }],
+    update(cache, _, { variables }) {
+      if (variables?.id) {
+        cache.evict({ id: cache.identify({ __typename: "Project", id: variables.id }) });
+        cache.gc();
+      }
       setDeleteDiagOpen(false);
       setDeleteNotifOpen(true);
     },

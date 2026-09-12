@@ -1,6 +1,8 @@
 package chrome
 
 import (
+	"crypto/sha1" //nolint:gosec // used only to name a per-browser profile dir, not for security
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -32,7 +34,7 @@ func Launch(cfg LaunchConfig) error {
 		return ErrBrowserNotFound
 	}
 
-	profileDir, err := profileDir()
+	profileDir, err := profileDir(path)
 	if err != nil {
 		return err
 	}
@@ -125,14 +127,18 @@ func seedPreferences(profileDir string) error {
 }
 
 // profileDir returns a dedicated, isolated browser profile directory so the
-// launched browser never touches the operator's real browser profile.
-func profileDir() (string, error) {
+// launched browser never touches the operator's real browser profile. The
+// directory is keyed to the browser executable, so different browsers (e.g. a
+// fallback Edge vs. the bundled Chromium) never share a profile — sharing one
+// across browser versions triggers Chromium's "profile error" on load.
+func profileDir(browserPath string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("chrome: failed to resolve home directory: %w", err)
 	}
 
-	dir := filepath.Join(home, ".hettix", "browser-profile")
+	sum := sha1.Sum([]byte(browserPath)) //nolint:gosec // non-cryptographic dir key
+	dir := filepath.Join(home, ".hettix", "browser-profile-"+hex.EncodeToString(sum[:6]))
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("chrome: failed to create browser profile directory: %w", err)
 	}
