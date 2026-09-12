@@ -8,6 +8,7 @@ import {
   ClickAwayListener,
   FormControlLabel,
   InputBase,
+  Link,
   Paper,
   Popper,
   Tooltip,
@@ -18,6 +19,7 @@ import IconButton from "@mui/material/IconButton";
 import React, { useRef, useState } from "react";
 
 import HttpqlHighlight from "lib/components/HttpqlHighlight";
+import { openExternal } from "lib/desktop";
 import {
   HttpRequestLogFilterDocument,
   useHttpRequestLogFilterQuery,
@@ -142,7 +144,15 @@ function Search(): JSX.Element {
                   HTTPQL — fields <code>req.method</code>, <code>req.host</code>, <code>req.path</code>,{" "}
                   <code>req.body</code>, <code>req.header[&quot;Name&quot;]</code>, <code>resp.code</code>,{" "}
                   <code>resp.body</code>; operators <code>eq ne cont regex gt gte lt lte</code>; combine with{" "}
-                  <code>and</code> <code>or</code> <code>not</code>.
+                  <code>and</code> <code>or</code> <code>not</code>.{" "}
+                  <Link
+                    component="button"
+                    type="button"
+                    variant="caption"
+                    onClick={() => openExternal("https://github.com/Vibe-Coding-Base/Hettix/blob/main/docs/HTTPQL.md")}
+                  >
+                    Full reference
+                  </Link>
                 </Typography>
                 <FormControlLabel
                   control={

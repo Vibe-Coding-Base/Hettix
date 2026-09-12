@@ -7,6 +7,7 @@ import { useLaunchBrowserMutation } from "lib/graphql/generated";
 import { checkForUpdate } from "lib/updateCheck";
 
 const VERSION = import.meta.env.VITE_VERSION || "0.0";
+const HTTPQL_DOCS_URL = "https://github.com/Vibe-Coding-Base/Hettix/blob/main/docs/HTTPQL.md";
 
 interface MenuAction {
   label?: string;
@@ -61,6 +62,7 @@ export function AppMenuBar(): JSX.Element {
     {
       label: "Help",
       items: [
+        { label: "HTTPQL syntax", onClick: () => openExternal(HTTPQL_DOCS_URL) },
         { label: "Check for updates…", onClick: runUpdateCheck },
         { divider: true },
         { label: "About Hettix", onClick: () => setAboutOpen(true) },
