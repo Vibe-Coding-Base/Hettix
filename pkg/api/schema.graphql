@@ -290,6 +290,26 @@ type SitemapEntry {
   methods: [String!]!
   statusCodes: [Int!]!
   count: Int!
+  tags: [String!]!
+}
+
+type Plugin {
+  id: String!
+  name: String!
+  description: String!
+  version: String!
+  capabilities: [String!]!
+  enabled: Boolean!
+  builtin: Boolean!
+  filename: String!
+}
+
+type DeletePluginResult {
+  success: Boolean!
+}
+
+type ProxySettings {
+  port: Int!
 }
 
 enum FindingSeverity {
@@ -423,6 +443,9 @@ type Query {
   workflows: [Workflow!]!
   workflow(id: ID!): Workflow
   llmSettings: LLMSettings!
+  plugins: [Plugin!]!
+  pluginSource(id: String!): String!
+  proxySettings: ProxySettings!
 }
 
 enum MatchReplacePhase {
@@ -493,6 +516,11 @@ type Mutation {
   runWorkflow(id: ID!): [WorkflowStepResult!]!
   updateLLMSettings(input: UpdateLLMSettingsInput!): LLMSettings!
   launchBrowser: LaunchBrowserResult!
+  setPluginEnabled(id: String!, enabled: Boolean!): Plugin!
+  installPlugin(content: String!): Plugin!
+  updatePlugin(id: String!, content: String!): Plugin!
+  deletePlugin(id: String!): DeletePluginResult!
+  setProxyPort(port: Int!): ProxySettings!
 }
 
 enum AgentMode {

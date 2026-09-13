@@ -44,7 +44,7 @@ jobs:
         with:
           name: admin-dist
           path: pkg/adminui/admin
-      - run: go build ./cmd/hettix
+      - run: go build ./pkg/...
       - run: go test ./pkg/...
       - uses: golangci/golangci-lint-action@v8
         with:

@@ -15,6 +15,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/httpql"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/plugin"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/reqlog"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/scope"
@@ -37,6 +38,7 @@ type Service struct {
 	intruderSvc     *intruder.Service
 	findingSvc      *finding.Service
 	workflowSvc     *workflow.Service
+	pluginSvc       *plugin.Service
 	scope           *scope.Scope
 	matchReplace    *matchreplace.Engine
 	activeProjectID ulid.ULID
@@ -97,6 +99,7 @@ type Config struct {
 	IntruderService           *intruder.Service
 	FindingService            *finding.Service
 	WorkflowService           *workflow.Service
+	PluginService             *plugin.Service
 	Scope                     *scope.Scope
 	MatchReplaceEngine        *matchreplace.Engine
 }
@@ -113,6 +116,7 @@ func NewService(cfg Config) (*Service, error) {
 		intruderSvc:    cfg.IntruderService,
 		findingSvc:     cfg.FindingService,
 		workflowSvc:    cfg.WorkflowService,
+		pluginSvc:      cfg.PluginService,
 		scope:          cfg.Scope,
 		matchReplace:   cfg.MatchReplaceEngine,
 	}, nil
@@ -176,6 +180,10 @@ func (svc *Service) CloseProject() error {
 
 	if svc.workflowSvc != nil {
 		svc.workflowSvc.SetActiveProjectID(ulid.ULID{})
+	}
+
+	if svc.pluginSvc != nil {
+		svc.pluginSvc.SetActiveProjectID(ulid.ULID{})
 	}
 
 	svc.scope.SetRules(nil)
@@ -258,6 +266,10 @@ func (svc *Service) OpenProject(ctx context.Context, projectID ulid.ULID) (Proje
 	// Findings.
 	if svc.findingSvc != nil {
 		svc.findingSvc.SetActiveProjectID(project.ID)
+	}
+
+	if svc.pluginSvc != nil {
+		svc.pluginSvc.SetActiveProjectID(project.ID)
 	}
 
 	// Workflows.

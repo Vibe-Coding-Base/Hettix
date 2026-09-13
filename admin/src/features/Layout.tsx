@@ -4,6 +4,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ExtensionIcon from "@mui/icons-material/Extension";
 import FindReplaceIcon from "@mui/icons-material/FindReplace";
 import FolderIcon from "@mui/icons-material/Folder";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
@@ -14,6 +15,7 @@ import LocationSearchingIcon from "@mui/icons-material/LocationSearching";
 import MenuIcon from "@mui/icons-material/Menu";
 import SendIcon from "@mui/icons-material/Send";
 import SettingsIcon from "@mui/icons-material/Settings";
+import SettingsEthernetIcon from "@mui/icons-material/SettingsEthernet";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import TransformIcon from "@mui/icons-material/Transform";
 import {
@@ -63,6 +65,7 @@ export enum Page {
   Findings,
   Workflows,
   Decoder,
+  Plugins,
 }
 
 interface NavItem {
@@ -206,6 +209,7 @@ export function Layout({ title, page, children }: Props): JSX.Element {
   const navGroups: NavItem[][] = [
     [{ page: Page.Home, to: "/", label: "Home", icon: <HomeIcon /> }],
     [
+      { page: Page.Scope, to: "/scope", label: "Scope", icon: <LocationSearchingIcon />, project: true },
       { page: Page.ProxyLogs, to: "/proxy/logs", label: "Proxy logs", icon: <FormatListBulletedIcon />, project: true },
       {
         page: Page.Intercept,
@@ -218,9 +222,8 @@ export function Layout({ title, page, children }: Props): JSX.Element {
         ),
         project: true,
       },
-      { page: Page.WebSocket, to: "/websocket", label: "WebSocket", icon: <SwapHorizIcon />, project: true },
       { page: Page.Sitemap, to: "/sitemap", label: "Sitemap", icon: <AccountTreeIcon />, project: true },
-      { page: Page.Scope, to: "/scope", label: "Scope", icon: <LocationSearchingIcon />, project: true },
+      { page: Page.WebSocket, to: "/websocket", label: "WebSocket", icon: <SwapHorizIcon />, project: true },
     ],
     [
       { page: Page.Sender, to: "/sender", label: "Sender", icon: <SendIcon />, project: true },
@@ -241,6 +244,8 @@ export function Layout({ title, page, children }: Props): JSX.Element {
     ],
     [
       { page: Page.Projects, to: "/projects", label: "Projects", icon: <FolderIcon /> },
+      { page: Page.ProxySetup, to: "/proxy", label: "Proxy", icon: <SettingsEthernetIcon /> },
+      { page: Page.Plugins, to: "/plugins", label: "Plugins", icon: <ExtensionIcon /> },
       { page: Page.Settings, to: "/settings", label: "Settings", icon: <SettingsIcon /> },
     ],
   ];

@@ -6,11 +6,17 @@ import {
   Checkbox,
   CircularProgress,
   ClickAwayListener,
+  Divider,
   FormControlLabel,
+  FormGroup,
   InputBase,
   Link,
   Paper,
   Popper,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
   useTheme,
@@ -26,9 +32,23 @@ import {
   useSetHttpRequestLogFilterMutation,
 } from "lib/graphql/generated";
 import { withoutTypename } from "lib/graphql/omitTypename";
+import { emptyLogFilters, hasActiveLogFilters, LogFilters, STATUS_CLASSES, TYPE_CATEGORIES } from "lib/logFilters";
 
-function Search(): JSX.Element {
+interface SearchProps {
+  filters: LogFilters;
+  onFiltersChange: (filters: LogFilters) => void;
+}
+
+function Search({ filters, onFiltersChange }: SearchProps): JSX.Element {
   const theme = useTheme();
+
+  const toggleType = (id: string) => {
+    onFiltersChange({
+      ...filters,
+      types: filters.types.includes(id) ? filters.types.filter((t) => t !== id) : [...filters.types, id],
+    });
+  };
+  const filtersActive = hasActiveLogFilters(filters);
 
   const [searchExpr, setSearchExpr] = useState("");
   const filterResult = useHttpRequestLogFilterQuery({
@@ -95,7 +115,7 @@ function Search(): JSX.Element {
                 onClick={() => setFilterOpen(!filterOpen)}
                 sx={{
                   p: 1,
-                  color: filter?.onlyInScope ? "primary.main" : "inherit",
+                  color: filter?.onlyInScope || filtersActive ? "primary.main" : "inherit",
                 }}
               >
                 {filterResult.loading || setFilterResult.loading ? (
@@ -154,25 +174,127 @@ function Search(): JSX.Element {
                     Full reference
                   </Link>
                 </Typography>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={filter?.onlyInScope ? true : false}
-                      disabled={filterResult.loading || setFilterResult.loading}
-                      onChange={(e) =>
-                        setFilterMutate({
-                          variables: {
-                            filter: {
-                              ...withoutTypename(filter),
-                              onlyInScope: e.target.checked,
+                <Typography variant="overline" color="text.secondary" component="div">
+                  Request type
+                </Typography>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={filter?.onlyInScope ? true : false}
+                        disabled={filterResult.loading || setFilterResult.loading}
+                        onChange={(e) =>
+                          setFilterMutate({
+                            variables: {
+                              filter: {
+                                ...withoutTypename(filter),
+                                onlyInScope: e.target.checked,
+                              },
                             },
-                          },
-                        })
+                          })
+                        }
+                      />
+                    }
+                    label={<Typography variant="body2">Only in-scope requests</Typography>}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={filters.hideNoResponse}
+                        onChange={(e) => onFiltersChange({ ...filters, hideNoResponse: e.target.checked })}
+                      />
+                    }
+                    label={<Typography variant="body2">Hide items without responses</Typography>}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={filters.onlyParameterized}
+                        onChange={(e) => onFiltersChange({ ...filters, onlyParameterized: e.target.checked })}
+                      />
+                    }
+                    label={<Typography variant="body2">Only parameterized requests</Typography>}
+                  />
+                </FormGroup>
+
+                <Divider sx={{ my: 1 }} />
+
+                <Typography variant="overline" color="text.secondary" component="div">
+                  Status
+                </Typography>
+                <ToggleButtonGroup
+                  size="small"
+                  value={filters.statuses}
+                  onChange={(_, value: string[]) => onFiltersChange({ ...filters, statuses: value })}
+                  sx={{ mb: 1 }}
+                >
+                  {STATUS_CLASSES.map((s) => (
+                    <ToggleButton key={s} value={s} sx={{ px: 1.5, py: 0.2 }}>
+                      {s}
+                    </ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+
+                <Typography variant="overline" color="text.secondary" component="div">
+                  File types
+                </Typography>
+                <FormGroup row>
+                  {TYPE_CATEGORIES.map((t) => (
+                    <FormControlLabel
+                      key={t.id}
+                      sx={{ width: "48%", m: 0 }}
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={filters.types.includes(t.id)}
+                          onChange={() => toggleType(t.id)}
+                        />
                       }
+                      label={<Typography variant="body2">{t.label}</Typography>}
                     />
-                  }
-                  label="Only show in-scope requests"
-                />
+                  ))}
+                </FormGroup>
+
+                <Typography variant="overline" color="text.secondary" component="div" sx={{ mt: 1 }}>
+                  File extension
+                </Typography>
+                <Stack direction="row" spacing={1}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    variant="outlined"
+                    label="Show only"
+                    placeholder="php, asp, jsp"
+                    value={filters.showExtensions}
+                    onChange={(e) => onFiltersChange({ ...filters, showExtensions: e.target.value })}
+                    inputProps={{ spellCheck: false, autoCapitalize: "off" }}
+                  />
+                  <TextField
+                    size="small"
+                    fullWidth
+                    variant="outlined"
+                    label="Hide"
+                    placeholder="css, png, js"
+                    value={filters.hideExtensions}
+                    onChange={(e) => onFiltersChange({ ...filters, hideExtensions: e.target.value })}
+                    inputProps={{ spellCheck: false, autoCapitalize: "off" }}
+                  />
+                </Stack>
+
+                {filtersActive && (
+                  <Link
+                    component="button"
+                    type="button"
+                    variant="caption"
+                    onClick={() => onFiltersChange(emptyLogFilters)}
+                    sx={{ mt: 1, display: "inline-block" }}
+                  >
+                    Clear filters
+                  </Link>
+                )}
               </Paper>
             </Popper>
           </Paper>

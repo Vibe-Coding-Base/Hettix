@@ -17,11 +17,14 @@ type Repository interface {
 	Sitemap(ctx context.Context, projectID ulid.ULID) ([]SitemapEntry, error)
 }
 
-// SitemapEntry aggregates the traffic seen for one host+path endpoint.
+// SitemapEntry aggregates the traffic seen for one host+path endpoint. Tags
+// carries the sources that surfaced the endpoint beyond observed traffic (e.g.
+// a plugin that discovered it in a JavaScript file).
 type SitemapEntry struct {
 	Host        string
 	Path        string
 	Methods     []string
 	StatusCodes []int
 	Count       int
+	Tags        []string
 }

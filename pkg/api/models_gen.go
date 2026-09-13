@@ -51,6 +51,10 @@ type DeleteFindingResult struct {
 	Success bool `json:"success"`
 }
 
+type DeletePluginResult struct {
+	Success bool `json:"success"`
+}
+
 type DeleteProjectResult struct {
 	Success bool `json:"success"`
 }
@@ -248,6 +252,17 @@ type ModifyWebSocketMessageResult struct {
 	Success bool `json:"success"`
 }
 
+type Plugin struct {
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	Version      string   `json:"version"`
+	Capabilities []string `json:"capabilities"`
+	Enabled      bool     `json:"enabled"`
+	Builtin      bool     `json:"builtin"`
+	Filename     string   `json:"filename"`
+}
+
 type Project struct {
 	ID       ulid.ULID        `json:"id"`
 	Name     string           `json:"name"`
@@ -257,6 +272,10 @@ type Project struct {
 
 type ProjectSettings struct {
 	Intercept *InterceptSettings `json:"intercept"`
+}
+
+type ProxySettings struct {
+	Port int `json:"port"`
 }
 
 type RunAgentInput struct {
@@ -331,6 +350,7 @@ type SitemapEntry struct {
 	Methods     []string `json:"methods"`
 	StatusCodes []int    `json:"statusCodes"`
 	Count       int      `json:"count"`
+	Tags        []string `json:"tags"`
 }
 
 type StartIntruderAttackInput struct {

@@ -46,6 +46,10 @@ Push-Location cmd\hettix-desktop
 & $wails build -s -skipbindings -ldflags "-X main.version=$Version" -o Hettix.exe
 Pop-Location
 
+# All build artifacts land in .\releases at the repo root.
+New-Item -ItemType Directory -Force -Path releases | Out-Null
+Copy-Item -Force cmd\hettix-desktop\build\bin\Hettix.exe releases\Hettix.exe
+
 if (-not $SkipBrowser) {
   Write-Host "==> Fetching portable Chromium"
   & "$PSScriptRoot\fetch-browser.ps1"
@@ -73,4 +77,4 @@ if (-not $iscc) {
 
 & $iscc "/DMyAppVersion=$Version" "installer\hettix.iss"
 
-Write-Host "==> Done. Installer is in installer\out\"
+Write-Host "==> Done. Artifacts are in .\releases"

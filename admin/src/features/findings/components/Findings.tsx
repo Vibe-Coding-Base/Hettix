@@ -1,7 +1,21 @@
 import DeleteIcon from "@mui/icons-material/Delete";
-import { Alert, Box, Button, Chip, IconButton, MenuItem, Paper, TextField, Typography } from "@mui/material";
-import { useState } from "react";
+import DownloadIcon from "@mui/icons-material/Download";
+import SearchIcon from "@mui/icons-material/Search";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  Paper,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { useMemo, useState } from "react";
 
+import { downloadText, toCSV } from "lib/download";
 import {
   FindingSeverity,
   FindingsDocument,
@@ -17,6 +31,17 @@ const SEVERITY_COLOR: Record<FindingSeverity, "default" | "info" | "success" | "
   [FindingSeverity.High]: "error",
   [FindingSeverity.Critical]: "error",
 };
+
+// Higher rank sorts first when ordering by severity.
+const SEVERITY_RANK: Record<FindingSeverity, number> = {
+  [FindingSeverity.Critical]: 4,
+  [FindingSeverity.High]: 3,
+  [FindingSeverity.Medium]: 2,
+  [FindingSeverity.Low]: 1,
+  [FindingSeverity.Info]: 0,
+};
+
+type SortBy = "severity" | "newest";
 
 export default function Findings(): JSX.Element {
   return (
@@ -119,11 +144,36 @@ function FindingList(): JSX.Element {
   const { data, error } = useFindingsQuery({ pollInterval: 3000 });
   const [remove] = useDeleteFindingMutation({ refetchQueries: [{ query: FindingsDocument }] });
 
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortBy>("severity");
+
+  const findings = useMemo(() => data?.findings ?? [], [data?.findings]);
+
+  const visible = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const filtered = query
+      ? findings.filter((f) =>
+          [f.title, f.description ?? "", f.severity, f.requestLogID ?? ""].some((field) =>
+            field.toLowerCase().includes(query)
+          )
+        )
+      : findings;
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "severity") {
+        const diff = SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity];
+        if (diff !== 0) {
+          return diff;
+        }
+      }
+      // Newest first (ULIDs are time-ordered), and as the severity tiebreaker.
+      return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+    });
+  }, [findings, search, sortBy]);
+
   if (error) {
     return <Alert severity="error">{error.message}</Alert>;
   }
-
-  const findings = data?.findings ?? [];
 
   if (findings.length === 0) {
     return (
@@ -133,29 +183,91 @@ function FindingList(): JSX.Element {
     );
   }
 
+  const exportCSV = () => {
+    const rows = visible.map((f) => [f.timestamp, f.severity, f.title, f.description ?? "", f.requestLogID ?? ""]);
+    downloadText(
+      "findings.csv",
+      toCSV(["Timestamp", "Severity", "Title", "Description", "Request log id"], rows),
+      "text/csv"
+    );
+  };
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-      {findings.map((f) => (
-        <Paper key={f.id} variant="outlined" sx={{ p: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Chip size="small" color={SEVERITY_COLOR[f.severity]} label={f.severity.toLowerCase()} />
-            <Typography sx={{ flex: 1, fontWeight: 500 }}>{f.title}</Typography>
-            <IconButton size="small" aria-label="Delete finding" onClick={() => remove({ variables: { id: f.id } })}>
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Box>
-          {f.description && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}>
-              {f.description}
-            </Typography>
-          )}
-          {f.requestLogID && (
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
-              request: {f.requestLogID}
-            </Typography>
-          )}
-        </Paper>
-      ))}
+      <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+        <TextField
+          size="small"
+          placeholder="Search findings"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ flex: 1, minWidth: 200 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <TextField
+          size="small"
+          select
+          label="Sort by"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as SortBy)}
+          sx={{ width: 150 }}
+        >
+          <MenuItem value="severity">Severity</MenuItem>
+          <MenuItem value="newest">Newest</MenuItem>
+        </TextField>
+        <Button size="small" startIcon={<DownloadIcon />} onClick={exportCSV}>
+          Export CSV
+        </Button>
+      </Box>
+
+      {visible.length === 0 ? (
+        <Typography color="text.secondary" sx={{ py: 2 }}>
+          No findings match &quot;{search}&quot;.
+        </Typography>
+      ) : (
+        visible.map((f) => (
+          <Paper key={f.id} variant="outlined" sx={{ p: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Chip size="small" color={SEVERITY_COLOR[f.severity]} label={f.severity.toLowerCase()} />
+              <Typography sx={{ flex: 1, fontWeight: 500 }}>{f.title}</Typography>
+              <IconButton size="small" aria-label="Delete finding" onClick={() => remove({ variables: { id: f.id } })}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            {f.description && (
+              <Box
+                sx={{
+                  mt: 1,
+                  p: 1.5,
+                  borderRadius: 1,
+                  bgcolor: "action.hover",
+                  fontFamily: "monospace",
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                {f.description}
+              </Box>
+            )}
+            {f.requestLogID && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mt: 0.5, display: "block", fontFamily: "monospace" }}
+              >
+                request: {f.requestLogID}
+              </Typography>
+            )}
+          </Paper>
+        ))
+      )}
     </Box>
   );
 }

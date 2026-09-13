@@ -77,6 +77,10 @@ type ComplexityRoot struct {
 		Success func(childComplexity int) int
 	}
 
+	DeletePluginResult struct {
+		Success func(childComplexity int) int
+	}
+
 	DeleteProjectResult struct {
 		Success func(childComplexity int) int
 	}
@@ -231,11 +235,13 @@ type ComplexityRoot struct {
 		CreateProject                         func(childComplexity int, name string) int
 		CreateSenderRequestFromHTTPRequestLog func(childComplexity int, id ulid.ULID) int
 		DeleteFinding                         func(childComplexity int, id ulid.ULID) int
+		DeletePlugin                          func(childComplexity int, id string) int
 		DeleteProject                         func(childComplexity int, id ulid.ULID) int
 		DeleteSenderRequests                  func(childComplexity int) int
 		DeleteWorkflow                        func(childComplexity int, id ulid.ULID) int
 		DropWebSocketMessage                  func(childComplexity int, id ulid.ULID) int
 		ForwardWebSocketMessage               func(childComplexity int, id ulid.ULID) int
+		InstallPlugin                         func(childComplexity int, content string) int
 		LaunchBrowser                         func(childComplexity int) int
 		ModifyRequest                         func(childComplexity int, request ModifyRequestInput) int
 		ModifyResponse                        func(childComplexity int, response ModifyResponseInput) int
@@ -247,12 +253,26 @@ type ComplexityRoot struct {
 		SendRequest                           func(childComplexity int, id ulid.ULID) int
 		SetHTTPRequestLogFilter               func(childComplexity int, filter *HTTPRequestLogFilterInput) int
 		SetMatchReplaceRules                  func(childComplexity int, rules []MatchReplaceRuleInput) int
+		SetPluginEnabled                      func(childComplexity int, id string, enabled bool) int
+		SetProxyPort                          func(childComplexity int, port int) int
 		SetScope                              func(childComplexity int, scope []ScopeRuleInput) int
 		SetSenderRequestFilter                func(childComplexity int, filter *SenderRequestFilterInput) int
 		StartIntruderAttack                   func(childComplexity int, input StartIntruderAttackInput) int
 		UpdateInterceptSettings               func(childComplexity int, input UpdateInterceptSettingsInput) int
 		UpdateLLMSettings                     func(childComplexity int, input UpdateLLMSettingsInput) int
+		UpdatePlugin                          func(childComplexity int, id string, content string) int
 		UpdateWebSocketInterceptSettings      func(childComplexity int, input UpdateWebSocketInterceptSettingsInput) int
+	}
+
+	Plugin struct {
+		Builtin      func(childComplexity int) int
+		Capabilities func(childComplexity int) int
+		Description  func(childComplexity int) int
+		Enabled      func(childComplexity int) int
+		Filename     func(childComplexity int) int
+		ID           func(childComplexity int) int
+		Name         func(childComplexity int) int
+		Version      func(childComplexity int) int
 	}
 
 	Project struct {
@@ -264,6 +284,10 @@ type ComplexityRoot struct {
 
 	ProjectSettings struct {
 		Intercept func(childComplexity int) int
+	}
+
+	ProxySettings struct {
+		Port func(childComplexity int) int
 	}
 
 	Query struct {
@@ -280,7 +304,10 @@ type ComplexityRoot struct {
 		IntruderResults              func(childComplexity int, attackID ulid.ULID) int
 		LlmSettings                  func(childComplexity int) int
 		MatchReplaceRules            func(childComplexity int) int
+		PluginSource                 func(childComplexity int, id string) int
+		Plugins                      func(childComplexity int) int
 		Projects                     func(childComplexity int) int
+		ProxySettings                func(childComplexity int) int
 		Scope                        func(childComplexity int) int
 		SenderRequest                func(childComplexity int, id ulid.ULID) int
 		SenderRequests               func(childComplexity int, offset *int, limit *int) int
@@ -328,6 +355,7 @@ type ComplexityRoot struct {
 		Methods     func(childComplexity int) int
 		Path        func(childComplexity int) int
 		StatusCodes func(childComplexity int) int
+		Tags        func(childComplexity int) int
 	}
 
 	WebSocketConnection struct {
@@ -411,6 +439,11 @@ type MutationResolver interface {
 	RunWorkflow(ctx context.Context, id ulid.ULID) ([]WorkflowStepResult, error)
 	UpdateLLMSettings(ctx context.Context, input UpdateLLMSettingsInput) (*LLMSettings, error)
 	LaunchBrowser(ctx context.Context) (*LaunchBrowserResult, error)
+	SetPluginEnabled(ctx context.Context, id string, enabled bool) (*Plugin, error)
+	InstallPlugin(ctx context.Context, content string) (*Plugin, error)
+	UpdatePlugin(ctx context.Context, id string, content string) (*Plugin, error)
+	DeletePlugin(ctx context.Context, id string) (*DeletePluginResult, error)
+	SetProxyPort(ctx context.Context, port int) (*ProxySettings, error)
 }
 type QueryResolver interface {
 	HTTPRequestLog(ctx context.Context, id ulid.ULID) (*HTTPRequestLog, error)
@@ -437,6 +470,9 @@ type QueryResolver interface {
 	Workflows(ctx context.Context) ([]Workflow, error)
 	Workflow(ctx context.Context, id ulid.ULID) (*Workflow, error)
 	LlmSettings(ctx context.Context) (*LLMSettings, error)
+	Plugins(ctx context.Context) ([]Plugin, error)
+	PluginSource(ctx context.Context, id string) (string, error)
+	ProxySettings(ctx context.Context) (*ProxySettings, error)
 }
 
 type executableSchema struct {
@@ -530,6 +566,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DeleteFindingResult.Success(childComplexity), true
+
+	case "DeletePluginResult.success":
+		if e.complexity.DeletePluginResult.Success == nil {
+			break
+		}
+
+		return e.complexity.DeletePluginResult.Success(childComplexity), true
 
 	case "DeleteProjectResult.success":
 		if e.complexity.DeleteProjectResult.Success == nil {
@@ -1196,6 +1239,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DeleteFinding(childComplexity, args["id"].(ulid.ULID)), true
 
+	case "Mutation.deletePlugin":
+		if e.complexity.Mutation.DeletePlugin == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deletePlugin_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeletePlugin(childComplexity, args["id"].(string)), true
+
 	case "Mutation.deleteProject":
 		if e.complexity.Mutation.DeleteProject == nil {
 			break
@@ -1250,6 +1305,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.ForwardWebSocketMessage(childComplexity, args["id"].(ulid.ULID)), true
+
+	case "Mutation.installPlugin":
+		if e.complexity.Mutation.InstallPlugin == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_installPlugin_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.InstallPlugin(childComplexity, args["content"].(string)), true
 
 	case "Mutation.launchBrowser":
 		if e.complexity.Mutation.LaunchBrowser == nil {
@@ -1378,6 +1445,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.SetMatchReplaceRules(childComplexity, args["rules"].([]MatchReplaceRuleInput)), true
 
+	case "Mutation.setPluginEnabled":
+		if e.complexity.Mutation.SetPluginEnabled == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setPluginEnabled_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetPluginEnabled(childComplexity, args["id"].(string), args["enabled"].(bool)), true
+
+	case "Mutation.setProxyPort":
+		if e.complexity.Mutation.SetProxyPort == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setProxyPort_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetProxyPort(childComplexity, args["port"].(int)), true
+
 	case "Mutation.setScope":
 		if e.complexity.Mutation.SetScope == nil {
 			break
@@ -1438,6 +1529,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UpdateLLMSettings(childComplexity, args["input"].(UpdateLLMSettingsInput)), true
 
+	case "Mutation.updatePlugin":
+		if e.complexity.Mutation.UpdatePlugin == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updatePlugin_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdatePlugin(childComplexity, args["id"].(string), args["content"].(string)), true
+
 	case "Mutation.updateWebSocketInterceptSettings":
 		if e.complexity.Mutation.UpdateWebSocketInterceptSettings == nil {
 			break
@@ -1449,6 +1552,62 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UpdateWebSocketInterceptSettings(childComplexity, args["input"].(UpdateWebSocketInterceptSettingsInput)), true
+
+	case "Plugin.builtin":
+		if e.complexity.Plugin.Builtin == nil {
+			break
+		}
+
+		return e.complexity.Plugin.Builtin(childComplexity), true
+
+	case "Plugin.capabilities":
+		if e.complexity.Plugin.Capabilities == nil {
+			break
+		}
+
+		return e.complexity.Plugin.Capabilities(childComplexity), true
+
+	case "Plugin.description":
+		if e.complexity.Plugin.Description == nil {
+			break
+		}
+
+		return e.complexity.Plugin.Description(childComplexity), true
+
+	case "Plugin.enabled":
+		if e.complexity.Plugin.Enabled == nil {
+			break
+		}
+
+		return e.complexity.Plugin.Enabled(childComplexity), true
+
+	case "Plugin.filename":
+		if e.complexity.Plugin.Filename == nil {
+			break
+		}
+
+		return e.complexity.Plugin.Filename(childComplexity), true
+
+	case "Plugin.id":
+		if e.complexity.Plugin.ID == nil {
+			break
+		}
+
+		return e.complexity.Plugin.ID(childComplexity), true
+
+	case "Plugin.name":
+		if e.complexity.Plugin.Name == nil {
+			break
+		}
+
+		return e.complexity.Plugin.Name(childComplexity), true
+
+	case "Plugin.version":
+		if e.complexity.Plugin.Version == nil {
+			break
+		}
+
+		return e.complexity.Plugin.Version(childComplexity), true
 
 	case "Project.id":
 		if e.complexity.Project.ID == nil {
@@ -1484,6 +1643,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectSettings.Intercept(childComplexity), true
+
+	case "ProxySettings.port":
+		if e.complexity.ProxySettings.Port == nil {
+			break
+		}
+
+		return e.complexity.ProxySettings.Port(childComplexity), true
 
 	case "Query.activeProject":
 		if e.complexity.Query.ActiveProject == nil {
@@ -1601,12 +1767,38 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.MatchReplaceRules(childComplexity), true
 
+	case "Query.pluginSource":
+		if e.complexity.Query.PluginSource == nil {
+			break
+		}
+
+		args, err := ec.field_Query_pluginSource_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.PluginSource(childComplexity, args["id"].(string)), true
+
+	case "Query.plugins":
+		if e.complexity.Query.Plugins == nil {
+			break
+		}
+
+		return e.complexity.Query.Plugins(childComplexity), true
+
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
 			break
 		}
 
 		return e.complexity.Query.Projects(childComplexity), true
+
+	case "Query.proxySettings":
+		if e.complexity.Query.ProxySettings == nil {
+			break
+		}
+
+		return e.complexity.Query.ProxySettings(childComplexity), true
 
 	case "Query.scope":
 		if e.complexity.Query.Scope == nil {
@@ -1861,6 +2053,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SitemapEntry.StatusCodes(childComplexity), true
+
+	case "SitemapEntry.tags":
+		if e.complexity.SitemapEntry.Tags == nil {
+			break
+		}
+
+		return e.complexity.SitemapEntry.Tags(childComplexity), true
 
 	case "WebSocketConnection.closedAt":
 		if e.complexity.WebSocketConnection.ClosedAt == nil {
@@ -2428,6 +2627,26 @@ type SitemapEntry {
   methods: [String!]!
   statusCodes: [Int!]!
   count: Int!
+  tags: [String!]!
+}
+
+type Plugin {
+  id: String!
+  name: String!
+  description: String!
+  version: String!
+  capabilities: [String!]!
+  enabled: Boolean!
+  builtin: Boolean!
+  filename: String!
+}
+
+type DeletePluginResult {
+  success: Boolean!
+}
+
+type ProxySettings {
+  port: Int!
 }
 
 enum FindingSeverity {
@@ -2561,6 +2780,9 @@ type Query {
   workflows: [Workflow!]!
   workflow(id: ID!): Workflow
   llmSettings: LLMSettings!
+  plugins: [Plugin!]!
+  pluginSource(id: String!): String!
+  proxySettings: ProxySettings!
 }
 
 enum MatchReplacePhase {
@@ -2631,6 +2853,11 @@ type Mutation {
   runWorkflow(id: ID!): [WorkflowStepResult!]!
   updateLLMSettings(input: UpdateLLMSettingsInput!): LLMSettings!
   launchBrowser: LaunchBrowserResult!
+  setPluginEnabled(id: String!, enabled: Boolean!): Plugin!
+  installPlugin(content: String!): Plugin!
+  updatePlugin(id: String!, content: String!): Plugin!
+  deletePlugin(id: String!): DeletePluginResult!
+  setProxyPort(port: Int!): ProxySettings!
 }
 
 enum AgentMode {
@@ -2790,6 +3017,21 @@ func (ec *executionContext) field_Mutation_deleteFinding_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_deletePlugin_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_deleteProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -2847,6 +3089,21 @@ func (ec *executionContext) field_Mutation_forwardWebSocketMessage_args(ctx cont
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_installPlugin_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["content"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["content"] = arg0
 	return args, nil
 }
 
@@ -3000,6 +3257,45 @@ func (ec *executionContext) field_Mutation_setMatchReplaceRules_args(ctx context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setPluginEnabled_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	var arg1 bool
+	if tmp, ok := rawArgs["enabled"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["enabled"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setProxyPort_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["port"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("port"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["port"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_setScope_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3072,6 +3368,30 @@ func (ec *executionContext) field_Mutation_updateLLMSettings_args(ctx context.Co
 		}
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updatePlugin_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["content"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["content"] = arg1
 	return args, nil
 }
 
@@ -3186,6 +3506,21 @@ func (ec *executionContext) field_Query_intruderResults_args(ctx context.Context
 		}
 	}
 	args["attackId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_pluginSource_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -3694,6 +4029,41 @@ func (ec *executionContext) _DeleteFindingResult_success(ctx context.Context, fi
 	}()
 	fc := &graphql.FieldContext{
 		Object:     "DeleteFindingResult",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Success, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _DeletePluginResult_success(ctx context.Context, field graphql.CollectedField, obj *DeletePluginResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "DeletePluginResult",
 		Field:      field,
 		Args:       nil,
 		IsMethod:   false,
@@ -7769,6 +8139,496 @@ func (ec *executionContext) _Mutation_launchBrowser(ctx context.Context, field g
 	return ec.marshalNLaunchBrowserResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐLaunchBrowserResult(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_setPluginEnabled(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_setPluginEnabled_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetPluginEnabled(rctx, args["id"].(string), args["enabled"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Plugin)
+	fc.Result = res
+	return ec.marshalNPlugin2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐPlugin(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_installPlugin(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_installPlugin_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().InstallPlugin(rctx, args["content"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Plugin)
+	fc.Result = res
+	return ec.marshalNPlugin2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐPlugin(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_updatePlugin(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updatePlugin_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdatePlugin(rctx, args["id"].(string), args["content"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Plugin)
+	fc.Result = res
+	return ec.marshalNPlugin2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐPlugin(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_deletePlugin(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_deletePlugin_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeletePlugin(rctx, args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*DeletePluginResult)
+	fc.Result = res
+	return ec.marshalNDeletePluginResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeletePluginResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_setProxyPort(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_setProxyPort_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetProxyPort(rctx, args["port"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ProxySettings)
+	fc.Result = res
+	return ec.marshalNProxySettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProxySettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Plugin_id(ctx context.Context, field graphql.CollectedField, obj *Plugin) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Plugin",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Plugin_name(ctx context.Context, field graphql.CollectedField, obj *Plugin) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Plugin",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Plugin_description(ctx context.Context, field graphql.CollectedField, obj *Plugin) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Plugin",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Plugin_version(ctx context.Context, field graphql.CollectedField, obj *Plugin) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Plugin",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Plugin_capabilities(ctx context.Context, field graphql.CollectedField, obj *Plugin) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Plugin",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Capabilities, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Plugin_enabled(ctx context.Context, field graphql.CollectedField, obj *Plugin) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Plugin",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Enabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Plugin_builtin(ctx context.Context, field graphql.CollectedField, obj *Plugin) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Plugin",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Builtin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Plugin_filename(ctx context.Context, field graphql.CollectedField, obj *Plugin) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Plugin",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Filename, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *Project) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -7942,6 +8802,41 @@ func (ec *executionContext) _ProjectSettings_intercept(ctx context.Context, fiel
 	res := resTmp.(*InterceptSettings)
 	fc.Result = res
 	return ec.marshalNInterceptSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐInterceptSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ProxySettings_port(ctx context.Context, field graphql.CollectedField, obj *ProxySettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ProxySettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Port, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_httpRequestLog(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -8837,6 +9732,118 @@ func (ec *executionContext) _Query_llmSettings(ctx context.Context, field graphq
 	return ec.marshalNLLMSettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐLLMSettings(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_plugins(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Plugins(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]Plugin)
+	fc.Result = res
+	return ec.marshalNPlugin2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐPluginᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_pluginSource(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_pluginSource_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PluginSource(rctx, args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_proxySettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ProxySettings(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ProxySettings)
+	fc.Result = res
+	return ec.marshalNProxySettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProxySettings(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -9646,6 +10653,41 @@ func (ec *executionContext) _SitemapEntry_count(ctx context.Context, field graph
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SitemapEntry_tags(ctx context.Context, field graphql.CollectedField, obj *SitemapEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SitemapEntry",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Tags, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _WebSocketConnection_id(ctx context.Context, field graphql.CollectedField, obj *WebSocketConnection) (ret graphql.Marshaler) {
@@ -12926,6 +13968,33 @@ func (ec *executionContext) _DeleteFindingResult(ctx context.Context, sel ast.Se
 	return out
 }
 
+var deletePluginResultImplementors = []string{"DeletePluginResult"}
+
+func (ec *executionContext) _DeletePluginResult(ctx context.Context, sel ast.SelectionSet, obj *DeletePluginResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, deletePluginResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DeletePluginResult")
+		case "success":
+			out.Values[i] = ec._DeletePluginResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var deleteProjectResultImplementors = []string{"DeleteProjectResult"}
 
 func (ec *executionContext) _DeleteProjectResult(ctx context.Context, sel ast.SelectionSet, obj *DeleteProjectResult) graphql.Marshaler {
@@ -13903,6 +14972,93 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "setPluginEnabled":
+			out.Values[i] = ec._Mutation_setPluginEnabled(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "installPlugin":
+			out.Values[i] = ec._Mutation_installPlugin(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updatePlugin":
+			out.Values[i] = ec._Mutation_updatePlugin(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "deletePlugin":
+			out.Values[i] = ec._Mutation_deletePlugin(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "setProxyPort":
+			out.Values[i] = ec._Mutation_setProxyPort(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var pluginImplementors = []string{"Plugin"}
+
+func (ec *executionContext) _Plugin(ctx context.Context, sel ast.SelectionSet, obj *Plugin) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pluginImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Plugin")
+		case "id":
+			out.Values[i] = ec._Plugin_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+			out.Values[i] = ec._Plugin_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "description":
+			out.Values[i] = ec._Plugin_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "version":
+			out.Values[i] = ec._Plugin_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "capabilities":
+			out.Values[i] = ec._Plugin_capabilities(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "enabled":
+			out.Values[i] = ec._Plugin_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "builtin":
+			out.Values[i] = ec._Plugin_builtin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "filename":
+			out.Values[i] = ec._Plugin_filename(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -13969,6 +15125,33 @@ func (ec *executionContext) _ProjectSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ProjectSettings")
 		case "intercept":
 			out.Values[i] = ec._ProjectSettings_intercept(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var proxySettingsImplementors = []string{"ProxySettings"}
+
+func (ec *executionContext) _ProxySettings(ctx context.Context, sel ast.SelectionSet, obj *ProxySettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, proxySettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProxySettings")
+		case "port":
+			out.Values[i] = ec._ProxySettings_port(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -14310,6 +15493,48 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "plugins":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_plugins(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "pluginSource":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_pluginSource(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "proxySettings":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_proxySettings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -14501,6 +15726,11 @@ func (ec *executionContext) _SitemapEntry(ctx context.Context, sel ast.Selection
 			}
 		case "count":
 			out.Values[i] = ec._SitemapEntry_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "tags":
+			out.Values[i] = ec._SitemapEntry_tags(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -15161,6 +16391,20 @@ func (ec *executionContext) marshalNDeleteFindingResult2ᚖgithubᚗcomᚋVibe�
 		return graphql.Null
 	}
 	return ec._DeleteFindingResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNDeletePluginResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeletePluginResult(ctx context.Context, sel ast.SelectionSet, v DeletePluginResult) graphql.Marshaler {
+	return ec._DeletePluginResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDeletePluginResult2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeletePluginResult(ctx context.Context, sel ast.SelectionSet, v *DeletePluginResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._DeletePluginResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNDeleteProjectResult2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐDeleteProjectResult(ctx context.Context, sel ast.SelectionSet, v DeleteProjectResult) graphql.Marshaler {
@@ -15874,6 +17118,64 @@ func (ec *executionContext) marshalNModifyWebSocketMessageResult2ᚖgithubᚗcom
 	return ec._ModifyWebSocketMessageResult(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNPlugin2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐPlugin(ctx context.Context, sel ast.SelectionSet, v Plugin) graphql.Marshaler {
+	return ec._Plugin(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPlugin2ᚕgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐPluginᚄ(ctx context.Context, sel ast.SelectionSet, v []Plugin) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPlugin2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐPlugin(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPlugin2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐPlugin(ctx context.Context, sel ast.SelectionSet, v *Plugin) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Plugin(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNProject2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProject(ctx context.Context, sel ast.SelectionSet, v Project) graphql.Marshaler {
 	return ec._Project(ctx, sel, &v)
 }
@@ -15930,6 +17232,20 @@ func (ec *executionContext) marshalNProjectSettings2ᚖgithubᚗcomᚋVibeᚑCod
 		return graphql.Null
 	}
 	return ec._ProjectSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNProxySettings2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProxySettings(ctx context.Context, sel ast.SelectionSet, v ProxySettings) graphql.Marshaler {
+	return ec._ProxySettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNProxySettings2ᚖgithubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐProxySettings(ctx context.Context, sel ast.SelectionSet, v *ProxySettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._ProxySettings(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRunAgentInput2githubᚗcomᚋVibeᚑCodingᚑBaseᚋHettixᚋpkgᚋapiᚐRunAgentInput(ctx context.Context, v interface{}) (RunAgentInput, error) {

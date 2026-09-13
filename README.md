@@ -39,22 +39,35 @@ approval policy you control.
   decode selected text in place or send it to the Decoder
 - **AI Assistant** — an LLM agent woven into every flow, backed by any
   OpenAI-compatible provider (DeepSeek, OpenAI, Ollama/local, and similar)
-- **Native desktop app** (Windows) and a **headless server** (all platforms),
-  sharing the same backend and admin UI
+- **Native desktop app** for Windows, macOS and Linux
 - **Bundled browser** — launch a pre-wired, pentest-optimised portable Chromium
   straight from the app, Burp-style
+- **Plugins** — extend the tool with JavaScript plugins that observe traffic;
+  ships with **JS Miner**, which mines JavaScript for endpoints and leaked
+  secrets. Install, edit and remove plugins from the UI
 - Project-based storage backed by SQLite
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/proxy-logs.png" alt="Proxy logs with HTTPQL search"><p align="center"><em>Proxy logs — ordered, sortable, HTTPQL search</em></p></td>
+    <td width="50%"><img src="docs/screenshots/sitemap.png" alt="Sitemap with plugin-discovered endpoints"><p align="center"><em>Sitemap — endpoints discovered by plugins are tagged</em></p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/findings.png" alt="Findings"><p align="center"><em>Findings — secrets mined from JavaScript</em></p></td>
+    <td width="50%"><img src="docs/screenshots/plugins.png" alt="Plugin management"><p align="center"><em>Plugins — install, edit and toggle extensions</em></p></td>
+  </tr>
+</table>
 
 ## Getting started
 
-Prebuilt binaries are attached to each [release](https://github.com/Vibe-Coding-Base/Hettix/releases):
-
-- **Desktop app** — `Hettix-setup-*.exe` (Windows installer), `Hettix_*_macos.zip`
-  (macOS `.app`), `Hettix_*_linux_amd64.tar.gz` (Linux). Each bundles a
-  pentest-ready Chromium; if it's missing the app falls back to a system browser.
-- **Headless server** — `hettix-cli_*` archives for Linux/macOS/Windows (no UI).
-
-Or build from source below.
+The native **desktop app** is attached to each
+[release](https://github.com/Vibe-Coding-Base/Hettix/releases): `Hettix-setup-*.exe`
+(Windows installer), `Hettix_*_macos.dmg` (macOS), and, for Linux,
+`Hettix_*_linux_amd64.deb` (Debian/Ubuntu installer) or `..._linux_amd64.tar.gz`
+(other distros). Each bundles a pentest-ready Chromium; if it's missing the app
+falls back to a system browser. Or build from source below.
 
 ### Prerequisites
 
@@ -63,83 +76,38 @@ Or build from source below.
 
 ### Build
 
-The admin frontend is compiled to a static bundle and embedded into the Go
-binaries, so `make` builds the frontend first:
+The admin frontend is compiled to a static bundle and embedded into the app, so
+`make` builds the frontend first:
 
 ```sh
-make build          # headless server -> ./hettix (all platforms)
-make build-desktop  # native desktop app -> cmd/hettix-desktop/build/bin/
+make build-desktop  # native desktop app -> ./releases/ (Hettix.exe / Hettix / Hettix.app)
 ```
 
-`make build` produces a `hettix` binary in the repository root. To install the
-server into your `$PATH`:
-
-```sh
-make build-admin && go install ./cmd/hettix
-```
-
-The desktop app runs on Windows, macOS and Linux and is built with the
-[Wails](https://wails.io) CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`);
-a plain `go build` of the desktop package will not produce a working window. On
-Windows it is frameless with a custom title bar; macOS and Linux use the native
-window frame. Linux needs the WebKit dev packages (`libgtk-3-dev`,
-`libwebkit2gtk-4.1-dev`).
+All build artifacts are written to `./releases`. The desktop app is built with
+the [Wails](https://wails.io) CLI
+(`go install github.com/wailsapp/wails/v2/cmd/wails@latest`); a plain `go build`
+of the desktop package will not produce a working window. On Windows it is
+frameless with a custom title bar; macOS and Linux use the native window frame.
+Linux needs the WebKit dev packages (`libgtk-3-dev`, `libwebkit2gtk-4.1-dev`).
 
 ### Run
 
-Headless server (all platforms):
-
-```sh
-./hettix
-```
-
-Open the printed URL (default `http://localhost:8080`) and point your browser's
-HTTP proxy at it. On the desktop app, the admin UI runs in a native window and
-the proxy listens on `:8080` (configurable with `--proxy-addr`).
+Launch the app from `./releases` (`Hettix.exe` on Windows), or install it from a
+[release](https://github.com/Vibe-Coding-Base/Hettix/releases). The admin UI runs
+in a native window; configure the proxy listener and manage plugins from inside
+the app.
 
 ### Configure the AI assistant
 
-The assistant works with any OpenAI-compatible endpoint. Configure it from the
-**Settings** page, or seed it on first run with environment variables:
-
-```sh
-export HETTIX_LLM_BASE_URL=https://api.deepseek.com/v1
-export HETTIX_LLM_API_KEY=your-api-key   # omit for a local Ollama
-export HETTIX_LLM_MODEL=deepseek-chat
-```
+The assistant works with any OpenAI-compatible provider (DeepSeek, OpenAI, a
+local Ollama, and similar). Set the base URL, API key and model from the
+**Settings** page inside the app.
 
 ### Windows installer
 
 `scripts/build-installer.ps1` packages the desktop app together with the bundled
-portable browser into an Inno Setup installer (written to `installer/out/`). It
+portable browser into an Inno Setup installer (written to `./releases/`). It
 needs the [Wails](https://wails.io) CLI and [Inno Setup](https://jrsoftware.org/isinfo.php).
-
-### Usage
-
-```
-$ hettix --help
-
-Usage:
-    hettix [flags] [subcommand] [flags]
-
-Runs an HTTP server with (MITM) proxy, GraphQL service, and a web based admin interface.
-
-Options:
-    --cert         Path to root CA certificate. Creates file if it doesn't exist. (Default: "~/.hettix/hettix_cert.pem")
-    --key          Path to root CA private key. Creates file if it doesn't exist. (Default: "~/.hettix/hettix_key.pem")
-    --db           Database file path. Creates file if it doesn't exist. (Default: "~/.hettix/hettix.db")
-    --addr         TCP address for HTTP server to listen on, in the form "host:port". (Default: ":8080")
-    --chrome       Launch Chrome with proxy settings applied and certificate errors ignored. (Default: false)
-    --verbose      Enable verbose logging.
-    --json         Encode logs as JSON, instead of pretty/human readable output.
-    --version, -v  Output version.
-    --help, -h     Output this usage text.
-
-Subcommands:
-    - cert  Certificate management
-
-Run `hettix <subcommand> --help` for subcommand specific usage instructions.
-```
 
 ## Contributing
 

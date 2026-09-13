@@ -1,7 +1,6 @@
 // Package app wires the Hettix backend services and exposes the shared HTTP API
-// (GraphQL and exports). Both the headless HTTP-server entrypoint and the Wails
-// desktop shell build their runtime through Build, so the two frontends stay in
-// sync while differing only in how they present the admin UI and route traffic.
+// (GraphQL and exports). The Wails desktop shell builds its runtime through
+// Build and presents the admin UI in a native window.
 package app
 
 import (
@@ -21,6 +20,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/llm"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/plugin"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
@@ -45,9 +45,6 @@ type Config struct {
 	// ProxyURL is the proxy address advertised to the admin UI so it can guide
 	// browser configuration. It matches the address the proxy actually listens on.
 	ProxyURL string
-	// LLMEnv seeds stored LLM settings on first run; afterwards the Settings page
-	// is the source of truth.
-	LLMEnv llm.Settings
 }
 
 // App is the assembled backend: the MITM proxy, the resolver behind the GraphQL
@@ -131,13 +128,21 @@ func Build(ctx context.Context, cfg Config) (*App, error) {
 		Logger:     cfg.Logger.Named("finding").Sugar(),
 	})
 
+	pluginService := plugin.NewService(plugin.Config{
+		Dir:      filepath.Join(filepath.Dir(dbPath), "plugins"),
+		Repo:     db,
+		Findings: findingService,
+		Logger:   cfg.Logger.Named("plugin").Sugar(),
+	})
+	if err := pluginService.Load(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("load plugin settings: %w", err)
+	}
+
 	llmManager := llm.NewManager(db)
 	if err := llmManager.Load(ctx); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("load LLM settings: %w", err)
-	}
-	if err := llmManager.Seed(ctx, cfg.LLMEnv); err != nil {
-		cfg.Logger.Named("main").Warn("Failed to seed LLM settings from environment.", zap.Error(err))
 	}
 
 	workflowService := workflow.NewService(workflow.Config{
@@ -160,6 +165,7 @@ func Build(ctx context.Context, cfg Config) (*App, error) {
 		IntruderService:           intruderService,
 		FindingService:            findingService,
 		WorkflowService:           workflowService,
+		PluginService:             pluginService,
 		Scope:                     scope,
 		MatchReplaceEngine:        matchReplaceEngine,
 	})
@@ -188,6 +194,7 @@ func Build(ctx context.Context, cfg Config) (*App, error) {
 	prox.UseResponseModifier(reqLogService.ResponseModifier)
 	prox.UseRequestModifier(interceptService.RequestModifier)
 	prox.UseResponseModifier(interceptService.ResponseModifier)
+	prox.UseResponseModifier(pluginService.ResponseModifier)
 
 	resolver := &api.Resolver{
 		ProjectService:            projService,
@@ -199,6 +206,7 @@ func Build(ctx context.Context, cfg Config) (*App, error) {
 		IntruderService:           intruderService,
 		FindingService:            findingService,
 		WorkflowService:           workflowService,
+		PluginService:             pluginService,
 		LLMManager:                llmManager,
 		ProxyURL:                  cfg.ProxyURL,
 	}

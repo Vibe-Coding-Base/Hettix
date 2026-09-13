@@ -13,55 +13,6 @@ permissions:
   contents: write
 
 jobs:
-  cli:
-    name: CLI binaries
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.26"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: yarn
-          cache-dependency-path: admin/yarn.lock
-      - name: Resolve version
-        id: v
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Build and embed admin UI
-        run: |
-          cd admin && yarn install --frozen-lockfile && yarn run build && cd ..
-          rm -rf pkg/adminui/admin && cp -R admin/dist pkg/adminui/admin
-      - name: Cross-compile hettix
-        env:
-          VERSION: ${{ steps.v.outputs.version }}
-          CGO_ENABLED: "0"
-        run: |
-          mkdir -p dist
-          build() {
-            os=$1; arch=$2; ext=$3
-            GOOS=$os GOARCH=$arch go build -ldflags "-s -w -X main.version=${VERSION}" -o "hettix${ext}" ./cmd/hettix
-            # "cli" in the name so the headless server isn't mistaken for the desktop app.
-            name="hettix-cli_${VERSION}_${os}_${arch}"
-            if [ "$os" = "windows" ]; then zip -q "dist/${name}.zip" "hettix${ext}"; else tar -czf "dist/${name}.tar.gz" "hettix${ext}"; fi
-            rm -f "hettix${ext}"
-          }
-          build linux amd64 ""
-          build linux arm64 ""
-          build darwin amd64 ""
-          build darwin arm64 ""
-          build windows amd64 ".exe"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cli
-          path: dist/*
-
   installer:
     name: Desktop (Windows installer)
     runs-on: windows-latest
@@ -90,16 +41,11 @@ jobs:
         run: choco install innosetup -y --no-progress
       - name: Build installer
         run: powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1 -Version ${{ steps.v.outputs.version }}
-      - name: Collect assets
-        shell: bash
-        run: |
-          mkdir -p out
-          cp cmd/hettix-desktop/build/bin/Hettix.exe out/Hettix.exe
-          cp installer/out/hettix-setup-*.exe out/
+      # build-installer.ps1 writes Hettix.exe and the installer into ./releases.
       - uses: actions/upload-artifact@v4
         with:
           name: installer
-          path: out/*
+          path: releases/*
 
   desktop-macos:
     name: Desktop (macOS)
@@ -142,16 +88,18 @@ jobs:
           mkdir -p "$APP/browser"
           unzip -q chrome-mac.zip -d "$APP/browser"
           chmod -R +x "$APP/browser/chrome-mac/Chromium.app/Contents/MacOS" || true
-      - name: Package .app
+      - name: Package .dmg
         env:
           VERSION: ${{ steps.v.outputs.version }}
         run: |
-          mkdir -p out
-          ditto -c -k --keepParent cmd/hettix-desktop/build/bin/Hettix.app "out/Hettix_${VERSION}_macos.zip"
+          mkdir -p releases dmg-root
+          cp -R cmd/hettix-desktop/build/bin/Hettix.app dmg-root/
+          ln -s /Applications dmg-root/Applications
+          hdiutil create -volname "Hettix" -srcfolder dmg-root -ov -format UDZO "releases/Hettix_${VERSION}_macos.dmg"
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-macos
-          path: out/*
+          path: releases/*
 
   desktop-linux:
     name: Desktop (Linux)
@@ -197,20 +145,33 @@ jobs:
           mkdir -p cmd/hettix-desktop/build/bin/browser
           unzip -q chrome-linux.zip -d cmd/hettix-desktop/build/bin/browser
           chmod +x cmd/hettix-desktop/build/bin/browser/chrome-linux/chrome || true
-      - name: Package binary
+      - name: Package tarball
         env:
           VERSION: ${{ steps.v.outputs.version }}
         run: |
-          mkdir -p out
-          tar -C cmd/hettix-desktop/build/bin -czf "out/Hettix_${VERSION}_linux_amd64.tar.gz" Hettix browser
+          mkdir -p releases
+          tar -C cmd/hettix-desktop/build/bin -czf "releases/Hettix_${VERSION}_linux_amd64.tar.gz" Hettix browser
+      - name: Package .deb installer
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          PKG="hettix_${VERSION}_amd64"
+          mkdir -p "$PKG/DEBIAN" "$PKG/opt/hettix" "$PKG/usr/bin" "$PKG/usr/share/applications"
+          cp -R cmd/hettix-desktop/build/bin/Hettix "$PKG/opt/hettix/Hettix"
+          cp -R cmd/hettix-desktop/build/bin/browser "$PKG/opt/hettix/browser"
+          ln -s /opt/hettix/Hettix "$PKG/usr/bin/hettix"
+          printf 'Package: hettix\nVersion: %s\nSection: utils\nPriority: optional\nArchitecture: amd64\nDepends: libwebkit2gtk-4.1-0, libgtk-3-0\nMaintainer: Vibe-Coding-Base <noreply@github.com>\nDescription: HTTP MITM proxy and AI-driven pentest platform\n' "$VERSION" > "$PKG/DEBIAN/control"
+          printf '[Desktop Entry]\nName=Hettix\nComment=HTTP MITM proxy and AI pentest platform\nExec=/opt/hettix/Hettix\nType=Application\nCategories=Development;Security;\nTerminal=false\n' > "$PKG/usr/share/applications/hettix.desktop"
+          dpkg-deb --build --root-owner-group "$PKG"
+          mv "${PKG}.deb" "releases/Hettix_${VERSION}_linux_amd64.deb"
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-linux
-          path: out/*
+          path: releases/*
 
   release:
     name: Publish release
-    needs: [cli, installer, desktop-macos, desktop-linux]
+    needs: [installer, desktop-macos, desktop-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:

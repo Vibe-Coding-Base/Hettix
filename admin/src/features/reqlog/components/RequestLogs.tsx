@@ -1,19 +1,6 @@
+import { useApolloClient } from "@apollo/client";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import {
-  Alert,
-  Box,
-  FormControlLabel,
-  IconButton,
-  Link,
-  Snackbar,
-  styled,
-  Switch,
-  TableCell,
-  TableCellProps,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-} from "@mui/material";
+import { Alert, Box, IconButton, Link, Snackbar, styled, TableCell, TableCellProps, Tooltip } from "@mui/material";
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -24,39 +11,25 @@ import Search from "./Search";
 import { useContextMenu } from "lib/components/ContextMenu";
 import RequestsTable from "lib/components/RequestsTable";
 import SplitPane from "lib/components/SplitPane";
-import { useCreateSenderRequestFromHttpRequestLogMutation, useHttpRequestLogsQuery } from "lib/graphql/generated";
-import { toCurl } from "lib/toCurl";
+import { downloadText } from "lib/download";
+import {
+  HttpRequestLogDocument,
+  HttpRequestLogQuery,
+  useCreateSenderRequestFromHttpRequestLogMutation,
+  useHttpRequestLogsQuery,
+} from "lib/graphql/generated";
+import { applyLogFilters, emptyLogFilters, LogFilters } from "lib/logFilters";
+import { rawRequest, rawResponse } from "lib/rawHttp";
+import { toCurl, CurlPlatform } from "lib/toCurl";
 
 const ActionsTableCell = styled(TableCell)<TableCellProps>(() => ({
   paddingTop: 0,
   paddingBottom: 0,
 }));
 
-const STATIC_EXTENSIONS = /\.(css|js|mjs|png|jpe?g|gif|svg|ico|webp|woff2?|ttf|eot|map)(\?|$)/i;
-
-type LogEntry = { method: string; url: string; response?: { statusCode: number } | null };
-
-function statusClass(code: number): string {
-  return `${Math.floor(code / 100)}xx`;
-}
-
-function applyLogFilters<T extends LogEntry>(logs: readonly T[], statuses: string[], hideStatic: boolean): T[] {
-  return logs.filter((log) => {
-    if (hideStatic && STATIC_EXTENSIONS.test(log.url)) {
-      return false;
-    }
-    if (statuses.length > 0) {
-      const cls = log.response ? statusClass(log.response.statusCode) : "none";
-      if (!statuses.includes(cls)) {
-        return false;
-      }
-    }
-    return true;
-  });
-}
-
 export function RequestLogs(): JSX.Element {
   const navigate = useNavigate();
+  const client = useApolloClient();
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id") ?? undefined;
   const { data } = useHttpRequestLogsQuery({
@@ -73,12 +46,11 @@ export function RequestLogs(): JSX.Element {
 
   const ctxMenu = useContextMenu();
 
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [hideStatic, setHideStatic] = useState(false);
+  const [filters, setFilters] = useState<LogFilters>(emptyLogFilters);
 
   const filteredLogs = useMemo(
-    () => applyLogFilters(data?.httpRequestLogs || [], statusFilter, hideStatic),
-    [data?.httpRequestLogs, statusFilter, hideStatic]
+    () => applyLogFilters(data?.httpRequestLogs || [], filters),
+    [data?.httpRequestLogs, filters]
   );
 
   const [newSenderReqId, setNewSenderReqId] = useState("");
@@ -94,6 +66,47 @@ export function RequestLogs(): JSX.Element {
     navigate(`/proxy/logs?id=${id}`);
   };
 
+  const fetchLog = async (id: string) => {
+    const { data } = await client.query<HttpRequestLogQuery>({ query: HttpRequestLogDocument, variables: { id } });
+    return data.httpRequestLog ?? undefined;
+  };
+
+  const copyAsCurl = async (id: string, platform: CurlPlatform) => {
+    const log = await fetchLog(id);
+    if (!log) {
+      return;
+    }
+    navigator.clipboard?.writeText(
+      toCurl({ method: log.method, url: log.url, headers: log.headers ?? [], body: log.body }, platform)
+    );
+  };
+
+  const downloadLog = async (id: string, includeResponse: boolean) => {
+    const log = await fetchLog(id);
+    if (!log) {
+      return;
+    }
+    let content = rawRequest({
+      method: log.method,
+      url: log.url,
+      proto: log.proto,
+      headers: log.headers ?? [],
+      body: log.body,
+    });
+    if (includeResponse && log.response) {
+      content +=
+        "\n\n" +
+        rawResponse({
+          proto: log.response.proto,
+          statusCode: log.response.statusCode,
+          statusReason: log.response.statusReason,
+          headers: log.response.headers ?? [],
+          body: log.response.body,
+        });
+    }
+    downloadText(`request-${id}.txt`, content);
+  };
+
   const handleRowContextClick = (e: React.MouseEvent, id: string) => {
     const log = filteredLogs.find((l) => l.id === id);
     if (!log) {
@@ -107,10 +120,10 @@ export function RequestLogs(): JSX.Element {
         onClick: () => navigate(`/intruder?url=${encodeURIComponent(log.url)}&method=${log.method}`),
       },
       { label: "Copy URL", onClick: () => navigator.clipboard?.writeText(log.url), divider: true },
-      {
-        label: "Copy as curl",
-        onClick: () => navigator.clipboard?.writeText(toCurl({ method: log.method, url: log.url })),
-      },
+      { label: "Copy as curl (bash)", onClick: () => copyAsCurl(id, "unix") },
+      { label: "Copy as curl (Windows)", onClick: () => copyAsCurl(id, "windows") },
+      { label: "Save request", onClick: () => downloadLog(id, false), divider: true },
+      { label: "Save request + response", onClick: () => downloadLog(id, true) },
     ]);
   };
 
@@ -137,31 +150,11 @@ export function RequestLogs(): JSX.Element {
     <Box display="flex" flexDirection="column" height="100%">
       <Box display="flex">
         <Box flex="1 auto">
-          <Search />
+          <Search filters={filters} onFiltersChange={setFilters} />
         </Box>
         <Box pt={0.5}>
           <Actions />
         </Box>
-      </Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 1, pb: 1, flexWrap: "wrap" }}>
-        <ToggleButtonGroup size="small" value={statusFilter} onChange={(_, value: string[]) => setStatusFilter(value)}>
-          <ToggleButton value="2xx" sx={{ color: "success.main" }}>
-            2xx
-          </ToggleButton>
-          <ToggleButton value="3xx" sx={{ color: "info.main" }}>
-            3xx
-          </ToggleButton>
-          <ToggleButton value="4xx" sx={{ color: "warning.main" }}>
-            4xx
-          </ToggleButton>
-          <ToggleButton value="5xx" sx={{ color: "error.main" }}>
-            5xx
-          </ToggleButton>
-        </ToggleButtonGroup>
-        <FormControlLabel
-          control={<Switch size="small" checked={hideStatic} onChange={(e) => setHideStatic(e.target.checked)} />}
-          label="Hide static assets"
-        />
       </Box>
       <Box sx={{ display: "flex", flex: "1 auto", position: "relative" }}>
         <SplitPane split="horizontal" size={"40%"}>

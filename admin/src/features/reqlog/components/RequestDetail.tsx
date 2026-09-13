@@ -2,7 +2,6 @@ import { Typography, Box } from "@mui/material";
 
 import RequestTabs from "lib/components/RequestTabs";
 import { HttpRequestLogQuery } from "lib/graphql/generated";
-import { queryParamsFromURL } from "lib/queryParamsFromURL";
 
 interface Props {
   request: NonNullable<HttpRequestLogQuery["httpRequestLog"]>;
@@ -37,14 +36,7 @@ function RequestDetail({ request }: Props): JSX.Element {
       </Box>
 
       <Box flex="1 auto" overflow="hidden">
-        <RequestTabs
-          method={method}
-          url={url}
-          proto={proto}
-          headers={headers}
-          queryParams={queryParamsFromURL(url)}
-          body={body}
-        />
+        <RequestTabs method={method} url={url} proto={proto} headers={headers} body={body} />
       </Box>
     </Box>
   );

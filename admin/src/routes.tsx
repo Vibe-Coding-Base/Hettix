@@ -6,6 +6,7 @@ import Findings from "pages/findings/index";
 import Home from "pages/index";
 import Intruder from "pages/intruder/index";
 import MatchReplace from "pages/matchreplace/index";
+import Plugins from "pages/plugins/index";
 import Projects from "pages/projects/index";
 import Proxy from "pages/proxy/index";
 import Intercept from "pages/proxy/intercept/index";
@@ -34,4 +35,5 @@ export const routes: RouteObject[] = [
   { path: "/findings", element: <Findings /> },
   { path: "/workflows", element: <Workflows /> },
   { path: "/decoder", element: <Decoder /> },
+  { path: "/plugins", element: <Plugins /> },
 ];

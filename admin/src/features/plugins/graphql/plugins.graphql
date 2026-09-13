@@ -1,0 +1,44 @@
+fragment PluginFields on Plugin {
+  id
+  name
+  description
+  version
+  capabilities
+  enabled
+  builtin
+  filename
+}
+
+query Plugins {
+  plugins {
+    ...PluginFields
+  }
+}
+
+query PluginSource($id: String!) {
+  pluginSource(id: $id)
+}
+
+mutation SetPluginEnabled($id: String!, $enabled: Boolean!) {
+  setPluginEnabled(id: $id, enabled: $enabled) {
+    ...PluginFields
+  }
+}
+
+mutation InstallPlugin($content: String!) {
+  installPlugin(content: $content) {
+    ...PluginFields
+  }
+}
+
+mutation UpdatePlugin($id: String!, $content: String!) {
+  updatePlugin(id: $id, content: $content) {
+    ...PluginFields
+  }
+}
+
+mutation DeletePlugin($id: String!) {
+  deletePlugin(id: $id) {
+    success
+  }
+}

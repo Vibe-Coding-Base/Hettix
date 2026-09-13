@@ -171,11 +171,22 @@ func (d *Database) Sitemap(ctx context.Context, projectID ulid.ULID) ([]reqlog.S
 	type agg struct {
 		methods  map[string]struct{}
 		statuses map[int]struct{}
+		tags     map[string]struct{}
 		count    int
 	}
 
 	order := make([]key, 0)
 	byKey := make(map[key]*agg)
+
+	ensure := func(k key) *agg {
+		a, ok := byKey[k]
+		if !ok {
+			a = &agg{methods: map[string]struct{}{}, statuses: map[int]struct{}{}, tags: map[string]struct{}{}}
+			byKey[k] = a
+			order = append(order, k)
+		}
+		return a
+	}
 
 	for rows.Next() {
 		var (
@@ -187,15 +198,7 @@ func (d *Database) Sitemap(ctx context.Context, projectID ulid.ULID) ([]reqlog.S
 			return nil, fmt.Errorf("sqlite: failed to scan sitemap row: %w", err)
 		}
 
-		k := key{host: host, path: path}
-
-		a, ok := byKey[k]
-		if !ok {
-			a = &agg{methods: map[string]struct{}{}, statuses: map[int]struct{}{}}
-			byKey[k] = a
-			order = append(order, k)
-		}
-
+		a := ensure(key{host: host, path: path})
 		a.count++
 		a.methods[method] = struct{}{}
 		if statusCode.Valid {
@@ -207,21 +210,39 @@ func (d *Database) Sitemap(ctx context.Context, projectID ulid.ULID) ([]reqlog.S
 		return nil, fmt.Errorf("sqlite: failed to iterate sitemap rows: %w", err)
 	}
 
+	// Merge endpoints discovered by plugins, tagging them with their source.
+	discRows, err := d.db.QueryContext(ctx,
+		`SELECT host, path, source FROM discovered_endpoints WHERE project_id = ?`, projectID.String())
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: failed to query discovered endpoints: %w", err)
+	}
+	defer discRows.Close()
+
+	for discRows.Next() {
+		var host, path, source string
+		if err := discRows.Scan(&host, &path, &source); err != nil {
+			return nil, fmt.Errorf("sqlite: failed to scan discovered endpoint: %w", err)
+		}
+		ensure(key{host: host, path: path}).tags[source] = struct{}{}
+	}
+	if err := discRows.Err(); err != nil {
+		return nil, fmt.Errorf("sqlite: failed to iterate discovered endpoints: %w", err)
+	}
+
+	sort.Slice(order, func(i, j int) bool {
+		if order[i].host != order[j].host {
+			return order[i].host < order[j].host
+		}
+		return order[i].path < order[j].path
+	})
+
 	entries := make([]reqlog.SitemapEntry, 0, len(order))
 	for _, k := range order {
 		a := byKey[k]
 
-		methods := make([]string, 0, len(a.methods))
-		for m := range a.methods {
-			methods = append(methods, m)
-		}
-		sort.Strings(methods)
-
-		statuses := make([]int, 0, len(a.statuses))
-		for s := range a.statuses {
-			statuses = append(statuses, s)
-		}
-		sort.Ints(statuses)
+		methods := keysSorted(a.methods)
+		statuses := intKeysSorted(a.statuses)
+		tags := keysSorted(a.tags)
 
 		entries = append(entries, reqlog.SitemapEntry{
 			Host:        k.host,
@@ -229,10 +250,29 @@ func (d *Database) Sitemap(ctx context.Context, projectID ulid.ULID) ([]reqlog.S
 			Methods:     methods,
 			StatusCodes: statuses,
 			Count:       a.count,
+			Tags:        tags,
 		})
 	}
 
 	return entries, nil
+}
+
+func keysSorted(m map[string]struct{}) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func intKeysSorted(m map[int]struct{}) []int {
+	out := make([]int, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Ints(out)
+	return out
 }
 
 func (d *Database) ClearRequestLogs(ctx context.Context, projectID ulid.ULID) error {

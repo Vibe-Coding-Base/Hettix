@@ -7,12 +7,11 @@ toolchain go1.26.2
 require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/chromedp/chromedp v0.7.8
+	github.com/dop251/goja v0.0.0-20260911104922-fabc3b8078ad
 	github.com/gobwas/ws v1.1.0
 	github.com/google/go-cmp v0.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/oklog/ulid v1.3.1
-	github.com/peterbourgon/ff/v3 v3.1.2
-	github.com/smallstep/truststore v0.11.0
 	github.com/vektah/gqlparser/v2 v2.2.0
 	github.com/wailsapp/wails/v2 v2.15.0
 	go.uber.org/zap v1.21.0
@@ -26,11 +25,14 @@ require (
 	github.com/chromedp/cdproto v0.0.0-20220217222649-d8c14a5c6edf // indirect
 	github.com/chromedp/sysutil v1.0.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
+	github.com/dlclark/regexp2/v2 v2.5.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e // indirect
@@ -71,7 +73,6 @@ require (
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/tools v0.48.0 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
-	howett.net/plist v1.0.2-0.20250314012144-ee69052608d9 // indirect
 	modernc.org/libc v1.75.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect

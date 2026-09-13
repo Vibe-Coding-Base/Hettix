@@ -8,6 +8,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { useActiveProject } from "lib/ActiveProjectContext";
 import { useInterceptedRequests } from "lib/InterceptedRequestsContext";
 import { ConfirmationDialog, useConfirmationDialog } from "lib/components/ConfirmationDialog";
+import { downloadText } from "lib/download";
 import { HttpRequestLogsDocument, useClearHttpRequestLogMutation } from "lib/graphql/generated";
 
 function Actions(): JSX.Element {
@@ -18,10 +19,24 @@ function Actions(): JSX.Element {
   });
   const clearHTTPConfirmationDialog = useConfirmationDialog();
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
+  const [exportError, setExportError] = useState("");
 
-  const download = (format: "har" | "csv") => {
-    window.open(`/api/export/${format}`, "_blank");
+  // Fetch the export in-page and save it as a blob. A plain window.open would be
+  // handed to the system browser by the desktop shell, which cannot reach the
+  // in-process asset server.
+  const download = async (format: "har" | "csv") => {
     setExportAnchor(null);
+    setExportError("");
+    try {
+      const res = await fetch(`/api/export/${format}`);
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const mime = format === "har" ? "application/json" : "text/csv";
+      downloadText(`hettix-export.${format}`, await res.text(), mime);
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (
@@ -37,6 +52,8 @@ function Actions(): JSX.Element {
       {clearLogsResult.error && (
         <Alert severity="error">Failed to clear HTTP logs: {clearLogsResult.error.message}</Alert>
       )}
+
+      {exportError && <Alert severity="error">Failed to export: {exportError}</Alert>}
 
       {(activeProject?.settings.intercept.requestsEnabled || activeProject?.settings.intercept.responsesEnabled) && (
         <Button

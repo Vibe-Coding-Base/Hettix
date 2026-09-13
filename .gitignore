@@ -1,7 +1,5 @@
 *.vscode
 /dist
-/hettix
-/hettix.exe
 *.exe~
 /pkg/adminui/admin
 *.pem
@@ -9,10 +7,13 @@
 *.sqlite
 *.test
 
-# Bundled portable browser and installer build artifacts (fetched/built, never committed).
-/browser/
-/installer/out/
+# All build artifacts are centralised here (binaries, desktop apps, installer).
+/releases/
 
-# Wails desktop build output and auto-generated JS runtime (the admin UI lives in /admin).
+# Fetched portable browser (never committed).
+/browser/
+
+# Wails writes intermediate output here; the final app is copied into /releases.
+# The auto-generated JS runtime lives here too (the admin UI is in /admin).
 /cmd/hettix-desktop/build/bin/
 /cmd/hettix-desktop/frontend/

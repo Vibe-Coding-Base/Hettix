@@ -1,0 +1,11 @@
+query ProxySettings {
+  proxySettings {
+    port
+  }
+}
+
+mutation SetProxyPort($port: Int!) {
+  setProxyPort(port: $port) {
+    port
+  }
+}

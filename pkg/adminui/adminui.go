@@ -1,5 +1,5 @@
-// Package adminui embeds the built admin single-page app so every frontend
-// (the headless HTTP server and the desktop shell) serves identical assets.
+// Package adminui embeds the built admin single-page app so the desktop shell
+// serves it from within the binary.
 //
 // The admin directory is produced by the frontend build (`make build-admin`)
 // and is not committed; a build fails until it has been generated.

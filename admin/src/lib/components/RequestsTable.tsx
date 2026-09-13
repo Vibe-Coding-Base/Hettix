@@ -5,10 +5,12 @@ import {
   TableRow,
   TableCell,
   TableBody,
+  TableSortLabel,
   styled,
   TableCellProps,
   TableRowProps,
 } from "@mui/material";
+import { useMemo, useState } from "react";
 
 import HttpStatusIcon from "./HttpStatusIcon";
 
@@ -19,6 +21,11 @@ const baseCellStyle = {
   overflow: "hidden",
   textOverflow: "ellipsis",
 } as const;
+
+const SeqTableCell = styled(TableCell)<TableCellProps>(() => ({
+  ...baseCellStyle,
+  width: "60px",
+}));
 
 const MethodTableCell = styled(TableCell)<TableCellProps>(() => ({
   ...baseCellStyle,
@@ -90,14 +97,36 @@ function parseURLForDisplay(url: string): { origin: string; path: string } {
   }
 }
 
+type SortOrder = "asc" | "desc";
+
 export default function RequestsTable(props: Props): JSX.Element {
   const { requests, activeRowId, actionsCell, onRowClick, onContextMenu } = props;
+
+  // ULIDs are lexicographically time-ordered, so ascending id order matches the
+  // order requests arrived. The "#" column exposes that order and lets the user
+  // flip between oldest- and newest-first.
+  const [order, setOrder] = useState<SortOrder>("asc");
+
+  const seqById = useMemo(() => {
+    const byId = [...requests].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    return new Map(byId.map((req, index) => [req.id, index + 1]));
+  }, [requests]);
+
+  const sorted = useMemo(() => {
+    const byId = [...requests].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    return order === "asc" ? byId : byId.reverse();
+  }, [requests, order]);
 
   return (
     <TableContainer sx={{ overflowX: "initial" }}>
       <Table size="small" stickyHeader>
         <TableHead>
           <TableRow>
+            <SeqTableCell sortDirection={order}>
+              <TableSortLabel active direction={order} onClick={() => setOrder((o) => (o === "asc" ? "desc" : "asc"))}>
+                #
+              </TableSortLabel>
+            </SeqTableCell>
             <TableCell>Method</TableCell>
             <TableCell>Origin</TableCell>
             <TableCell>Path</TableCell>
@@ -106,7 +135,7 @@ export default function RequestsTable(props: Props): JSX.Element {
           </TableRow>
         </TableHead>
         <TableBody>
-          {requests.map(({ id, method, url, response }) => {
+          {sorted.map(({ id, method, url, response }) => {
             const { origin, path } = parseURLForDisplay(url);
 
             return (
@@ -121,6 +150,7 @@ export default function RequestsTable(props: Props): JSX.Element {
                   onContextMenu && onContextMenu(e, id);
                 }}
               >
+                <SeqTableCell>{seqById.get(id)}</SeqTableCell>
                 <MethodTableCell>
                   <code>{method}</code>
                 </MethodTableCell>

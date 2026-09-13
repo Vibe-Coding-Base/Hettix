@@ -1,3 +1,4 @@
+import DownloadIcon from "@mui/icons-material/Download";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   Accordion,
@@ -5,6 +6,7 @@ import {
   AccordionSummary,
   Alert,
   Box,
+  Button,
   Chip,
   CircularProgress,
   FormControlLabel,
@@ -18,6 +20,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 
+import { downloadText, toCSV } from "lib/download";
 import { useSitemapQuery } from "lib/graphql/generated";
 
 type Entry = {
@@ -26,7 +29,22 @@ type Entry = {
   methods: string[];
   statusCodes: number[];
   count: number;
+  tags: string[];
 };
+
+// PathCell renders a path with any plugin-discovery tags.
+function PathCell({ entry }: { entry: Entry }): JSX.Element {
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
+      <Box component="span" sx={{ fontFamily: "monospace", fontSize: 13, wordBreak: "break-all" }}>
+        {entry.path || "/"}
+      </Box>
+      {entry.tags.map((tag) => (
+        <Chip key={tag} size="small" color="info" variant="outlined" label={tag} sx={{ height: 18, fontSize: 10 }} />
+      ))}
+    </Box>
+  );
+}
 
 type Kind = "endpoint" | "js" | "static";
 
@@ -84,13 +102,29 @@ export default function Sitemap(): JSX.Element {
 
   const hosts = [...byHost.keys()].sort();
 
+  const exportCSV = () => {
+    const rows = entries.map((e) => [
+      e.host,
+      e.path,
+      e.methods.join(" "),
+      e.statusCodes.join(" "),
+      e.count,
+      e.tags.join(" "),
+    ]);
+    downloadText("sitemap.csv", toCSV(["Host", "Path", "Methods", "Status codes", "Count", "Tags"], rows), "text/csv");
+  };
+
   return (
     <Box sx={{ maxWidth: 960 }}>
-      <FormControlLabel
-        control={<Switch size="small" checked={showStatic} onChange={(e) => setShowStatic(e.target.checked)} />}
-        label="Show static assets"
-        sx={{ mb: 1 }}
-      />
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+        <FormControlLabel
+          control={<Switch size="small" checked={showStatic} onChange={(e) => setShowStatic(e.target.checked)} />}
+          label="Show static assets"
+        />
+        <Button size="small" startIcon={<DownloadIcon />} onClick={exportCSV}>
+          Export CSV
+        </Button>
+      </Box>
       {hosts.map((host) => {
         const hostEntries = byHost.get(host) ?? [];
         const endpoints = hostEntries.filter((e) => classify(e.path) === "endpoint");
@@ -132,8 +166,8 @@ function EndpointTable({ entries }: { entries: Entry[] }): JSX.Element {
       <TableBody>
         {entries.map((entry) => (
           <TableRow key={entry.path} hover>
-            <TableCell sx={{ fontFamily: "monospace", fontSize: 13, wordBreak: "break-all" }}>
-              {entry.path || "/"}
+            <TableCell>
+              <PathCell entry={entry} />
             </TableCell>
             <TableCell>
               <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
@@ -167,8 +201,8 @@ function PathList({ title, entries }: { title: string; entries: Entry[] }): JSX.
         <TableBody>
           {entries.map((entry) => (
             <TableRow key={entry.path} hover>
-              <TableCell sx={{ fontFamily: "monospace", fontSize: 13, wordBreak: "break-all" }}>
-                {entry.path || "/"}
+              <TableCell>
+                <PathCell entry={entry} />
               </TableCell>
               <TableCell align="right" sx={{ width: 64 }}>
                 {entry.count}

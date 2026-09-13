@@ -148,6 +148,26 @@ CREATE TABLE IF NOT EXISTS llm_settings (
 	model    TEXT NOT NULL,
 	enabled  INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS discovered_endpoints (
+	project_id TEXT NOT NULL,
+	host       TEXT NOT NULL,
+	path       TEXT NOT NULL,
+	source     TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	PRIMARY KEY (project_id, host, path, source)
+);
+CREATE INDEX IF NOT EXISTS idx_discovered_endpoints_project ON discovered_endpoints (project_id);
+
+CREATE TABLE IF NOT EXISTS plugin_settings (
+	id      TEXT PRIMARY KEY,
+	enabled INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS proxy_settings (
+	id   INTEGER PRIMARY KEY CHECK (id = 1),
+	port INTEGER NOT NULL
+);
 `
 
 // OpenDatabase opens (creating if needed) a SQLite database at path and ensures

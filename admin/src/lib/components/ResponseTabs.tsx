@@ -2,29 +2,28 @@ import { TabContext, TabList, TabPanel } from "@mui/lab";
 import { Box, Paper, Tab, ToggleButton, Typography } from "@mui/material";
 import { useState } from "react";
 
-import { KeyValuePairTable, KeyValuePair, KeyValuePairTableProps } from "./KeyValuePair";
+import { KeyValuePair } from "./KeyValuePair";
 
 import Editor from "lib/components/Editor";
-import { canPrettify, prettify } from "lib/prettify";
+import { canPrettify } from "lib/prettify";
 import { rawResponse } from "lib/rawHttp";
 
 interface ResponseTabsProps {
+  // Read-only rendering builds the raw message from these structured fields.
   proto?: string | null;
   statusCode?: number | null;
   statusReason?: string | null;
   headers: KeyValuePair[];
-  onHeaderChange?: KeyValuePairTableProps["onChange"];
-  onHeaderDelete?: KeyValuePairTableProps["onDelete"];
   body?: string | null;
-  onBodyChange?: (value: string) => void;
   hasResponse: boolean;
+  // Editable mode: the parent owns the raw text and parses it on forward.
+  raw?: string;
+  onRawChange?: (raw: string) => void;
 }
 
 enum TabValue {
   Raw = "raw",
-  Body = "body",
   Render = "render",
-  Headers = "headers",
 }
 
 function isHTML(contentType?: string, body?: string | null): boolean {
@@ -41,30 +40,36 @@ const reqNotSent = (
   </Paper>
 );
 
-function ResponseTabs(props: ResponseTabsProps): JSX.Element {
-  const { proto, statusCode, statusReason, headers, onHeaderChange, onHeaderDelete, body, onBodyChange, hasResponse } =
-    props;
+// ResponseTabs shows a response as a single raw HTTP message plus, for HTML, a
+// Render tab that displays it as a browser would. When editable, the raw text is
+// edited directly (used by intercept).
+function ResponseTabs({
+  proto,
+  statusCode,
+  statusReason,
+  headers,
+  body,
+  hasResponse,
+  raw,
+  onRawChange,
+}: ResponseTabsProps): JSX.Element {
+  const editable = onRawChange !== undefined;
   const [tabValue, setTabValue] = useState(TabValue.Raw);
   const [pretty, setPretty] = useState(false);
-  const readOnly = onBodyChange === undefined;
 
   const contentType = headers.find((header) => header.key.toLowerCase() === "content-type")?.value;
   const canRender = isHTML(contentType, body);
-
-  const tabSx = { textTransform: "none" };
-  const headersLength = onHeaderChange ? headers.length - 1 : headers.length;
+  const content = editable ? raw ?? "" : rawResponse({ proto, statusCode, statusReason, headers, body, pretty });
 
   return (
     <Box height="100%" sx={{ display: "flex", flexDirection: "column" }}>
       <TabContext value={tabValue}>
         <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 1, display: "flex", alignItems: "center" }}>
           <TabList onChange={(_, value) => setTabValue(value)} sx={{ flex: 1, minHeight: 40 }}>
-            <Tab value={TabValue.Raw} label="Raw" sx={tabSx} />
-            <Tab value={TabValue.Body} label={"Body" + (body?.length ? ` (${body.length})` : "")} sx={tabSx} />
-            {canRender && <Tab value={TabValue.Render} label="Render" sx={tabSx} />}
-            <Tab value={TabValue.Headers} label={"Headers" + (headersLength ? ` (${headersLength})` : "")} sx={tabSx} />
+            <Tab value={TabValue.Raw} label="Raw" sx={{ textTransform: "none" }} />
+            {canRender && <Tab value={TabValue.Render} label="Render" sx={{ textTransform: "none" }} />}
           </TabList>
-          {readOnly && tabValue === TabValue.Body && canPrettify(body) && (
+          {!editable && tabValue === TabValue.Raw && canPrettify(body) && (
             <ToggleButton
               value="pretty"
               size="small"
@@ -79,20 +84,11 @@ function ResponseTabs(props: ResponseTabsProps): JSX.Element {
         <Box flex="1 auto" overflow="hidden">
           <TabPanel value={TabValue.Raw} sx={{ p: 0, height: "100%" }}>
             {hasResponse ? (
-              <Editor content={rawResponse({ proto, statusCode, statusReason, headers, body })} language="plaintext" />
-            ) : (
-              reqNotSent
-            )}
-          </TabPanel>
-          <TabPanel value={TabValue.Body} sx={{ p: 0, height: "100%" }}>
-            {hasResponse ? (
               <Editor
-                content={pretty && body ? prettify(body) : body || ""}
-                onChange={(value) => {
-                  onBodyChange && onBodyChange(value || "");
-                }}
-                monacoOptions={{ readOnly }}
-                contentType={contentType}
+                content={content}
+                language="http"
+                monacoOptions={{ readOnly: !editable }}
+                onChange={onRawChange ? (value) => onRawChange(value ?? "") : undefined}
               />
             ) : (
               reqNotSent
@@ -110,10 +106,6 @@ function ResponseTabs(props: ResponseTabsProps): JSX.Element {
               />
             </TabPanel>
           )}
-          <TabPanel value={TabValue.Headers} sx={{ p: 0, height: "100%", overflow: "auto" }}>
-            {hasResponse && <KeyValuePairTable items={headers} onChange={onHeaderChange} onDelete={onHeaderDelete} />}
-            {!hasResponse && reqNotSent}
-          </TabPanel>
         </Box>
       </TabContext>
     </Box>

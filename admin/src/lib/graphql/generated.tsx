@@ -70,6 +70,11 @@ export type DeleteFindingResult = {
   success: Scalars['Boolean'];
 };
 
+export type DeletePluginResult = {
+  __typename?: 'DeletePluginResult';
+  success: Scalars['Boolean'];
+};
+
 export type DeleteProjectResult = {
   __typename?: 'DeleteProjectResult';
   success: Scalars['Boolean'];
@@ -335,11 +340,13 @@ export type Mutation = {
   createProject?: Maybe<Project>;
   createSenderRequestFromHttpRequestLog: SenderRequest;
   deleteFinding: DeleteFindingResult;
+  deletePlugin: DeletePluginResult;
   deleteProject: DeleteProjectResult;
   deleteSenderRequests: DeleteSenderRequestsResult;
   deleteWorkflow: DeleteWorkflowResult;
   dropWebSocketMessage: DropWebSocketMessageResult;
   forwardWebSocketMessage: ModifyWebSocketMessageResult;
+  installPlugin: Plugin;
   launchBrowser: LaunchBrowserResult;
   modifyRequest: ModifyRequestResult;
   modifyResponse: ModifyResponseResult;
@@ -351,11 +358,14 @@ export type Mutation = {
   sendRequest: SenderRequest;
   setHttpRequestLogFilter?: Maybe<HttpRequestLogFilter>;
   setMatchReplaceRules: Array<MatchReplaceRule>;
+  setPluginEnabled: Plugin;
+  setProxyPort: ProxySettings;
   setScope: Array<ScopeRule>;
   setSenderRequestFilter?: Maybe<SenderRequestFilter>;
   startIntruderAttack: IntruderAttack;
   updateInterceptSettings: InterceptSettings;
   updateLLMSettings: LlmSettings;
+  updatePlugin: Plugin;
   updateWebSocketInterceptSettings: WebSocketInterceptSettings;
 };
 
@@ -395,6 +405,11 @@ export type MutationDeleteFindingArgs = {
 };
 
 
+export type MutationDeletePluginArgs = {
+  id: Scalars['String'];
+};
+
+
 export type MutationDeleteProjectArgs = {
   id: Scalars['ID'];
 };
@@ -412,6 +427,11 @@ export type MutationDropWebSocketMessageArgs = {
 
 export type MutationForwardWebSocketMessageArgs = {
   id: Scalars['ID'];
+};
+
+
+export type MutationInstallPluginArgs = {
+  content: Scalars['String'];
 };
 
 
@@ -465,6 +485,17 @@ export type MutationSetMatchReplaceRulesArgs = {
 };
 
 
+export type MutationSetPluginEnabledArgs = {
+  enabled: Scalars['Boolean'];
+  id: Scalars['String'];
+};
+
+
+export type MutationSetProxyPortArgs = {
+  port: Scalars['Int'];
+};
+
+
 export type MutationSetScopeArgs = {
   scope: Array<ScopeRuleInput>;
 };
@@ -490,8 +521,26 @@ export type MutationUpdateLlmSettingsArgs = {
 };
 
 
+export type MutationUpdatePluginArgs = {
+  content: Scalars['String'];
+  id: Scalars['String'];
+};
+
+
 export type MutationUpdateWebSocketInterceptSettingsArgs = {
   input: UpdateWebSocketInterceptSettingsInput;
+};
+
+export type Plugin = {
+  __typename?: 'Plugin';
+  builtin: Scalars['Boolean'];
+  capabilities: Array<Scalars['String']>;
+  description: Scalars['String'];
+  enabled: Scalars['Boolean'];
+  filename: Scalars['String'];
+  id: Scalars['String'];
+  name: Scalars['String'];
+  version: Scalars['String'];
 };
 
 export type Project = {
@@ -505,6 +554,11 @@ export type Project = {
 export type ProjectSettings = {
   __typename?: 'ProjectSettings';
   intercept: InterceptSettings;
+};
+
+export type ProxySettings = {
+  __typename?: 'ProxySettings';
+  port: Scalars['Int'];
 };
 
 export type Query = {
@@ -522,7 +576,10 @@ export type Query = {
   intruderResults: Array<IntruderResult>;
   llmSettings: LlmSettings;
   matchReplaceRules: Array<MatchReplaceRule>;
+  pluginSource: Scalars['String'];
+  plugins: Array<Plugin>;
   projects: Array<Project>;
+  proxySettings: ProxySettings;
   scope: Array<ScopeRule>;
   senderRequest?: Maybe<SenderRequest>;
   senderRequests: Array<SenderRequest>;
@@ -559,6 +616,11 @@ export type QueryIntruderAttackArgs = {
 
 export type QueryIntruderResultsArgs = {
   attackId: Scalars['ID'];
+};
+
+
+export type QueryPluginSourceArgs = {
+  id: Scalars['String'];
 };
 
 
@@ -670,6 +732,7 @@ export type SitemapEntry = {
   methods: Array<Scalars['String']>;
   path: Scalars['String'];
   statusCodes: Array<Scalars['Int']>;
+  tags: Array<Scalars['String']>;
 };
 
 export type StartIntruderAttackInput = {
@@ -872,6 +935,50 @@ export type SetMatchReplaceRulesMutationVariables = Exact<{
 
 export type SetMatchReplaceRulesMutation = { __typename?: 'Mutation', setMatchReplaceRules: Array<{ __typename?: 'MatchReplaceRule', id: string, name: string, enabled: boolean, phase: MatchReplacePhase, condition?: string | null, headerName?: string | null, headerValue?: string | null, removeHeader: boolean, bodyMatcher?: string | null, bodyReplacement?: string | null }> };
 
+export type PluginFieldsFragment = { __typename?: 'Plugin', id: string, name: string, description: string, version: string, capabilities: Array<string>, enabled: boolean, builtin: boolean, filename: string };
+
+export type PluginsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type PluginsQuery = { __typename?: 'Query', plugins: Array<{ __typename?: 'Plugin', id: string, name: string, description: string, version: string, capabilities: Array<string>, enabled: boolean, builtin: boolean, filename: string }> };
+
+export type PluginSourceQueryVariables = Exact<{
+  id: Scalars['String'];
+}>;
+
+
+export type PluginSourceQuery = { __typename?: 'Query', pluginSource: string };
+
+export type SetPluginEnabledMutationVariables = Exact<{
+  id: Scalars['String'];
+  enabled: Scalars['Boolean'];
+}>;
+
+
+export type SetPluginEnabledMutation = { __typename?: 'Mutation', setPluginEnabled: { __typename?: 'Plugin', id: string, name: string, description: string, version: string, capabilities: Array<string>, enabled: boolean, builtin: boolean, filename: string } };
+
+export type InstallPluginMutationVariables = Exact<{
+  content: Scalars['String'];
+}>;
+
+
+export type InstallPluginMutation = { __typename?: 'Mutation', installPlugin: { __typename?: 'Plugin', id: string, name: string, description: string, version: string, capabilities: Array<string>, enabled: boolean, builtin: boolean, filename: string } };
+
+export type UpdatePluginMutationVariables = Exact<{
+  id: Scalars['String'];
+  content: Scalars['String'];
+}>;
+
+
+export type UpdatePluginMutation = { __typename?: 'Mutation', updatePlugin: { __typename?: 'Plugin', id: string, name: string, description: string, version: string, capabilities: Array<string>, enabled: boolean, builtin: boolean, filename: string } };
+
+export type DeletePluginMutationVariables = Exact<{
+  id: Scalars['String'];
+}>;
+
+
+export type DeletePluginMutation = { __typename?: 'Mutation', deletePlugin: { __typename?: 'DeletePluginResult', success: boolean } };
+
 export type ActiveProjectQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -907,6 +1014,18 @@ export type ProjectsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type ProjectsQuery = { __typename?: 'Query', projects: Array<{ __typename?: 'Project', id: string, name: string, isActive: boolean }> };
+
+export type ProxySettingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ProxySettingsQuery = { __typename?: 'Query', proxySettings: { __typename?: 'ProxySettings', port: number } };
+
+export type SetProxyPortMutationVariables = Exact<{
+  port: Scalars['Int'];
+}>;
+
+
+export type SetProxyPortMutation = { __typename?: 'Mutation', setProxyPort: { __typename?: 'ProxySettings', port: number } };
 
 export type ClearHttpRequestLogMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -1009,7 +1128,7 @@ export type UpdateInterceptSettingsMutation = { __typename?: 'Mutation', updateI
 export type SitemapQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type SitemapQuery = { __typename?: 'Query', sitemap: Array<{ __typename?: 'SitemapEntry', host: string, path: string, methods: Array<string>, statusCodes: Array<number>, count: number }> };
+export type SitemapQuery = { __typename?: 'Query', sitemap: Array<{ __typename?: 'SitemapEntry', host: string, path: string, methods: Array<string>, statusCodes: Array<number>, count: number, tags: Array<string> }> };
 
 export type WebSocketConnectionsQueryVariables = Exact<{
   searchExpression?: InputMaybe<Scalars['String']>;
@@ -1095,7 +1214,18 @@ export type GetInterceptedRequestsQueryVariables = Exact<{ [key: string]: never;
 
 export type GetInterceptedRequestsQuery = { __typename?: 'Query', interceptedRequests: Array<{ __typename?: 'HttpRequest', id: string, url: any, method: HttpMethod, response?: { __typename?: 'HttpResponse', statusCode: number, statusReason: string } | null }> };
 
-
+export const PluginFieldsFragmentDoc = gql`
+    fragment PluginFields on Plugin {
+  id
+  name
+  description
+  version
+  capabilities
+  enabled
+  builtin
+  filename
+}
+    `;
 export const RunAgentDocument = gql`
     mutation RunAgent($input: RunAgentInput!) {
   runAgent(input: $input) {
@@ -1628,6 +1758,207 @@ export function useSetMatchReplaceRulesMutation(baseOptions?: Apollo.MutationHoo
 export type SetMatchReplaceRulesMutationHookResult = ReturnType<typeof useSetMatchReplaceRulesMutation>;
 export type SetMatchReplaceRulesMutationResult = Apollo.MutationResult<SetMatchReplaceRulesMutation>;
 export type SetMatchReplaceRulesMutationOptions = Apollo.BaseMutationOptions<SetMatchReplaceRulesMutation, SetMatchReplaceRulesMutationVariables>;
+export const PluginsDocument = gql`
+    query Plugins {
+  plugins {
+    ...PluginFields
+  }
+}
+    ${PluginFieldsFragmentDoc}`;
+
+/**
+ * __usePluginsQuery__
+ *
+ * To run a query within a React component, call `usePluginsQuery` and pass it any options that fit your needs.
+ * When your component renders, `usePluginsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = usePluginsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function usePluginsQuery(baseOptions?: Apollo.QueryHookOptions<PluginsQuery, PluginsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<PluginsQuery, PluginsQueryVariables>(PluginsDocument, options);
+      }
+export function usePluginsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<PluginsQuery, PluginsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<PluginsQuery, PluginsQueryVariables>(PluginsDocument, options);
+        }
+export type PluginsQueryHookResult = ReturnType<typeof usePluginsQuery>;
+export type PluginsLazyQueryHookResult = ReturnType<typeof usePluginsLazyQuery>;
+export type PluginsQueryResult = Apollo.QueryResult<PluginsQuery, PluginsQueryVariables>;
+export const PluginSourceDocument = gql`
+    query PluginSource($id: String!) {
+  pluginSource(id: $id)
+}
+    `;
+
+/**
+ * __usePluginSourceQuery__
+ *
+ * To run a query within a React component, call `usePluginSourceQuery` and pass it any options that fit your needs.
+ * When your component renders, `usePluginSourceQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = usePluginSourceQuery({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function usePluginSourceQuery(baseOptions: Apollo.QueryHookOptions<PluginSourceQuery, PluginSourceQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<PluginSourceQuery, PluginSourceQueryVariables>(PluginSourceDocument, options);
+      }
+export function usePluginSourceLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<PluginSourceQuery, PluginSourceQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<PluginSourceQuery, PluginSourceQueryVariables>(PluginSourceDocument, options);
+        }
+export type PluginSourceQueryHookResult = ReturnType<typeof usePluginSourceQuery>;
+export type PluginSourceLazyQueryHookResult = ReturnType<typeof usePluginSourceLazyQuery>;
+export type PluginSourceQueryResult = Apollo.QueryResult<PluginSourceQuery, PluginSourceQueryVariables>;
+export const SetPluginEnabledDocument = gql`
+    mutation SetPluginEnabled($id: String!, $enabled: Boolean!) {
+  setPluginEnabled(id: $id, enabled: $enabled) {
+    ...PluginFields
+  }
+}
+    ${PluginFieldsFragmentDoc}`;
+export type SetPluginEnabledMutationFn = Apollo.MutationFunction<SetPluginEnabledMutation, SetPluginEnabledMutationVariables>;
+
+/**
+ * __useSetPluginEnabledMutation__
+ *
+ * To run a mutation, you first call `useSetPluginEnabledMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useSetPluginEnabledMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [setPluginEnabledMutation, { data, loading, error }] = useSetPluginEnabledMutation({
+ *   variables: {
+ *      id: // value for 'id'
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useSetPluginEnabledMutation(baseOptions?: Apollo.MutationHookOptions<SetPluginEnabledMutation, SetPluginEnabledMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<SetPluginEnabledMutation, SetPluginEnabledMutationVariables>(SetPluginEnabledDocument, options);
+      }
+export type SetPluginEnabledMutationHookResult = ReturnType<typeof useSetPluginEnabledMutation>;
+export type SetPluginEnabledMutationResult = Apollo.MutationResult<SetPluginEnabledMutation>;
+export type SetPluginEnabledMutationOptions = Apollo.BaseMutationOptions<SetPluginEnabledMutation, SetPluginEnabledMutationVariables>;
+export const InstallPluginDocument = gql`
+    mutation InstallPlugin($content: String!) {
+  installPlugin(content: $content) {
+    ...PluginFields
+  }
+}
+    ${PluginFieldsFragmentDoc}`;
+export type InstallPluginMutationFn = Apollo.MutationFunction<InstallPluginMutation, InstallPluginMutationVariables>;
+
+/**
+ * __useInstallPluginMutation__
+ *
+ * To run a mutation, you first call `useInstallPluginMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useInstallPluginMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [installPluginMutation, { data, loading, error }] = useInstallPluginMutation({
+ *   variables: {
+ *      content: // value for 'content'
+ *   },
+ * });
+ */
+export function useInstallPluginMutation(baseOptions?: Apollo.MutationHookOptions<InstallPluginMutation, InstallPluginMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<InstallPluginMutation, InstallPluginMutationVariables>(InstallPluginDocument, options);
+      }
+export type InstallPluginMutationHookResult = ReturnType<typeof useInstallPluginMutation>;
+export type InstallPluginMutationResult = Apollo.MutationResult<InstallPluginMutation>;
+export type InstallPluginMutationOptions = Apollo.BaseMutationOptions<InstallPluginMutation, InstallPluginMutationVariables>;
+export const UpdatePluginDocument = gql`
+    mutation UpdatePlugin($id: String!, $content: String!) {
+  updatePlugin(id: $id, content: $content) {
+    ...PluginFields
+  }
+}
+    ${PluginFieldsFragmentDoc}`;
+export type UpdatePluginMutationFn = Apollo.MutationFunction<UpdatePluginMutation, UpdatePluginMutationVariables>;
+
+/**
+ * __useUpdatePluginMutation__
+ *
+ * To run a mutation, you first call `useUpdatePluginMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useUpdatePluginMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [updatePluginMutation, { data, loading, error }] = useUpdatePluginMutation({
+ *   variables: {
+ *      id: // value for 'id'
+ *      content: // value for 'content'
+ *   },
+ * });
+ */
+export function useUpdatePluginMutation(baseOptions?: Apollo.MutationHookOptions<UpdatePluginMutation, UpdatePluginMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<UpdatePluginMutation, UpdatePluginMutationVariables>(UpdatePluginDocument, options);
+      }
+export type UpdatePluginMutationHookResult = ReturnType<typeof useUpdatePluginMutation>;
+export type UpdatePluginMutationResult = Apollo.MutationResult<UpdatePluginMutation>;
+export type UpdatePluginMutationOptions = Apollo.BaseMutationOptions<UpdatePluginMutation, UpdatePluginMutationVariables>;
+export const DeletePluginDocument = gql`
+    mutation DeletePlugin($id: String!) {
+  deletePlugin(id: $id) {
+    success
+  }
+}
+    `;
+export type DeletePluginMutationFn = Apollo.MutationFunction<DeletePluginMutation, DeletePluginMutationVariables>;
+
+/**
+ * __useDeletePluginMutation__
+ *
+ * To run a mutation, you first call `useDeletePluginMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useDeletePluginMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [deletePluginMutation, { data, loading, error }] = useDeletePluginMutation({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function useDeletePluginMutation(baseOptions?: Apollo.MutationHookOptions<DeletePluginMutation, DeletePluginMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DeletePluginMutation, DeletePluginMutationVariables>(DeletePluginDocument, options);
+      }
+export type DeletePluginMutationHookResult = ReturnType<typeof useDeletePluginMutation>;
+export type DeletePluginMutationResult = Apollo.MutationResult<DeletePluginMutation>;
+export type DeletePluginMutationOptions = Apollo.BaseMutationOptions<DeletePluginMutation, DeletePluginMutationVariables>;
 export const ActiveProjectDocument = gql`
     query ActiveProject {
   activeProject {
@@ -1842,6 +2173,73 @@ export function useProjectsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<P
 export type ProjectsQueryHookResult = ReturnType<typeof useProjectsQuery>;
 export type ProjectsLazyQueryHookResult = ReturnType<typeof useProjectsLazyQuery>;
 export type ProjectsQueryResult = Apollo.QueryResult<ProjectsQuery, ProjectsQueryVariables>;
+export const ProxySettingsDocument = gql`
+    query ProxySettings {
+  proxySettings {
+    port
+  }
+}
+    `;
+
+/**
+ * __useProxySettingsQuery__
+ *
+ * To run a query within a React component, call `useProxySettingsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useProxySettingsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useProxySettingsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useProxySettingsQuery(baseOptions?: Apollo.QueryHookOptions<ProxySettingsQuery, ProxySettingsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<ProxySettingsQuery, ProxySettingsQueryVariables>(ProxySettingsDocument, options);
+      }
+export function useProxySettingsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<ProxySettingsQuery, ProxySettingsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<ProxySettingsQuery, ProxySettingsQueryVariables>(ProxySettingsDocument, options);
+        }
+export type ProxySettingsQueryHookResult = ReturnType<typeof useProxySettingsQuery>;
+export type ProxySettingsLazyQueryHookResult = ReturnType<typeof useProxySettingsLazyQuery>;
+export type ProxySettingsQueryResult = Apollo.QueryResult<ProxySettingsQuery, ProxySettingsQueryVariables>;
+export const SetProxyPortDocument = gql`
+    mutation SetProxyPort($port: Int!) {
+  setProxyPort(port: $port) {
+    port
+  }
+}
+    `;
+export type SetProxyPortMutationFn = Apollo.MutationFunction<SetProxyPortMutation, SetProxyPortMutationVariables>;
+
+/**
+ * __useSetProxyPortMutation__
+ *
+ * To run a mutation, you first call `useSetProxyPortMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useSetProxyPortMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [setProxyPortMutation, { data, loading, error }] = useSetProxyPortMutation({
+ *   variables: {
+ *      port: // value for 'port'
+ *   },
+ * });
+ */
+export function useSetProxyPortMutation(baseOptions?: Apollo.MutationHookOptions<SetProxyPortMutation, SetProxyPortMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<SetProxyPortMutation, SetProxyPortMutationVariables>(SetProxyPortDocument, options);
+      }
+export type SetProxyPortMutationHookResult = ReturnType<typeof useSetProxyPortMutation>;
+export type SetProxyPortMutationResult = Apollo.MutationResult<SetProxyPortMutation>;
+export type SetProxyPortMutationOptions = Apollo.BaseMutationOptions<SetProxyPortMutation, SetProxyPortMutationVariables>;
 export const ClearHttpRequestLogDocument = gql`
     mutation ClearHTTPRequestLog {
   clearHTTPRequestLog {
@@ -2454,6 +2852,7 @@ export const SitemapDocument = gql`
     methods
     statusCodes
     count
+    tags
   }
 }
     `;

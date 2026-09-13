@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 
-// Detection and helpers for running inside the Wails desktop shell. In the
-// browser (headless server mode) isDesktop is false and the window helpers are
-// no-ops, so the same admin build works in both environments.
+// Detection and helpers for running inside the Wails desktop shell. In a plain
+// browser (for example during development) isDesktop is false and the window
+// helpers are no-ops, so the same admin build works in both environments.
 
 interface WailsWindowRuntime {
   WindowMinimise: () => void;

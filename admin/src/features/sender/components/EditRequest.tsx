@@ -1,26 +1,29 @@
 import AddIcon from "@mui/icons-material/Add";
-import { Alert, Box, Button, Fab, Tooltip, Typography, useTheme } from "@mui/material";
+import { Alert, Box, Button, Fab, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useTheme } from "@mui/material";
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { KeyValuePair } from "lib/components/KeyValuePair";
 import RequestTabs from "lib/components/RequestTabs";
 import Response from "lib/components/Response";
 import SplitPane from "lib/components/SplitPane";
-import UrlBar, { HttpMethod, HttpProto, httpProtoMap } from "lib/components/UrlBar";
+import { HttpMethod, HttpProto, httpProtoMap } from "lib/components/UrlBar";
 import {
   GetSenderRequestQuery,
   useCreateOrUpdateSenderRequestMutation,
   useGetSenderRequestQuery,
   useSendRequestMutation,
 } from "lib/graphql/generated";
-import { queryParamsFromURL } from "lib/queryParamsFromURL";
-import updateKeyPairItem from "lib/updateKeyPairItem";
-import updateURLQueryParams from "lib/updateURLQueryParams";
+import { parseRawRequest, rawRequest } from "lib/rawHttp";
 
-const defaultMethod = HttpMethod.Get;
-const defaultProto = HttpProto.Http20;
-const emptyKeyPair = [{ key: "", value: "" }];
+const newRaw = "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n";
+
+function schemeOf(url: string): string {
+  try {
+    return new URL(url).protocol.replace(":", "") || "https";
+  } catch {
+    return "https";
+  }
+}
 
 function EditRequest(): JSX.Element {
   const navigate = useNavigate();
@@ -29,51 +32,10 @@ function EditRequest(): JSX.Element {
 
   const theme = useTheme();
 
-  const [method, setMethod] = useState(defaultMethod);
-  const [url, setURL] = useState("");
-  const [proto, setProto] = useState(defaultProto);
-  const [queryParams, setQueryParams] = useState<KeyValuePair[]>(emptyKeyPair);
-  const [headers, setHeaders] = useState<KeyValuePair[]>(emptyKeyPair);
-  const [body, setBody] = useState("");
-
-  const handleQueryParamChange = (key: string, value: string, idx: number) => {
-    setQueryParams((prev) => {
-      const updated = updateKeyPairItem(key, value, idx, prev);
-      setURL((prev) => updateURLQueryParams(prev, updated));
-      return updated;
-    });
-  };
-  const handleQueryParamDelete = (idx: number) => {
-    setQueryParams((prev) => {
-      const updated = prev.slice(0, idx).concat(prev.slice(idx + 1, prev.length));
-      setURL((prev) => updateURLQueryParams(prev, updated));
-      return updated;
-    });
-  };
-
-  const handleHeaderChange = (key: string, value: string, idx: number) => {
-    setHeaders((prev) => updateKeyPairItem(key, value, idx, prev));
-  };
-  const handleHeaderDelete = (idx: number) => {
-    setHeaders((prev) => prev.slice(0, idx).concat(prev.slice(idx + 1, prev.length)));
-  };
-
-  const handleURLChange = (url: string) => {
-    setURL(url);
-
-    const questionMarkIndex = url.indexOf("?");
-    if (questionMarkIndex === -1) {
-      setQueryParams([{ key: "", value: "" }]);
-      return;
-    }
-
-    const newQueryParams = queryParamsFromURL(url);
-    // Push empty row.
-    newQueryParams.push({ key: "", value: "" });
-    setQueryParams(newQueryParams);
-  };
-
+  const [raw, setRaw] = useState(newRaw);
+  const [scheme, setScheme] = useState("https");
   const [response, setResponse] = useState<NonNullable<GetSenderRequestQuery["senderRequest"]>["response"]>(null);
+
   const getReqResult = useGetSenderRequestQuery({
     variables: { id: reqId as string },
     skip: reqId === undefined,
@@ -81,18 +43,15 @@ function EditRequest(): JSX.Element {
       if (!senderRequest) {
         return;
       }
-
-      setURL(senderRequest.url);
-      setMethod(senderRequest.method);
-      setBody(senderRequest.body || "");
-
-      const newQueryParams = queryParamsFromURL(senderRequest.url);
-      // Push empty row.
-      newQueryParams.push({ key: "", value: "" });
-      setQueryParams(newQueryParams);
-
-      const newHeaders = senderRequest.headers || [];
-      setHeaders([...newHeaders.map(({ key, value }) => ({ key, value })), { key: "", value: "" }]);
+      setRaw(
+        rawRequest({
+          method: senderRequest.method,
+          url: senderRequest.url,
+          headers: senderRequest.headers ?? [],
+          body: senderRequest.body,
+        })
+      );
+      setScheme(schemeOf(senderRequest.url));
       setResponse(senderRequest.response);
     },
   });
@@ -102,22 +61,21 @@ function EditRequest(): JSX.Element {
 
   const createOrUpdateRequestAndSend = () => {
     const senderReq = getReqResult?.data?.senderRequest;
+    const parsed = parseRawRequest(raw, scheme);
     createOrUpdateRequest({
       variables: {
         request: {
-          // Update existing sender request if it was cloned from a request log
-          // and it doesn't have a response body yet (e.g. not sent yet).
+          // Update the existing request if it was cloned from a log and not sent yet.
           ...(senderReq && senderReq.sourceRequestLogID && !senderReq.response && { id: senderReq.id }),
-          url,
-          method,
-          proto: httpProtoMap.get(proto),
-          headers: headers.filter((kv) => kv.key !== ""),
-          body: body || undefined,
+          url: parsed.url,
+          method: parsed.method.toUpperCase() as HttpMethod,
+          proto: httpProtoMap.get(HttpProto.Http20),
+          headers: parsed.headers.filter((kv) => kv.key !== ""),
+          body: parsed.body || undefined,
         },
       },
       onCompleted: ({ createOrUpdateSenderRequest }) => {
-        const { id } = createOrUpdateSenderRequest;
-        sendRequestAndPushRoute(id);
+        sendRequestAndPushRoute(createOrUpdateSenderRequest.id);
       },
     });
   };
@@ -125,12 +83,8 @@ function EditRequest(): JSX.Element {
   const sendRequestAndPushRoute = (id: string) => {
     sendRequest({
       errorPolicy: "all",
-      onCompleted: () => {
-        navigate(`/sender?id=${id}`);
-      },
-      variables: {
-        id,
-      },
+      onCompleted: () => navigate(`/sender?id=${id}`),
+      variables: { id },
     });
   };
 
@@ -140,12 +94,8 @@ function EditRequest(): JSX.Element {
   };
 
   const handleNewRequest = () => {
-    setURL("");
-    setMethod(defaultMethod);
-    setProto(defaultProto);
-    setQueryParams(emptyKeyPair);
-    setHeaders(emptyKeyPair);
-    setBody("");
+    setRaw(newRaw);
+    setScheme("https");
     setResponse(null);
     navigate(`/sender`);
   };
@@ -160,16 +110,16 @@ function EditRequest(): JSX.Element {
         </Tooltip>
       </Box>
       <Box component="form" autoComplete="off" onSubmit={handleFormSubmit}>
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          <UrlBar
-            method={method}
-            onMethodChange={setMethod}
-            url={url.toString()}
-            onUrlChange={handleURLChange}
-            proto={proto}
-            onProtoChange={setProto}
-            sx={{ flex: "1 auto" }}
-          />
+        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <ToggleButtonGroup exclusive size="small" value={scheme} onChange={(_, value) => value && setScheme(value)}>
+            <ToggleButton value="https" sx={{ textTransform: "none", py: 0.4 }}>
+              https
+            </ToggleButton>
+            <ToggleButton value="http" sx={{ textTransform: "none", py: 0.4 }}>
+              http
+            </ToggleButton>
+          </ToggleButtonGroup>
+          <Box sx={{ flex: "1 auto" }} />
           <Button
             variant="contained"
             disableElevation
@@ -198,18 +148,7 @@ function EditRequest(): JSX.Element {
             <Typography variant="overline" color="textSecondary" sx={{ position: "absolute", right: 0, mt: 1.2 }}>
               Request
             </Typography>
-            <RequestTabs
-              method={method}
-              url={url}
-              queryParams={queryParams}
-              headers={headers}
-              body={body}
-              onQueryParamChange={handleQueryParamChange}
-              onQueryParamDelete={handleQueryParamDelete}
-              onHeaderChange={handleHeaderChange}
-              onHeaderDelete={handleHeaderDelete}
-              onBodyChange={setBody}
-            />
+            <RequestTabs headers={[]} raw={raw} onRawChange={setRaw} />
           </Box>
           <Box sx={{ height: "100%", position: "relative", ml: 2, pb: 2 }}>
             <Response response={response} />

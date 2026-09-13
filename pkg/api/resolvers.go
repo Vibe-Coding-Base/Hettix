@@ -26,6 +26,7 @@ import (
 	"github.com/Vibe-Coding-Base/Hettix/pkg/intruder"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/llm"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/matchreplace"
+	"github.com/Vibe-Coding-Base/Hettix/pkg/plugin"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proj"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy"
 	"github.com/Vibe-Coding-Base/Hettix/pkg/proxy/intercept"
@@ -60,10 +61,21 @@ type Resolver struct {
 	IntruderService           *intruder.Service
 	FindingService            *finding.Service
 	WorkflowService           *workflow.Service
+	PluginService             *plugin.Service
 	LLMManager                *llm.Manager
+
+	// ProxyController lets the GUI read and change the proxy listen port. It is
+	// wired by the desktop shell.
+	ProxyController ProxyController
 
 	// ProxyURL is Hettix's own proxy address, used to wire the launched browser.
 	ProxyURL string
+}
+
+// ProxyController manages the running proxy listener's port at runtime.
+type ProxyController interface {
+	Port() int
+	SetPort(ctx context.Context, port int) error
 }
 
 type (
@@ -1190,6 +1202,7 @@ func (r *queryResolver) Sitemap(ctx context.Context) ([]SitemapEntry, error) {
 			Methods:     e.Methods,
 			StatusCodes: e.StatusCodes,
 			Count:       e.Count,
+			Tags:        e.Tags,
 		}
 	}
 
@@ -1864,4 +1877,129 @@ func noActiveProjectErr(ctx context.Context) error {
 			"code": "no_active_project",
 		},
 	}
+}
+
+func toPlugin(s plugin.Status) Plugin {
+	caps := s.Capabilities
+	if caps == nil {
+		caps = []string{}
+	}
+
+	return Plugin{
+		ID:           s.ID,
+		Name:         s.Name,
+		Description:  s.Description,
+		Version:      s.Version,
+		Capabilities: caps,
+		Enabled:      s.Enabled,
+		Builtin:      s.Builtin,
+		Filename:     s.Filename,
+	}
+}
+
+func (r *queryResolver) Plugins(_ context.Context) ([]Plugin, error) {
+	if r.PluginService == nil {
+		return nil, nil
+	}
+
+	statuses := r.PluginService.List()
+	plugins := make([]Plugin, 0, len(statuses))
+	for _, s := range statuses {
+		plugins = append(plugins, toPlugin(s))
+	}
+
+	return plugins, nil
+}
+
+func (r *queryResolver) PluginSource(_ context.Context, id string) (string, error) {
+	if r.PluginService == nil {
+		return "", errors.New("plugins are not available")
+	}
+
+	source, ok := r.PluginService.Source(id)
+	if !ok {
+		return "", fmt.Errorf("unknown plugin: %s", id)
+	}
+
+	return source, nil
+}
+
+func (r *mutationResolver) SetPluginEnabled(ctx context.Context, id string, enabled bool) (*Plugin, error) {
+	if r.PluginService == nil {
+		return nil, errors.New("plugins are not available")
+	}
+
+	status, ok := r.PluginService.SetEnabled(ctx, id, enabled)
+	if !ok {
+		return nil, fmt.Errorf("unknown plugin: %s", id)
+	}
+
+	p := toPlugin(status)
+
+	return &p, nil
+}
+
+func (r *mutationResolver) InstallPlugin(ctx context.Context, content string) (*Plugin, error) {
+	if r.PluginService == nil {
+		return nil, errors.New("plugins are not available")
+	}
+
+	status, err := r.PluginService.Install(ctx, content)
+	if err != nil {
+		return nil, err
+	}
+
+	p := toPlugin(status)
+
+	return &p, nil
+}
+
+func (r *mutationResolver) UpdatePlugin(ctx context.Context, id, content string) (*Plugin, error) {
+	if r.PluginService == nil {
+		return nil, errors.New("plugins are not available")
+	}
+
+	status, err := r.PluginService.Update(ctx, id, content)
+	if err != nil {
+		return nil, err
+	}
+
+	p := toPlugin(status)
+
+	return &p, nil
+}
+
+func (r *mutationResolver) DeletePlugin(ctx context.Context, id string) (*DeletePluginResult, error) {
+	if r.PluginService == nil {
+		return nil, errors.New("plugins are not available")
+	}
+
+	if err := r.PluginService.Delete(ctx, id); err != nil {
+		return nil, err
+	}
+
+	return &DeletePluginResult{Success: true}, nil
+}
+
+func (r *queryResolver) ProxySettings(_ context.Context) (*ProxySettings, error) {
+	if r.ProxyController == nil {
+		return &ProxySettings{Port: 0}, nil
+	}
+
+	return &ProxySettings{Port: r.ProxyController.Port()}, nil
+}
+
+func (r *mutationResolver) SetProxyPort(ctx context.Context, port int) (*ProxySettings, error) {
+	if r.ProxyController == nil {
+		return nil, errors.New("the proxy port can only be changed in the desktop app")
+	}
+	if port < 1 || port > 65535 {
+		return nil, fmt.Errorf("invalid port: %d", port)
+	}
+
+	if err := r.ProxyController.SetPort(ctx, port); err != nil {
+		return nil, err
+	}
+
+	return &ProxySettings{Port: port}, nil
 }

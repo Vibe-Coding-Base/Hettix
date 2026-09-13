@@ -18,7 +18,7 @@ AppPublisher=Vibe-Coding-Base
 DefaultDirName={autopf}\Hettix
 DefaultGroupName=Hettix
 DisableProgramGroupPage=yes
-OutputDir=out
+OutputDir=..\releases
 OutputBaseFilename=hettix-setup-{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes
@@ -30,7 +30,7 @@ WizardStyle=modern
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"
 
 [Files]
-Source: "..\cmd\hettix-desktop\build\bin\Hettix.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\releases\Hettix.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; The bundled portable browser. Fetch it first with scripts/fetch-browser.ps1.
 Source: "..\browser\*"; DestDir: "{app}\browser"; Flags: ignoreversion recursesubdirs createallsubdirs
 

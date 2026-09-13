@@ -29,15 +29,17 @@ documentation improvements are welcome directly.
 
 ### Build and run
 
-The admin frontend compiles to a static bundle embedded in the Go binary:
+Hettix is a native desktop app. The admin frontend compiles to a static bundle
+embedded into it:
 
 ```sh
-make build     # builds the admin UI, then the `hettix` binary
-./hettix
+make build-desktop   # builds the admin UI, then the desktop app -> ./releases
 ```
 
-To iterate on the backend only, rebuild the frontend once with `make build-admin`
-and then use `go build ./cmd/hettix`.
+Building the desktop app needs the [Wails](https://wails.io) CLI
+(`go install github.com/wailsapp/wails/v2/cmd/wails@latest`). To iterate on the
+backend only, rebuild the frontend once with `make build-admin` and then use
+`go build ./pkg/...`.
 
 ### Tests and linting
 
